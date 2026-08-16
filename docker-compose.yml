@@ -1,0 +1,58 @@
+# docker-compose.yml - Chạy EduRAG trên local với Docker
+# Yêu cầu: Ollama đang chạy trên host machine
+
+version: '3.9'
+
+services:
+
+  # ── Backend (FastAPI) ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: edurag_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist data và chroma_db
+      - ./data:/app/data
+      - ./chroma_db:/app/chroma_db
+      - ./chat_history.db:/app/chat_history.db
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - LLM_MODEL=qwen2.5:7b
+      - EMBEDDING_MODEL=AITeamVN/Vietnamese_Embedding
+      - CHROMA_PATH=/app/chroma_db
+      - DATA_PATH=/app/data
+      - CHUNK_SIZE=700
+      - CHUNK_OVERLAP=150
+      - TOP_K=5
+    extra_hosts:
+      # Cho phép container truy cập host machine (Ollama)
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 240s
+
+  # ── Frontend (Streamlit) ───────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: edurag_frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
+  sqlite_data:

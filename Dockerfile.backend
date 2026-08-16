@@ -1,0 +1,38 @@
+# Dockerfile for EduRAG Backend (FastAPI)
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (cache optimization)
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY backend/ ./backend/
+COPY scripts/ ./scripts/
+
+# Create necessary directories
+RUN mkdir -p /app/data /app/chroma_db
+
+# Set PYTHONPATH
+ENV PYTHONPATH=/app/backend
+
+# Environment variables (override via docker-compose or .env)
+ENV OLLAMA_BASE_URL=http://host.docker.internal:11434
+ENV LLM_MODEL=qwen2.5:7b
+ENV EMBEDDING_MODEL=BAAI/bge-small-vi
+ENV CHROMA_PATH=/app/chroma_db
+ENV DATA_PATH=/app/data
+
+# Expose port
+EXPOSE 8000
+
+# Start backend
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
