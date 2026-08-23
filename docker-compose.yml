@@ -1,8 +1,6 @@
 # docker-compose.yml - Chạy EduRAG trên local với Docker
 # Yêu cầu: Ollama đang chạy trên host machine
 
-version: '3.9'
-
 services:
 
   # ── Backend (FastAPI) ──────────────────────────────────────────────
@@ -18,6 +16,8 @@ services:
       - ./data:/app/data
       - ./chroma_db:/app/chroma_db
       - ./chat_history.db:/app/chat_history.db
+      # Cache embedding model để không phải tải lại mỗi lần khởi động
+      - hf_cache:/root/.cache/huggingface
     environment:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - LLM_MODEL=qwen2.5:7b
@@ -54,5 +54,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  chroma_data:
-  sqlite_data:
+  hf_cache:
+    name: edurag_hf_cache
