@@ -1,15 +1,18 @@
 """
 db.py - SQLite database models và helper functions
-Sử dụng SQLAlchemy ORM để quản lý lịch sử hội thoại và metadata tài liệu.
+Sử dụng SQLAlchemy ORM để quản lý lịch sử hội thoại, metadata tài liệu,
+và tài khoản admin.
 """
 
+import hashlib
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, Float, create_engine, Index
+    Column, Integer, String, Text, DateTime, Float, create_engine, Index, func
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 from sqlalchemy.pool import StaticPool
@@ -45,6 +48,7 @@ class ChatHistory(Base):
     bot_response = Column(Text, nullable=False)
     sources = Column(Text, nullable=True)      # JSON string: list of source dicts
     retrieval_score = Column(Float, nullable=True)  # Average similarity score
+    feedback = Column(String(10), nullable=True)     # "up", "down", or null
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
@@ -75,11 +79,44 @@ class DocumentMetadata(Base):
     description = Column(Text, nullable=True)
 
 
+class AdminUser(Base):
+    """Bảng lưu tài khoản admin."""
+    __tablename__ = "admin_users"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    username = Column(String(50), nullable=False, unique=True, index=True)
+    password_hash = Column(String(64), nullable=False)  # SHA-256 hash
+    display_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_login = Column(DateTime, nullable=True)
+
+
+# ─── Password Hashing ────────────────────────────────────────────────────────
+
+def _hash_password(password: str) -> str:
+    """Hash mật khẩu bằng SHA-256."""
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
 # ─── Database Initialization ──────────────────────────────────────────────────
 
 def init_db() -> None:
     """Tạo tất cả bảng nếu chưa tồn tại."""
     Base.metadata.create_all(bind=engine)
+
+    # Migration nhẹ: thêm cột feedback nếu DB cũ chưa có
+    try:
+        with engine.connect() as conn:
+            from sqlalchemy import text, inspect
+            inspector = inspect(engine)
+            columns = [c["name"] for c in inspector.get_columns("chat_history")]
+            if "feedback" not in columns:
+                conn.execute(text("ALTER TABLE chat_history ADD COLUMN feedback VARCHAR(10)"))
+                conn.commit()
+                logger.info("Migration: added 'feedback' column to chat_history")
+    except Exception as e:
+        logger.debug(f"Migration check skipped: {e}")
+
     logger.info(f"Database initialized at: {DB_PATH}")
 
 
@@ -92,6 +129,56 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# ─── Admin User Helpers ──────────────────────────────────────────────────────
+
+def create_default_admin(db: Session) -> None:
+    """
+    Tạo tài khoản admin mặc định nếu chưa có admin nào trong DB.
+    Username/password lấy từ biến môi trường hoặc mặc định admin/admin123.
+    """
+    existing = db.query(AdminUser).first()
+    if existing:
+        logger.info(f"Admin user already exists: {existing.username}")
+        return
+
+    default_username = os.getenv("ADMIN_USERNAME", "admin")
+    default_password = os.getenv("ADMIN_PASSWORD", "admin123")
+
+    admin = AdminUser(
+        username=default_username,
+        password_hash=_hash_password(default_password),
+        display_name="Quản trị viên",
+    )
+    db.add(admin)
+    db.commit()
+    logger.info(f"Default admin created: username='{default_username}'")
+
+
+def verify_admin(db: Session, username: str, password: str) -> Optional[AdminUser]:
+    """
+    Xác thực đăng nhập admin.
+    Trả về AdminUser nếu hợp lệ, None nếu sai.
+    """
+    password_hash = _hash_password(password)
+    admin = (
+        db.query(AdminUser)
+        .filter(
+            AdminUser.username == username,
+            AdminUser.password_hash == password_hash,
+        )
+        .first()
+    )
+    if admin:
+        # Cập nhật last_login
+        admin.last_login = datetime.utcnow()
+        db.commit()
+        db.refresh(admin)
+        logger.info(f"Admin login successful: {username}")
+    else:
+        logger.warning(f"Admin login failed: {username}")
+    return admin
 
 
 # ─── Chat History Helpers ─────────────────────────────────────────────────────
@@ -118,6 +205,20 @@ def save_chat(
     db.refresh(record)
     logger.debug(f"Chat saved: session={session_id}, id={record.id}")
     return record
+
+
+def save_feedback(db: Session, message_id: int, feedback: str) -> bool:
+    """
+    Lưu feedback cho một tin nhắn.
+    feedback: "up" hoặc "down"
+    """
+    record = db.query(ChatHistory).filter(ChatHistory.id == message_id).first()
+    if record:
+        record.feedback = feedback
+        db.commit()
+        logger.info(f"Feedback saved: message_id={message_id}, feedback={feedback}")
+        return True
+    return False
 
 
 def get_chat_history(db: Session, session_id: str, limit: int = 50) -> list[ChatHistory]:
@@ -192,3 +293,38 @@ def remove_document_metadata(db: Session, filename: str) -> bool:
 def list_documents(db: Session) -> list[DocumentMetadata]:
     """Liệt kê tất cả tài liệu đã nạp."""
     return db.query(DocumentMetadata).order_by(DocumentMetadata.uploaded_at.desc()).all()
+
+
+# ─── System Stats ─────────────────────────────────────────────────────────────
+
+def get_system_stats(db: Session) -> dict:
+    """Lấy thống kê tổng quát của hệ thống."""
+    total_docs = db.query(func.count(DocumentMetadata.id)).scalar() or 0
+    total_chunks = db.query(func.sum(DocumentMetadata.chunk_count)).scalar() or 0
+    total_sessions = db.query(func.count(func.distinct(ChatHistory.session_id))).scalar() or 0
+    total_messages = db.query(func.count(ChatHistory.id)).scalar() or 0
+    total_feedback_up = (
+        db.query(func.count(ChatHistory.id))
+        .filter(ChatHistory.feedback == "up")
+        .scalar() or 0
+    )
+    total_feedback_down = (
+        db.query(func.count(ChatHistory.id))
+        .filter(ChatHistory.feedback == "down")
+        .scalar() or 0
+    )
+
+    # Thời gian upload gần nhất
+    last_upload = (
+        db.query(func.max(DocumentMetadata.uploaded_at)).scalar()
+    )
+
+    return {
+        "total_documents": total_docs,
+        "total_chunks": int(total_chunks),
+        "total_sessions": total_sessions,
+        "total_messages": total_messages,
+        "total_feedback_up": total_feedback_up,
+        "total_feedback_down": total_feedback_down,
+        "last_upload": last_upload.isoformat() if last_upload else None,
+    }

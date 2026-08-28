@@ -276,6 +276,84 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý tài liệu: {str(e)}")
 
 
+@router.post("/upload-multiple")
+async def upload_multiple_documents(
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Upload nhiều tài liệu PDF/DOCX cùng lúc.
+    Trả về kết quả xử lý từng file.
+    """
+    results = []
+    total_success = 0
+    total_failed = 0
+
+    DATA_PATH.mkdir(parents=True, exist_ok=True)
+
+    for file in files:
+        file_ext = Path(file.filename).suffix.lower()
+
+        # Kiểm tra định dạng
+        if file_ext not in ALLOWED_EXTENSIONS:
+            results.append({
+                "filename": file.filename,
+                "success": False,
+                "error": f"Định dạng không hỗ trợ: {file_ext}",
+            })
+            total_failed += 1
+            continue
+
+        file_path = DATA_PATH / file.filename
+
+        try:
+            # Lưu file
+            content = await file.read()
+            with open(file_path, "wb") as f:
+                f.write(content)
+            file_size_kb = len(content) / 1024
+
+            # Xử lý
+            chunks = load_and_chunk_document(file_path)
+            add_to_vector_store(chunks, file.filename)
+
+            # Metadata
+            add_document_metadata(
+                db=db,
+                filename=file.filename,
+                file_path=str(file_path),
+                file_type=file_ext.lstrip("."),
+                chunk_count=len(chunks),
+                file_size_kb=file_size_kb,
+            )
+
+            results.append({
+                "filename": file.filename,
+                "success": True,
+                "chunk_count": len(chunks),
+                "file_size_kb": round(file_size_kb, 2),
+            })
+            total_success += 1
+
+        except Exception as e:
+            safe_delete_file(file_path)
+            logger.error(f"Error processing {file.filename}: {e}")
+            results.append({
+                "filename": file.filename,
+                "success": False,
+                "error": str(e),
+            })
+            total_failed += 1
+
+    return {
+        "success": total_failed == 0,
+        "message": f"Đã xử lý {total_success}/{len(files)} file thành công",
+        "total_success": total_success,
+        "total_failed": total_failed,
+        "results": results,
+    }
+
+
 @router.delete("/delete/{filename}")
 def delete_document(
     filename: str,

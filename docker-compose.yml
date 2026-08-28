@@ -27,6 +27,8 @@ services:
       - CHUNK_SIZE=700
       - CHUNK_OVERLAP=150
       - TOP_K=5
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
     extra_hosts:
       # Cho phép container truy cập host machine (Ollama)
       - "host.docker.internal:host-gateway"

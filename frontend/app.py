@@ -1,6 +1,8 @@
 """
-app.py - Streamlit Frontend chính
+app.py - Streamlit Frontend chính (v2.0)
 Giao diện chat cho sinh viên tra cứu tài liệu.
+Nâng cấp: Glassmorphism UI, avatar, typing indicator, auto-scroll,
+           admin login với username/password, feedback 👍/👎.
 """
 
 import os
@@ -11,7 +13,6 @@ from datetime import datetime
 
 # ─── Cấu hình ─────────────────────────────────────────────────────────────────
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-ADMIN_PASSWORD = "admin123"  # Thay đổi mật khẩu tại đây
 
 # ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -39,94 +40,173 @@ st.markdown("""
 
     /* Sidebar */
     [data-testid="stSidebar"] {
-        background: rgba(15, 12, 41, 0.95);
-        border-right: 1px solid rgba(255,255,255,0.1);
+        background: rgba(15, 12, 41, 0.97);
+        border-right: 1px solid rgba(255,255,255,0.08);
     }
 
-    /* Chat messages */
-    .user-message {
+    /* ─── Chat Bubbles ─── */
+    .chat-row {
+        display: flex;
+        margin: 12px 0;
+        animation: fadeInUp 0.35s ease-out;
+    }
+    .chat-row.user {
+        justify-content: flex-end;
+    }
+    .chat-row.bot {
+        justify-content: flex-start;
+    }
+
+    .chat-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1em;
+        flex-shrink: 0;
+        margin-top: 4px;
+    }
+    .chat-avatar.user-avatar {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        margin-left: 10px;
+        order: 2;
+    }
+    .chat-avatar.bot-avatar {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        margin-right: 10px;
+    }
+
+    .chat-bubble {
+        padding: 14px 18px;
+        line-height: 1.7;
+        max-width: 75%;
+        word-wrap: break-word;
+    }
+    .chat-bubble.user-bubble {
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
-        padding: 14px 18px;
         border-radius: 18px 18px 4px 18px;
-        margin: 8px 0;
-        max-width: 80%;
-        float: right;
-        clear: both;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        line-height: 1.6;
+        box-shadow: 0 4px 18px rgba(102, 126, 234, 0.35);
     }
-
-    .bot-message {
-        background: rgba(255, 255, 255, 0.07);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+    .chat-bubble.bot-bubble {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: #e8e8f0;
-        padding: 14px 18px;
         border-radius: 18px 18px 18px 4px;
-        margin: 8px 0;
-        max-width: 85%;
-        float: left;
-        clear: both;
-        backdrop-filter: blur(10px);
-        line-height: 1.7;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
     }
 
-    .message-container {
-        overflow: hidden;
-        margin-bottom: 16px;
+    .chat-meta {
+        font-size: 0.72em;
+        color: rgba(255,255,255,0.35);
+        margin-top: 6px;
+    }
+    .chat-meta.user-meta {
+        text-align: right;
     }
 
-    /* Source badges */
+    /* ─── Source Badges ─── */
     .source-badge {
         display: inline-block;
-        background: rgba(102, 126, 234, 0.2);
-        border: 1px solid rgba(102, 126, 234, 0.4);
+        background: rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(102, 126, 234, 0.35);
         color: #a5b4fc;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-size: 0.78em;
-        margin: 3px 3px 0 0;
+        margin: 3px 4px 0 0;
         font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .source-badge:hover {
+        background: rgba(102, 126, 234, 0.3);
+        transform: translateY(-1px);
     }
 
-    /* Header */
+    /* ─── Score Indicator ─── */
+    .score-pill {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+    .score-good { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .score-medium { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    .score-low { background: rgba(248,113,113,0.15); color: #f87171; }
+
+    /* ─── Header ─── */
     .main-header {
         text-align: center;
-        padding: 20px 0 10px;
+        padding: 24px 0 12px;
     }
 
     .main-title {
-        font-size: 2.4em;
+        font-size: 2.6em;
         font-weight: 700;
-        background: linear-gradient(135deg, #667eea, #f093fb);
+        background: linear-gradient(135deg, #667eea, #f093fb, #38ef7d);
+        background-size: 200% auto;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        animation: gradientShift 4s ease infinite;
         margin-bottom: 4px;
     }
 
     .main-subtitle {
-        color: rgba(255,255,255,0.55);
+        color: rgba(255,255,255,0.5);
         font-size: 1em;
         font-weight: 300;
+        letter-spacing: 0.5px;
     }
 
-    /* Input area */
-    .stTextInput > div > div > input {
-        background: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
-        border-radius: 12px !important;
-        color: white !important;
-        padding: 12px 16px !important;
-        font-size: 1em !important;
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% center; }
+        50% { background-position: 100% center; }
     }
 
-    .stTextInput > div > div > input:focus {
-        border-color: #667eea !important;
-        box-shadow: 0 0 0 2px rgba(102,126,234,0.3) !important;
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Buttons */
+    /* ─── Typing Indicator ─── */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 14px 20px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 18px 18px 18px 4px;
+        backdrop-filter: blur(12px);
+        max-width: 120px;
+    }
+    .typing-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: rgba(165, 180, 252, 0.7);
+        animation: typingBounce 1.4s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ─── Input area ─── */
+    .stChatInput > div {
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        border-radius: 16px !important;
+    }
+
+    /* ─── Buttons ─── */
     .stButton > button {
         background: linear-gradient(135deg, #667eea, #764ba2) !important;
         color: white !important;
@@ -140,58 +220,73 @@ st.markdown("""
     }
 
     .stButton > button:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 20px rgba(102,126,234,0.5) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(102,126,234,0.45) !important;
     }
 
-    /* Metrics */
+    /* ─── Metrics ─── */
     [data-testid="metric-container"] {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
         border-radius: 12px;
         padding: 10px;
     }
 
-    /* Divider */
-    hr {
-        border-color: rgba(255,255,255,0.1) !important;
+    /* ─── Login Card ─── */
+    .login-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        padding: 40px 36px;
+        max-width: 420px;
+        margin: 60px auto;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        animation: fadeInUp 0.5s ease-out;
+    }
+    .login-title {
+        text-align: center;
+        font-size: 1.6em;
+        font-weight: 700;
+        color: #e8e8f0;
+        margin-bottom: 8px;
+    }
+    .login-subtitle {
+        text-align: center;
+        color: rgba(255,255,255,0.45);
+        font-size: 0.9em;
+        margin-bottom: 28px;
     }
 
-    /* Spinner */
+    /* ─── Divider ─── */
+    hr {
+        border-color: rgba(255,255,255,0.08) !important;
+    }
+
+    /* ─── Spinner ─── */
     .stSpinner > div {
         border-top-color: #667eea !important;
     }
 
-    /* Score indicator */
-    .score-good { color: #4ade80; }
-    .score-medium { color: #fbbf24; }
-    .score-low { color: #f87171; }
-
-    /* Empty state */
+    /* ─── Empty state ─── */
     .empty-chat {
         text-align: center;
-        padding: 60px 20px;
+        padding: 50px 20px;
         color: rgba(255,255,255,0.4);
+        animation: fadeInUp 0.5s ease-out;
     }
 
     .empty-chat-icon {
-        font-size: 4em;
-        margin-bottom: 16px;
+        font-size: 3.5em;
+        margin-bottom: 12px;
+        filter: drop-shadow(0 4px 12px rgba(102,126,234,0.3));
     }
 
-    /* Scrollable chat area */
-    .chat-container {
-        max-height: 60vh;
-        overflow-y: auto;
-        padding: 10px;
-        scroll-behavior: smooth;
-    }
-
-    /* Suggestion chips */
+    /* ─── Suggestion chips ─── */
     .suggestion-chip {
         display: inline-block;
-        background: rgba(102,126,234,0.15);
-        border: 1px solid rgba(102,126,234,0.35);
+        background: rgba(102,126,234,0.12);
+        border: 1px solid rgba(102,126,234,0.3);
         color: #a5b4fc;
         padding: 8px 14px;
         border-radius: 20px;
@@ -204,6 +299,70 @@ st.markdown("""
     .suggestion-chip:hover {
         background: rgba(102,126,234,0.3);
         border-color: rgba(102,126,234,0.6);
+    }
+
+    /* ─── Status dot ─── */
+    .status-dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: pulse 2s infinite;
+    }
+    .status-online { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.5); }
+    .status-offline { background: #f87171; box-shadow: 0 0 8px rgba(248,113,113,0.5); }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* ─── Sidebar brand ─── */
+    .sidebar-brand {
+        text-align: center;
+        padding: 12px 0 6px;
+    }
+    .sidebar-brand-icon {
+        font-size: 2.2em;
+        margin-bottom: 4px;
+    }
+    .sidebar-brand-name {
+        font-size: 1.3em;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #f093fb);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .sidebar-brand-tag {
+        color: rgba(255,255,255,0.4);
+        font-size: 0.78em;
+        font-weight: 300;
+    }
+
+    /* ─── Feedback Widget ─── */
+    div[data-testid="stFeedback"] {
+        padding: 0 !important;
+        margin-top: -8px !important;
+        margin-left: 48px !important;
+        margin-bottom: 8px !important;
+    }
+    div[data-testid="stFeedback"] button {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 2px 6px !important;
+        width: auto !important;
+        min-width: 32px !important;
+        box-shadow: none !important;
+        transform: none !important;
+        color: rgba(255, 255, 255, 0.4) !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-testid="stFeedback"] button:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #a5b4fc !important;
+        transform: scale(1.15) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -219,8 +378,12 @@ def init_session():
         st.session_state.messages = []
     if "admin_logged_in" not in st.session_state:
         st.session_state.admin_logged_in = False
+    if "admin_display_name" not in st.session_state:
+        st.session_state.admin_display_name = ""
     if "current_page" not in st.session_state:
         st.session_state.current_page = "chat"
+    if "session_created" not in st.session_state:
+        st.session_state.session_created = datetime.now().strftime("%H:%M %d/%m/%Y")
 
 
 # ─── API Helpers ──────────────────────────────────────────────────────────────
@@ -255,6 +418,45 @@ def send_chat(question: str, session_id: str) -> dict | None:
         return None
 
 
+def send_feedback(message_id: int, feedback: str) -> bool:
+    """Gửi feedback cho một tin nhắn."""
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/chat/{message_id}/feedback",
+            json={"feedback": feedback},
+            timeout=10,
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def admin_login(username: str, password: str) -> dict | None:
+    """Đăng nhập admin qua backend API."""
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/admin/login",
+            json={"username": username, "password": password},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except Exception:
+        return None
+
+
+def get_admin_stats() -> dict | None:
+    """Lấy thống kê hệ thống."""
+    try:
+        resp = requests.get(f"{BACKEND_URL}/admin/stats", timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except Exception:
+        return None
+
+
 def get_history(session_id: str) -> list:
     """Lấy lịch sử hội thoại từ backend."""
     try:
@@ -264,6 +466,25 @@ def get_history(session_id: str) -> list:
         return []
     except Exception:
         return []
+
+
+# ─── Auto-scroll JavaScript ──────────────────────────────────────────────────
+
+def inject_auto_scroll():
+    """Inject JavaScript để tự cuộn xuống tin nhắn mới nhất."""
+    st.markdown("""
+    <script>
+        const chatContainer = window.parent.document.querySelector('[data-testid="stVerticalBlock"]');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        // Fallback: scroll toàn bộ main content
+        const main = window.parent.document.querySelector('.main');
+        if (main) {
+            main.scrollTop = main.scrollHeight;
+        }
+    </script>
+    """, unsafe_allow_html=True)
 
 
 # ─── Chat Page ────────────────────────────────────────────────────────────────
@@ -284,7 +505,11 @@ def render_chat_page():
     if "pending_question" in st.session_state and st.session_state.pending_question:
         question = st.session_state.pop("pending_question")
         # Thêm vào lịch sử
-        st.session_state.messages.append({"role": "user", "content": question})
+        st.session_state.messages.append({
+            "role": "user",
+            "content": question,
+            "time": datetime.now().strftime("%H:%M"),
+        })
 
         # Gọi API
         with st.spinner("🔍 Đang tìm kiếm và tạo câu trả lời..."):
@@ -296,6 +521,8 @@ def render_chat_page():
                 "content": result["answer"],
                 "sources": result.get("sources", []),
                 "retrieval_score": result.get("retrieval_score", 0),
+                "message_id": result.get("message_id"),
+                "time": datetime.now().strftime("%H:%M"),
             }
             st.session_state.messages.append(bot_msg)
         st.rerun()
@@ -327,23 +554,27 @@ def render_chat_page():
                     st.session_state.pending_question = suggestion
                     st.rerun()
     else:
-        # Render messages
-        for msg in st.session_state.messages:
+        # Render messages với avatar
+        for idx, msg in enumerate(st.session_state.messages):
             role = msg["role"]
             content = msg["content"]
+            msg_time = msg.get("time", "")
 
             if role == "user":
                 st.markdown(f"""
-                <div class="message-container">
-                    <div class="user-message">
-                        <strong>🧑‍🎓 Bạn</strong><br>{content}
+                <div class="chat-row user">
+                    <div class="chat-bubble user-bubble">
+                        {content}
+                        <div class="chat-meta user-meta">{msg_time}</div>
                     </div>
+                    <div class="chat-avatar user-avatar">🧑‍🎓</div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 # Bot message
                 sources = msg.get("sources", [])
                 score = msg.get("retrieval_score", 0)
+                message_id = msg.get("message_id")
 
                 # Score indicator
                 if score >= 0.7:
@@ -359,31 +590,55 @@ def render_chat_page():
                 # Source badges HTML
                 sources_html = ""
                 if sources:
-                    sources_html = "<br><br><small><strong>📚 Nguồn tham khảo:</strong></small><br>"
+                    sources_html = '<div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);"><small><strong>📚 Nguồn tham khảo:</strong></small><br>'
                     for src in sources:
                         fname = src.get("filename", "N/A")
                         page = src.get("page")
                         page_info = f" (tr.{page})" if page else ""
                         sources_html += f'<span class="source-badge">📄 {fname}{page_info}</span>'
+                    sources_html += '</div>'
 
                 st.markdown(f"""
-                <div class="message-container">
-                    <div class="bot-message">
-                        <strong>🤖 EduRAG</strong>
-                        <span class="{score_class}" style="font-size:0.8em; float:right;">
-                            ● {score_label} ({score:.2f})
-                        </span>
-                        <br><br>{content}
+                <div class="chat-row bot">
+                    <div class="chat-avatar bot-avatar">🤖</div>
+                    <div class="chat-bubble bot-bubble">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <strong style="color:#a5b4fc;">EduRAG</strong>
+                            <span class="score-pill {score_class}">● {score_label} ({score:.2f})</span>
+                        </div>
+                        {content}
                         {sources_html}
+                        <div class="chat-meta">{msg_time}</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+                # Feedback widget
+                if message_id:
+                    fb_key = f"feedback_msg_{message_id}_{idx}"
+                    fb_val = st.feedback(
+                        "thumbs",
+                        key=fb_key,
+                    )
+                    if fb_val is not None:
+                        fb_str = "up" if fb_val == 1 else "down"
+                        if msg.get("feedback") != fb_str:
+                            if send_feedback(message_id, fb_str):
+                                st.session_state.messages[idx]["feedback"] = fb_str
+                                st.toast("Cảm ơn bạn đã phản hồi! 🙏", icon="✨")
+
+        # Auto-scroll
+        inject_auto_scroll()
 
     # Input area sử dụng st.chat_input chính thức của Streamlit
     prompt = st.chat_input("Nhập câu hỏi của bạn...")
     if prompt:
         # Thêm câu hỏi vào hội thoại
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({
+            "role": "user",
+            "content": prompt,
+            "time": datetime.now().strftime("%H:%M"),
+        })
 
         # Gọi API lấy câu trả lời
         with st.spinner("🔍 Đang tìm kiếm và tạo câu trả lời..."):
@@ -395,6 +650,8 @@ def render_chat_page():
                 "content": result["answer"],
                 "sources": result.get("sources", []),
                 "retrieval_score": result.get("retrieval_score", 0),
+                "message_id": result.get("message_id"),
+                "time": datetime.now().strftime("%H:%M"),
             }
             st.session_state.messages.append(bot_msg)
 
@@ -406,27 +663,45 @@ def render_chat_page():
 def render_sidebar():
     """Hiển thị sidebar với thông tin và điều hướng."""
     with st.sidebar:
-        st.markdown("## 🎓 EduRAG")
-        st.markdown("*Chatbot AI Hỗ Trợ Sinh Viên*")
+        # Brand
+        st.markdown("""
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">🎓</div>
+            <div class="sidebar-brand-name">EduRAG</div>
+            <div class="sidebar-brand-tag">Chatbot AI Hỗ Trợ Sinh Viên</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
 
         # Backend status
         health = check_backend_health()
         if health:
-            st.success(f"🟢 Backend: Online")
-            st.info(f"📊 Tài liệu: {health.get('vector_store_docs', 0)} chunks")
+            st.markdown(
+                '<span class="status-dot status-online"></span> **Backend: Online**',
+                unsafe_allow_html=True,
+            )
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("📊 Chunks", health.get("vector_store_docs", 0))
+            with col2:
+                st.metric("🤖 Model", "Qwen2.5")
         else:
-            st.error("🔴 Backend: Offline")
-            st.warning("Chạy backend: `uvicorn main:app --port 8000`")
+            st.markdown(
+                '<span class="status-dot status-offline"></span> **Backend: Offline**',
+                unsafe_allow_html=True,
+            )
+            st.warning("Chạy backend: `docker compose up`")
 
         st.markdown("---")
 
         # Navigation
-        st.markdown("### 📌 Menu")
+        st.markdown("### 📌 Điều hướng")
         if st.button("💬 Trang Chat", use_container_width=True):
             st.session_state.current_page = "chat"
             st.rerun()
 
-        if st.button("⚙️ Trang Admin", use_container_width=True):
+        if st.button("⚙️ Quản Trị", use_container_width=True):
             st.session_state.current_page = "admin"
             st.rerun()
 
@@ -435,16 +710,68 @@ def render_sidebar():
         # Session info
         st.markdown("### 📋 Phiên hiện tại")
         st.code(st.session_state.session_id[:8] + "...", language=None)
-        st.caption(f"Số tin nhắn: {len(st.session_state.messages)}")
+        st.caption(f"🕐 Tạo lúc: {st.session_state.get('session_created', 'N/A')}")
+        st.caption(f"💬 Số tin nhắn: {len(st.session_state.messages)}")
 
-        # Clear chat
-        if st.button("🗑️ Xóa hội thoại", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.session_id = str(uuid.uuid4())
-            st.rerun()
+        # Actions
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Xóa chat", use_container_width=True):
+                st.session_state.messages = []
+                st.session_state.session_id = str(uuid.uuid4())
+                st.session_state.session_created = datetime.now().strftime("%H:%M %d/%m/%Y")
+                st.rerun()
+        with col2:
+            if st.button("🔄 Phiên mới", use_container_width=True):
+                st.session_state.messages = []
+                st.session_state.session_id = str(uuid.uuid4())
+                st.session_state.session_created = datetime.now().strftime("%H:%M %d/%m/%Y")
+                st.rerun()
+
+        # Export chat
+        if st.session_state.messages:
+            st.markdown("---")
+            export_text = _build_chat_export()
+            st.download_button(
+                label="📥 Xuất hội thoại",
+                data=export_text,
+                file_name=f"edurag_chat_{st.session_state.session_id[:8]}.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
 
         st.markdown("---")
-        st.caption("📚 EduRAG v1.0 | Qwen2.5-7B")
+        st.caption("📚 EduRAG v2.0 | Qwen2.5-7B")
+
+
+def _build_chat_export() -> str:
+    """Tạo nội dung text để xuất hội thoại."""
+    lines = [
+        "=" * 50,
+        "  LỊCH SỬ HỘI THOẠI - EduRAG",
+        f"  Phiên: {st.session_state.session_id[:8]}",
+        f"  Thời gian: {st.session_state.get('session_created', 'N/A')}",
+        "=" * 50,
+        "",
+    ]
+    for msg in st.session_state.messages:
+        time_str = msg.get("time", "")
+        if msg["role"] == "user":
+            lines.append(f"[{time_str}] 🧑‍🎓 Sinh viên:")
+            lines.append(f"  {msg['content']}")
+        else:
+            lines.append(f"[{time_str}] 🤖 EduRAG:")
+            lines.append(f"  {msg['content']}")
+            sources = msg.get("sources", [])
+            if sources:
+                src_names = [s.get("filename", "") for s in sources]
+                lines.append(f"  📚 Nguồn: {', '.join(src_names)}")
+            score = msg.get("retrieval_score", 0)
+            lines.append(f"  📊 Độ tin cậy: {score:.2f}")
+        lines.append("")
+    lines.append("─" * 50)
+    lines.append("Xuất bởi EduRAG v2.0")
+    return "\n".join(lines)
 
 
 # ─── Admin Page ───────────────────────────────────────────────────────────────
@@ -455,27 +782,68 @@ def render_admin_page():
 
     # Kiểm tra đăng nhập
     if not st.session_state.admin_logged_in:
-        st.markdown("## 🔐 Đăng nhập Admin")
-        password = st.text_input("Mật khẩu:", type="password", key="admin_pwd")
-        if st.button("Đăng nhập"):
-            if password == ADMIN_PASSWORD:
-                st.session_state.admin_logged_in = True
-                st.success("✅ Đăng nhập thành công!")
-                st.rerun()
-            else:
-                st.error("❌ Sai mật khẩu!")
+        _render_admin_login()
         return
 
     # Đã đăng nhập → hiển thị admin panel
-    col1, col2 = st.columns([5, 1])
+    col1, col2, col3 = st.columns([4, 2, 1])
     with col1:
         st.markdown("## ⚙️ Quản Trị Tài Liệu")
     with col2:
+        display_name = st.session_state.get("admin_display_name", "Admin")
+        st.markdown(
+            f'<div style="text-align:right; padding-top:12px; color:rgba(255,255,255,0.6);">'
+            f'👤 <strong>{display_name}</strong></div>',
+            unsafe_allow_html=True,
+        )
+    with col3:
         if st.button("🚪 Đăng xuất"):
             st.session_state.admin_logged_in = False
+            st.session_state.admin_display_name = ""
             st.rerun()
 
     render_admin(BACKEND_URL)
+
+
+def _render_admin_login():
+    """Form đăng nhập admin với username + password."""
+    st.markdown("""
+    <div class="login-card">
+        <div style="text-align:center; font-size:2.5em; margin-bottom:12px;">🔐</div>
+        <div class="login-title">Đăng Nhập Quản Trị</div>
+        <div class="login-subtitle">Vui lòng nhập tài khoản để tiếp tục</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Form nằm giữa trang
+    col_left, col_center, col_right = st.columns([1, 2, 1])
+    with col_center:
+        with st.form("admin_login_form"):
+            username = st.text_input(
+                "👤 Tên đăng nhập",
+                placeholder="Nhập tên đăng nhập...",
+                key="admin_username",
+            )
+            password = st.text_input(
+                "🔑 Mật khẩu",
+                type="password",
+                placeholder="Nhập mật khẩu...",
+                key="admin_pwd",
+            )
+            submitted = st.form_submit_button("🔓 Đăng nhập", use_container_width=True)
+
+            if submitted:
+                if not username or not password:
+                    st.error("❌ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!")
+                else:
+                    result = admin_login(username, password)
+                    if result and result.get("success"):
+                        st.session_state.admin_logged_in = True
+                        st.session_state.admin_display_name = result.get("display_name", username)
+                        st.success(f"✅ Đăng nhập thành công! Xin chào {result.get('display_name', username)}.")
+                        st.rerun()
+                    else:
+                        st.error("❌ Sai tên đăng nhập hoặc mật khẩu!")
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
