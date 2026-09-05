@@ -5,6 +5,7 @@ và tài khoản admin.
 """
 
 import hashlib
+import hmac
 import json
 import os
 from datetime import datetime
@@ -44,6 +45,8 @@ class ChatHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     session_id = Column(String(64), nullable=False, index=True)
+    # Các phiên cũ có thể chưa có chủ sở hữu; phiên mới luôn gắn với tài khoản.
+    user_id = Column(Integer, nullable=True, index=True)
     user_message = Column(Text, nullable=False)
     bot_response = Column(Text, nullable=False)
     sources = Column(Text, nullable=True)      # JSON string: list of source dicts
@@ -91,11 +94,33 @@ class AdminUser(Base):
     last_login = Column(DateTime, nullable=True)
 
 
+class StudentUser(Base):
+    """Tài khoản sinh viên đăng ký trực tiếp trên EduRAG."""
+    __tablename__ = "student_users"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    password_hash = Column(String(256), nullable=False)
+    display_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_login = Column(DateTime, nullable=True)
+
+
 # ─── Password Hashing ────────────────────────────────────────────────────────
 
-def _hash_password(password: str) -> str:
-    """Hash mật khẩu bằng SHA-256."""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+def _hash_password(password: str, salt: str | None = None) -> str:
+    """Hash mật khẩu bằng PBKDF2-HMAC-SHA256 (không lưu mật khẩu thô)."""
+    salt = salt or os.urandom(16).hex()
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 200_000)
+    return f"pbkdf2_sha256${salt}${digest.hex()}"
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """Hỗ trợ cả hash PBKDF2 mới và hash SHA-256 của tài khoản admin cũ."""
+    if stored_hash.startswith("pbkdf2_sha256$"):
+        _, salt, _ = stored_hash.split("$", 2)
+        return hmac.compare_digest(_hash_password(password, salt), stored_hash)
+    return hmac.compare_digest(hashlib.sha256(password.encode("utf-8")).hexdigest(), stored_hash)
 
 
 # ─── Database Initialization ──────────────────────────────────────────────────
@@ -114,6 +139,11 @@ def init_db() -> None:
                 conn.execute(text("ALTER TABLE chat_history ADD COLUMN feedback VARCHAR(10)"))
                 conn.commit()
                 logger.info("Migration: added 'feedback' column to chat_history")
+            if "user_id" not in columns:
+                conn.execute(text("ALTER TABLE chat_history ADD COLUMN user_id INTEGER"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_history_user_id ON chat_history (user_id)"))
+                conn.commit()
+                logger.info("Migration: added 'user_id' column to chat_history")
     except Exception as e:
         logger.debug(f"Migration check skipped: {e}")
 
@@ -161,15 +191,9 @@ def verify_admin(db: Session, username: str, password: str) -> Optional[AdminUse
     Xác thực đăng nhập admin.
     Trả về AdminUser nếu hợp lệ, None nếu sai.
     """
-    password_hash = _hash_password(password)
-    admin = (
-        db.query(AdminUser)
-        .filter(
-            AdminUser.username == username,
-            AdminUser.password_hash == password_hash,
-        )
-        .first()
-    )
+    admin = db.query(AdminUser).filter(AdminUser.username == username).first()
+    if admin and not _verify_password(password, admin.password_hash):
+        admin = None
     if admin:
         # Cập nhật last_login
         admin.last_login = datetime.utcnow()
@@ -181,6 +205,33 @@ def verify_admin(db: Session, username: str, password: str) -> Optional[AdminUse
     return admin
 
 
+def create_student(db: Session, email: str, password: str, display_name: str | None = None) -> StudentUser:
+    """Tạo tài khoản sinh viên; caller cần kiểm tra email trùng trước."""
+    student = StudentUser(
+        email=email.lower().strip(),
+        password_hash=_hash_password(password),
+        display_name=(display_name or "").strip() or None,
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+def get_student_by_email(db: Session, email: str) -> Optional[StudentUser]:
+    return db.query(StudentUser).filter(StudentUser.email == email.lower().strip()).first()
+
+
+def verify_student(db: Session, email: str, password: str) -> Optional[StudentUser]:
+    student = get_student_by_email(db, email)
+    if not student or not _verify_password(password, student.password_hash):
+        return None
+    student.last_login = datetime.utcnow()
+    db.commit()
+    db.refresh(student)
+    return student
+
+
 # ─── Chat History Helpers ─────────────────────────────────────────────────────
 
 def save_chat(
@@ -190,6 +241,7 @@ def save_chat(
     bot_response: str,
     sources: Optional[list] = None,
     retrieval_score: Optional[float] = None,
+    user_id: Optional[int] = None,
 ) -> ChatHistory:
     """Lưu một lượt hội thoại vào database."""
     sources_json = json.dumps(sources, ensure_ascii=False) if sources else None
@@ -199,6 +251,7 @@ def save_chat(
         bot_response=bot_response,
         sources=sources_json,
         retrieval_score=retrieval_score,
+        user_id=user_id,
     )
     db.add(record)
     db.commit()
@@ -207,12 +260,15 @@ def save_chat(
     return record
 
 
-def save_feedback(db: Session, message_id: int, feedback: str) -> bool:
+def save_feedback(db: Session, message_id: int, feedback: str, user_id: Optional[int] = None) -> bool:
     """
     Lưu feedback cho một tin nhắn.
     feedback: "up" hoặc "down"
     """
-    record = db.query(ChatHistory).filter(ChatHistory.id == message_id).first()
+    query = db.query(ChatHistory).filter(ChatHistory.id == message_id)
+    if user_id is not None:
+        query = query.filter(ChatHistory.user_id == user_id)
+    record = query.first()
     if record:
         record.feedback = feedback
         db.commit()
@@ -221,21 +277,52 @@ def save_feedback(db: Session, message_id: int, feedback: str) -> bool:
     return False
 
 
-def get_chat_history(db: Session, session_id: str, limit: int = 50) -> list[ChatHistory]:
+def get_chat_history(db: Session, session_id: str, limit: int = 50, user_id: Optional[int] = None) -> list[ChatHistory]:
     """Lấy lịch sử hội thoại của một session."""
-    return (
-        db.query(ChatHistory)
-        .filter(ChatHistory.session_id == session_id)
-        .order_by(ChatHistory.timestamp.asc())
-        .limit(limit)
-        .all()
-    )
+    query = db.query(ChatHistory).filter(ChatHistory.session_id == session_id)
+    if user_id is not None:
+        query = query.filter(ChatHistory.user_id == user_id)
+    return query.order_by(ChatHistory.timestamp.asc()).limit(limit).all()
 
 
 def get_all_sessions(db: Session) -> list[str]:
     """Lấy danh sách tất cả session_id."""
     result = db.query(ChatHistory.session_id).distinct().all()
     return [r[0] for r in result]
+
+
+def get_all_sessions_with_info(db: Session, limit: int = 30, user_id: Optional[int] = None) -> list[dict]:
+    """Lấy danh sách session cùng câu hỏi đầu tiên (tiêu đề) và thời gian gần nhất."""
+    # Lấy ID tin nhắn đầu tiên và thời gian gần nhất của từng session
+    base_query = db.query(
+            ChatHistory.session_id.label("sid"),
+            func.min(ChatHistory.id).label("first_msg_id"),
+            func.max(ChatHistory.timestamp).label("last_activity")
+        )
+    if user_id is not None:
+        base_query = base_query.filter(ChatHistory.user_id == user_id)
+    sub = base_query.group_by(ChatHistory.session_id).subquery()
+
+    records = (
+        db.query(
+            sub.c.sid,
+            sub.c.last_activity,
+            ChatHistory.user_message
+        )
+        .join(ChatHistory, ChatHistory.id == sub.c.first_msg_id)
+        .order_by(sub.c.last_activity.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "session_id": r[0],
+            "last_time": r[1].isoformat() if r[1] else "",
+            "title": r[2] if r[2] else f"Phiên {r[0][:8]}..."
+        }
+        for r in records
+    ]
 
 
 # ─── Document Metadata Helpers ────────────────────────────────────────────────

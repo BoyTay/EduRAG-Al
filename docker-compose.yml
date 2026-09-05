@@ -5,6 +5,7 @@ services:
 
   # ── Backend (FastAPI) ──────────────────────────────────────────────
   backend:
+    image: edurag_backend
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -42,12 +43,15 @@ services:
 
   # ── Frontend (Streamlit) ───────────────────────────────────────────
   frontend:
+    image: edurag_frontend
     build:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: edurag_frontend
     ports:
       - "8501:8501"
+    volumes:
+      - ./frontend:/app/frontend
     environment:
       - BACKEND_URL=http://backend:8000
     depends_on:
@@ -58,3 +62,7 @@ services:
 volumes:
   hf_cache:
     name: edurag_hf_cache
+
+networks:
+  default:
+    name: edurag_default

@@ -189,6 +189,8 @@ docker-compose exec backend python /app/scripts/build_index.py
 
 | Method | Endpoint | Mô tả |
 |---|---|---|
+| `POST` | `/auth/register` | Đăng ký tài khoản sinh viên |
+| `POST` | `/auth/login` | Đăng nhập tài khoản sinh viên |
 | `POST` | `/chat` | Gửi câu hỏi, nhận trả lời RAG |
 | `GET` | `/history/{session_id}` | Lấy lịch sử hội thoại |
 | `GET` | `/admin/documents` | Liệt kê tài liệu đã nạp |
@@ -196,6 +198,8 @@ docker-compose exec backend python /app/scripts/build_index.py
 | `DELETE` | `/admin/delete/{filename}` | Xóa tài liệu |
 | `POST` | `/admin/rebuild-index` | Rebuild toàn bộ vector store |
 | `GET` | `/health` | Health check |
+
+Các API chat, lịch sử và danh sách phiên yêu cầu header `Authorization: Bearer <access_token>`. Mỗi phiên chat được gắn với tài khoản đăng nhập, nên sinh viên chỉ xem được lịch sử của chính mình.
 
 ---
 
