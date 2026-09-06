@@ -1,0 +1,8 @@
+import { ArrowRight, BookOpenText, CalendarDots, GraduationCap, Student } from "@phosphor-icons/react";
+const questions = [
+  { label: "Điều kiện xét tốt nghiệp sớm là gì?", topic: "TỐT NGHIỆP", source: "Quy chế đào tạo tín chỉ", icon: GraduationCap },
+  { label: "Điều kiện nhận học bổng?", topic: "HỌC BỔNG", source: "Quy định công tác sinh viên", icon: Student },
+  { label: "Quy định đăng ký học phần?", topic: "HỌC LẠI & CẢI THIỆN", source: "Hướng dẫn đăng ký học phần", icon: BookOpenText },
+  { label: "Lịch học và thi trong năm?", topic: "LỊCH HỌC VỤ", source: "Kế hoạch năm học", icon: CalendarDots },
+];
+export function QuickQuestions({ onPick }: { onPick: (question: string) => void }) { return <div className="grid gap-3 sm:grid-cols-2">{questions.map(({ label, topic, source, icon: Icon }) => <button onClick={() => onPick(label)} key={label} className="group min-h-32 rounded-2xl border border-line/90 bg-white p-4 text-left shadow-[0_3px_12px_rgba(46,125,50,.045)] transition duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_14px_28px_rgba(46,125,50,.11)] active:translate-y-0"><div className="flex items-start justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-md bg-green-50 px-2 py-1 text-[10px] font-bold tracking-wide text-brand"><Icon size={14} weight="duotone" />{topic}</span><ArrowRight size={17} className="mt-0.5 text-muted transition duration-200 group-hover:translate-x-1 group-hover:text-brand" /></div><p className="mt-3 text-sm font-semibold leading-5 text-ink">{label}</p><p className="mt-2 truncate text-[11px] text-muted">{source}</p></button>)}</div>; }

@@ -1,79 +1,51 @@
 @echo off
-REM setup.bat - Script cài đặt nhanh EduRAG trên Windows
-REM Chạy: setup.bat
+REM Cai dat nhanh EduRAG cho Windows: FastAPI + React/Vite
 
 echo ============================================================
-echo         EduRAG - Setup Script (Windows)
+echo                 EduRAG - Setup
 echo ============================================================
-echo.
 
-REM Kiểm tra Python
 python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Python chua duoc cai dat! Vui long cai Python 3.10+
+    echo [ERROR] Can cai Python 3.10 tro len.
     pause
     exit /b 1
 )
-echo [OK] Python da san sang.
 
-REM Kiểm tra Ollama
+node --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Can cai Node.js 20 tro len.
+    pause
+    exit /b 1
+)
+
 ollama --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [WARN] Ollama chua duoc cai dat hoac chua trong PATH.
-    echo        Vui long cai Ollama tai: https://ollama.ai
-) else (
-    echo [OK] Ollama da san sang.
+    echo [WARN] Ollama chua co trong PATH. Hay cai Ollama truoc khi chay chat.
 )
 
-REM Tạo virtual environment
-echo.
-echo [1/4] Tao virtual environment...
 if not exist "venv" (
     python -m venv venv
-    echo [OK] Virtual environment da tao.
-) else (
-    echo [SKIP] Virtual environment da ton tai.
 )
-
-REM Kích hoạt venv
 call venv\Scripts\activate.bat
 
-REM Cài đặt dependencies
-echo.
-echo [2/4] Cai dat dependencies backend...
-pip install -r backend/requirements.txt --quiet
+echo Cai dependencies backend...
+pip install -r backend\requirements.txt
+if %ERRORLEVEL% NEQ 0 exit /b 1
+
+echo Cai dependencies frontend React...
+pushd frontend
+npm install
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Loi cai dat backend dependencies!
-    pause
+    popd
     exit /b 1
 )
-echo [OK] Backend dependencies da cai dat.
+popd
 
-echo.
-echo [3/4] Cai dat dependencies frontend...
-pip install -r frontend/requirements.txt --quiet
-echo [OK] Frontend dependencies da cai dat.
-
-REM Tạo thư mục
-echo.
-echo [4/4] Tao thu muc can thiet...
 if not exist "data" mkdir data
 if not exist "chroma_db" mkdir chroma_db
-echo [OK] Thu muc da san sang.
 
 echo.
-echo ============================================================
-echo         Cai dat hoan tat!
-echo ============================================================
-echo.
-echo BUOC TIEP THEO:
-echo   1. Dat file PDF/DOCX vao thu muc: data\
-echo   2. Kiem tra Ollama dang chay: ollama list
-echo   3. Tao vector store: python scripts\build_index.py
-echo   4. Chay backend (Terminal 1): cd backend ^&^& uvicorn main:app --port 8000 --reload
-echo   5. Chay frontend (Terminal 2): cd frontend ^&^& streamlit run app.py
-echo.
-echo Giao dien: http://localhost:8501
-echo API Docs:  http://localhost:8000/docs
-echo.
+echo Cai dat hoan tat. Chay run.bat hoac dung Docker Compose.
+echo Frontend: http://localhost:3000
 pause

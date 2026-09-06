@@ -47,6 +47,8 @@ class ChatHistory(Base):
     session_id = Column(String(64), nullable=False, index=True)
     # Các phiên cũ có thể chưa có chủ sở hữu; phiên mới luôn gắn với tài khoản.
     user_id = Column(Integer, nullable=True, index=True)
+    # Cần lưu cả role vì ID của AdminUser và Student có thể trùng nhau.
+    user_role = Column(String(20), nullable=True, index=True)
     user_message = Column(Text, nullable=False)
     bot_response = Column(Text, nullable=False)
     sources = Column(Text, nullable=True)      # JSON string: list of source dicts
@@ -80,6 +82,12 @@ class DocumentMetadata(Base):
     file_size_kb = Column(Float, default=0.0)
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     description = Column(Text, nullable=True)
+    display_name = Column(String(255), nullable=True)
+    category = Column(String(80), nullable=True, index=True)
+    issuing_unit = Column(String(150), nullable=True)
+    document_year = Column(Integer, nullable=True)
+    summary = Column(Text, nullable=True)
+    status = Column(String(30), nullable=True, default="active")
 
 
 class AdminUser(Base):
@@ -144,6 +152,27 @@ def init_db() -> None:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_history_user_id ON chat_history (user_id)"))
                 conn.commit()
                 logger.info("Migration: added 'user_id' column to chat_history")
+            if "user_role" not in columns:
+                conn.execute(text("ALTER TABLE chat_history ADD COLUMN user_role VARCHAR(20)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_history_user_role ON chat_history (user_role)"))
+                conn.commit()
+                logger.info("Migration: added 'user_role' column to chat_history")
+
+            document_columns = [c["name"] for c in inspector.get_columns("document_metadata")]
+            document_migrations = {
+                "display_name": "ALTER TABLE document_metadata ADD COLUMN display_name VARCHAR(255)",
+                "category": "ALTER TABLE document_metadata ADD COLUMN category VARCHAR(80)",
+                "issuing_unit": "ALTER TABLE document_metadata ADD COLUMN issuing_unit VARCHAR(150)",
+                "document_year": "ALTER TABLE document_metadata ADD COLUMN document_year INTEGER",
+                "summary": "ALTER TABLE document_metadata ADD COLUMN summary TEXT",
+                "status": "ALTER TABLE document_metadata ADD COLUMN status VARCHAR(30) DEFAULT 'active'",
+            }
+            for column, statement in document_migrations.items():
+                if column not in document_columns:
+                    conn.execute(text(statement))
+                    logger.info(f"Migration: added '{column}' to document_metadata")
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_document_metadata_category ON document_metadata (category)"))
+            conn.commit()
     except Exception as e:
         logger.debug(f"Migration check skipped: {e}")
 
@@ -242,6 +271,7 @@ def save_chat(
     sources: Optional[list] = None,
     retrieval_score: Optional[float] = None,
     user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> ChatHistory:
     """Lưu một lượt hội thoại vào database."""
     sources_json = json.dumps(sources, ensure_ascii=False) if sources else None
@@ -252,6 +282,7 @@ def save_chat(
         sources=sources_json,
         retrieval_score=retrieval_score,
         user_id=user_id,
+        user_role=user_role,
     )
     db.add(record)
     db.commit()
@@ -260,7 +291,7 @@ def save_chat(
     return record
 
 
-def save_feedback(db: Session, message_id: int, feedback: str, user_id: Optional[int] = None) -> bool:
+def save_feedback(db: Session, message_id: int, feedback: str, user_id: Optional[int] = None, user_role: Optional[str] = None) -> bool:
     """
     Lưu feedback cho một tin nhắn.
     feedback: "up" hoặc "down"
@@ -268,6 +299,8 @@ def save_feedback(db: Session, message_id: int, feedback: str, user_id: Optional
     query = db.query(ChatHistory).filter(ChatHistory.id == message_id)
     if user_id is not None:
         query = query.filter(ChatHistory.user_id == user_id)
+    if user_role is not None:
+        query = query.filter(ChatHistory.user_role == user_role)
     record = query.first()
     if record:
         record.feedback = feedback
@@ -277,11 +310,13 @@ def save_feedback(db: Session, message_id: int, feedback: str, user_id: Optional
     return False
 
 
-def get_chat_history(db: Session, session_id: str, limit: int = 50, user_id: Optional[int] = None) -> list[ChatHistory]:
+def get_chat_history(db: Session, session_id: str, limit: int = 50, user_id: Optional[int] = None, user_role: Optional[str] = None) -> list[ChatHistory]:
     """Lấy lịch sử hội thoại của một session."""
     query = db.query(ChatHistory).filter(ChatHistory.session_id == session_id)
     if user_id is not None:
         query = query.filter(ChatHistory.user_id == user_id)
+    if user_role is not None:
+        query = query.filter(ChatHistory.user_role == user_role)
     return query.order_by(ChatHistory.timestamp.asc()).limit(limit).all()
 
 
@@ -291,7 +326,7 @@ def get_all_sessions(db: Session) -> list[str]:
     return [r[0] for r in result]
 
 
-def get_all_sessions_with_info(db: Session, limit: int = 30, user_id: Optional[int] = None) -> list[dict]:
+def get_all_sessions_with_info(db: Session, limit: int = 30, user_id: Optional[int] = None, user_role: Optional[str] = None) -> list[dict]:
     """Lấy danh sách session cùng câu hỏi đầu tiên (tiêu đề) và thời gian gần nhất."""
     # Lấy ID tin nhắn đầu tiên và thời gian gần nhất của từng session
     base_query = db.query(
@@ -301,6 +336,8 @@ def get_all_sessions_with_info(db: Session, limit: int = 30, user_id: Optional[i
         )
     if user_id is not None:
         base_query = base_query.filter(ChatHistory.user_id == user_id)
+    if user_role is not None:
+        base_query = base_query.filter(ChatHistory.user_role == user_role)
     sub = base_query.group_by(ChatHistory.session_id).subquery()
 
     records = (
@@ -335,6 +372,12 @@ def add_document_metadata(
     chunk_count: int = 0,
     file_size_kb: float = 0.0,
     description: Optional[str] = None,
+    display_name: Optional[str] = None,
+    category: Optional[str] = None,
+    issuing_unit: Optional[str] = None,
+    document_year: Optional[int] = None,
+    summary: Optional[str] = None,
+    status: Optional[str] = "active",
 ) -> DocumentMetadata:
     """Thêm hoặc cập nhật metadata tài liệu."""
     existing = db.query(DocumentMetadata).filter_by(filename=filename).first()
@@ -346,6 +389,12 @@ def add_document_metadata(
         existing.file_size_kb = file_size_kb
         existing.uploaded_at = datetime.utcnow()
         existing.description = description
+        existing.display_name = display_name or existing.display_name
+        existing.category = category or existing.category
+        existing.issuing_unit = issuing_unit or existing.issuing_unit
+        existing.document_year = document_year or existing.document_year
+        existing.summary = summary or existing.summary
+        existing.status = status or existing.status
         db.commit()
         db.refresh(existing)
         logger.info(f"Document metadata updated: {filename}")
@@ -358,6 +407,12 @@ def add_document_metadata(
             chunk_count=chunk_count,
             file_size_kb=file_size_kb,
             description=description,
+            display_name=display_name,
+            category=category,
+            issuing_unit=issuing_unit,
+            document_year=document_year,
+            summary=summary,
+            status=status,
         )
         db.add(doc)
         db.commit()
@@ -375,6 +430,20 @@ def remove_document_metadata(db: Session, filename: str) -> bool:
         logger.info(f"Document metadata removed: {filename}")
         return True
     return False
+
+
+def update_document_metadata(db: Session, filename: str, **values) -> Optional[DocumentMetadata]:
+    """Cập nhật phần metadata mô tả, không tác động file hay vector store."""
+    doc = db.query(DocumentMetadata).filter_by(filename=filename).first()
+    if not doc:
+        return None
+    allowed_fields = {"display_name", "category", "issuing_unit", "document_year", "summary", "status", "description"}
+    for field, value in values.items():
+        if field in allowed_fields and value is not None:
+            setattr(doc, field, value)
+    db.commit()
+    db.refresh(doc)
+    return doc
 
 
 def list_documents(db: Session) -> list[DocumentMetadata]:

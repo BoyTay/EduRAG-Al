@@ -1,0 +1,2 @@
+import { GraduationCap } from "@phosphor-icons/react";
+export function Brand({ compact = false }: { compact?: boolean }) { return <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-brand text-white"><GraduationCap size={22} weight="fill" /></span><div><p className="text-xl font-bold tracking-tight text-ink">EduRAG</p>{!compact && <p className="text-xs text-muted">Academic AI Assistant</p>}</div></div>; }

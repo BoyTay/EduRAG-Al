@@ -4,12 +4,14 @@ Khởi tạo app, các endpoints chính và lifespan management.
 """
 
 import secrets
+import re
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -19,10 +21,10 @@ from db import (
     get_db, init_db, save_chat, get_chat_history, get_all_sessions,
     get_all_sessions_with_info, create_default_admin, verify_admin,
     save_feedback, get_system_stats, create_student, get_student_by_email,
-    verify_student,
+    verify_student, DocumentMetadata,
 )
 from rag_chain import rag_chain_instance
-from admin import router as admin_router, set_rag_chain
+from admin import DATA_PATH, router as admin_router, set_rag_chain
 
 
 # ─── Pydantic Schemas ─────────────────────────────────────────────────────────
@@ -38,6 +40,10 @@ class SourceInfo(BaseModel):
     filename: str
     page: Optional[int] = None
     source_path: Optional[str] = None
+    display_name: Optional[str] = None
+    category: Optional[str] = None
+    issuing_unit: Optional[str] = None
+    document_year: Optional[int] = None
 
 
 class ChatResponse(BaseModel):
@@ -96,6 +102,50 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="Phiên đăng nhập đã hết hạn; vui lòng đăng nhập lại")
     return user
+
+
+def enrich_sources(db: Session, sources: list) -> list[dict]:
+    """Gắn metadata dễ đọc vào nguồn RAG mà không thay đổi vector store."""
+    enriched = []
+    for source in sources or []:
+        item = dict(source)
+        filename = item.get("filename")
+        document = db.query(DocumentMetadata).filter(DocumentMetadata.filename == filename).first() if filename else None
+        fallback_name = _humanize_filename(filename) if filename else "Tài liệu học vụ"
+        if document:
+            item.update({
+                "display_name": document.display_name or fallback_name,
+                "category": document.category,
+                "issuing_unit": document.issuing_unit,
+                "document_year": document.document_year,
+            })
+        else:
+            item["display_name"] = fallback_name
+        enriched.append(item)
+    return enriched
+
+
+def _humanize_filename(filename: str) -> str:
+    """Biến tên file kỹ thuật thành nhãn an toàn khi chưa có metadata."""
+    stem = filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].rsplit(".", 1)[0]
+    return re.sub(r"[_-]+", " ", stem).strip().title() or "Tài liệu học vụ"
+
+
+def build_citation_labels(db: Session) -> dict[str, str]:
+    """Tạo nhãn dùng trong prompt; filename chỉ còn là khóa nội bộ."""
+    labels: dict[str, str] = {}
+    for document in db.query(DocumentMetadata).all():
+        title = document.display_name or _humanize_filename(document.filename)
+        details = [value for value in (document.issuing_unit, document.document_year) if value]
+        labels[document.filename] = f"{title} ({', '.join(map(str, details))})" if details else title
+    return labels
+
+
+def replace_technical_citations(answer: str, labels: dict[str, str]) -> str:
+    """Lớp bảo vệ: không để LLM trả lời bằng tên file dù không tuân thủ prompt."""
+    for filename, label in sorted(labels.items(), key=lambda item: len(item[0]), reverse=True):
+        answer = re.sub(re.escape(filename), label, answer, flags=re.IGNORECASE)
+    return answer
 
 
 # ─── Lifespan (Startup & Shutdown) ───────────────────────────────────────────
@@ -163,6 +213,27 @@ app.include_router(admin_router)
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+@app.get("/documents/{filename}/preview", tags=["documents"])
+def preview_pdf_document(
+    filename: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Trả file PDF đã nạp để frontend hiển thị preview có xác thực."""
+    safe_filename = filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    if safe_filename != filename or not safe_filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ xem trước file PDF hợp lệ")
+
+    file_path = DATA_PATH / safe_filename
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/pdf",
+        filename=safe_filename,
+        content_disposition_type="inline",
+    )
+
 @app.get("/health", tags=["system"])
 def health_check():
     """Health check endpoint."""
@@ -193,6 +264,7 @@ def admin_login(
         )
     return {
         "success": True,
+        "user": {"id": admin.id, "email": admin.username, "display_name": admin.display_name or admin.username},
         "username": admin.username,
         "display_name": admin.display_name or admin.username,
         "last_login": admin.last_login.isoformat() if admin.last_login else None,
@@ -265,22 +337,28 @@ async def chat(
 
     try:
         # Thực hiện RAG
-        answer, sources, avg_score = await rag_chain_instance.achat(request.question)
+        citation_labels = build_citation_labels(db)
+        answer, sources, avg_score = await rag_chain_instance.achat(
+            request.question, citation_labels
+        )
+        answer = replace_technical_citations(answer, citation_labels)
 
         # Lưu lịch sử vào SQLite
+        enriched_sources = enrich_sources(db, sources)
         record = save_chat(
             db=db,
             session_id=session_id,
             user_message=request.question,
             bot_response=answer,
-            sources=sources,
+            sources=enriched_sources,
             retrieval_score=avg_score,
             user_id=current_user["user_id"],
+            user_role=current_user["role"],
         )
 
         return ChatResponse(
             answer=answer,
-            sources=[SourceInfo(**s) for s in sources],
+            sources=[SourceInfo(**s) for s in enriched_sources],
             session_id=session_id,
             retrieval_score=round(avg_score, 4),
             message_id=record.id,
@@ -302,8 +380,7 @@ def chat_feedback(
     current_user: dict = Depends(get_current_user),
 ):
     """Lưu feedback (👍/👎) cho một câu trả lời."""
-    owner_id = None if current_user["role"] == "admin" else current_user["user_id"]
-    success = save_feedback(db, message_id, request.feedback, owner_id)
+    success = save_feedback(db, message_id, request.feedback, current_user["user_id"], current_user["role"])
     if not success:
         raise HTTPException(
             status_code=404,
@@ -324,8 +401,7 @@ def get_history(
     current_user: dict = Depends(get_current_user),
 ):
     """Lấy lịch sử hội thoại của một session."""
-    owner_id = None if current_user["role"] == "admin" else current_user["user_id"]
-    history = get_chat_history(db, session_id, limit, owner_id)
+    history = get_chat_history(db, session_id, limit, current_user["user_id"], current_user["role"])
     return {
         "session_id": session_id,
         "messages": [
@@ -333,7 +409,7 @@ def get_history(
                 id=msg.id,
                 user_message=msg.user_message,
                 bot_response=msg.bot_response,
-                sources=msg.sources_list(),
+                sources=enrich_sources(db, msg.sources_list()),
                 timestamp=msg.timestamp.isoformat(),
                 retrieval_score=msg.retrieval_score,
                 feedback=msg.feedback,
@@ -346,9 +422,8 @@ def get_history(
 
 @app.get("/sessions", tags=["chat"])
 def get_sessions(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """Lấy danh sách tất cả session cùng thông tin câu hỏi đầu tiên."""
-    owner_id = None if current_user["role"] == "admin" else current_user["user_id"]
-    sessions_detail = get_all_sessions_with_info(db, user_id=owner_id)
+    """Lấy danh sách session của chính tài khoản đang đăng nhập."""
+    sessions_detail = get_all_sessions_with_info(db, user_id=current_user["user_id"], user_role=current_user["role"])
     session_ids = [s["session_id"] for s in sessions_detail]
     return {
         "sessions": session_ids,

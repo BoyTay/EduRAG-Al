@@ -7,7 +7,7 @@ dựa trên tài liệu được cung cấp.
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional
 
 import torch
 from langchain_core.documents import Document
@@ -94,9 +94,11 @@ Quy tắc bắt buộc:
 1. CHỈ trả lời dựa trên thông tin trong phần [Tài liệu tham khảo] được cung cấp.
 2. Nếu không tìm thấy thông tin liên quan, hãy trả lời: "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ."
 3. KHÔNG bịa đặt, suy đoán, hoặc dùng kiến thức bên ngoài tài liệu.
-4. Khi trả lời, hãy trích dẫn nguồn cụ thể, ví dụ: "Theo [tên tài liệu]..." hoặc "Căn cứ vào [điều/khoản] của [tên tài liệu]..."
-5. Trả lời bằng tiếng Việt, rõ ràng, súc tích và chính xác.
-6. Nếu có nhiều điều khoản liên quan, hãy liệt kê đầy đủ và rõ ràng."""
+4. Không chép nguyên văn các đoạn dài. Hãy diễn giải ngắn gọn, chính xác.
+5. Mở đầu bằng đúng một câu trả lời trực tiếp cho câu hỏi.
+6. Nếu có nhiều ý, dùng danh sách gạch đầu dòng; mỗi ý không quá 10 từ.
+7. Toàn bộ câu trả lời tối đa 100 từ, không dùng dấu ngoặc kép.
+8. Không viết "Trích dẫn từ", "Theo Điều...", tên tệp, đường dẫn, đuôi .pdf/.docx hoặc tên có dấu gạch dưới. Nguồn đã được hiển thị riêng bên dưới câu trả lời."""
 
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 {context}
@@ -104,7 +106,7 @@ USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 [Câu hỏi của sinh viên]
 {question}
 
-Hãy trả lời câu hỏi dựa trên tài liệu tham khảo ở trên. Nhớ trích dẫn nguồn cụ thể."""
+Hãy trả lời ngắn gọn dựa trên tài liệu tham khảo ở trên. Nguồn sẽ được hệ thống hiển thị riêng bên dưới."""
 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", SYSTEM_PROMPT),
@@ -114,7 +116,9 @@ RAG_PROMPT = ChatPromptTemplate.from_messages([
 
 # ─── Format context từ documents ─────────────────────────────────────────────
 
-def format_docs(docs: list[Document]) -> str:
+def format_docs(
+    docs: list[Document], source_labels: Optional[Mapping[str, str]] = None
+) -> str:
     """
     Format danh sách Document thành chuỗi context cho prompt.
     Mỗi chunk được đánh số và ghi rõ nguồn.
@@ -125,11 +129,12 @@ def format_docs(docs: list[Document]) -> str:
         source = meta.get("source", "Không rõ nguồn")
         # Lấy tên file từ đường dẫn
         source_name = Path(source).name if source != "Không rõ nguồn" else source
+        citation_label = (source_labels or {}).get(source_name, source_name)
         page = meta.get("page", None)
         page_info = f" (Trang {page + 1})" if page is not None else ""
 
         parts.append(
-            f"[Đoạn {i} - Nguồn: {source_name}{page_info}]\n"
+            f"[Đoạn {i} - Trích dẫn: {citation_label}{page_info}]\n"
             f"{doc.page_content.strip()}"
         )
     return "\n\n" + "─" * 60 + "\n\n".join(parts)
@@ -232,7 +237,7 @@ class RAGChain:
         return chain
 
     async def achat(
-        self, question: str
+        self, question: str, source_labels: Optional[Mapping[str, str]] = None
     ) -> tuple[str, list[dict], float]:
         """
         Async chat: trả về (answer, sources, avg_score).
@@ -267,7 +272,7 @@ class RAGChain:
         avg_score = sum(scores) / len(scores) if scores else 0.0
 
         # Format context
-        context = format_docs(docs)
+        context = format_docs(docs, source_labels)
 
         # Gọi LLM
         prompt_messages = RAG_PROMPT.format_messages(

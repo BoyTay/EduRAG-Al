@@ -1,237 +1,58 @@
-# 🎓 EduRAG – Chatbot AI Hỗ Trợ Sinh Viên
+# EduRAG — Chatbot học vụ dùng RAG
 
-**EduRAG** là hệ thống chatbot AI sử dụng kỹ thuật **RAG (Retrieval-Augmented Generation)** giúp sinh viên tra cứu quy chế đào tạo, công tác sinh viên và tài liệu nghiệp vụ của Khoa. Hệ thống chạy **hoàn toàn trên máy cục bộ (local)**, không phụ thuộc internet sau khi đã tải model.
+EduRAG hỗ trợ sinh viên tra cứu quy chế đào tạo và tài liệu học vụ. Giao diện là React + Vite; FastAPI, ChromaDB và Ollama đảm nhận API và RAG pipeline.
 
----
-
-## 📐 Kiến trúc hệ thống
+## Kiến trúc
 
 ```
-User (Streamlit UI)
-       │
-       ▼
-  Frontend (Streamlit :8501)
-       │  HTTP
-       ▼
-  Backend API (FastAPI :8000)
-       │
-       ├─► RAG Chain (LangChain)
-       │       ├─► Chroma Vector DB (chroma_db/)
-       │       │       └─► Embeddings: BAAI/bge-small-vi
-       │       └─► LLM: Qwen2.5-7B-Instruct (Ollama :11434)
-       │
-       └─► SQLite (chat_history.db)
+React frontend (:3000) → FastAPI (:8000) → RAG / ChromaDB / Ollama (:11434)
+                                  └──────→ SQLite (chat_history.db)
 ```
 
----
-
-## 🗂️ Cấu trúc thư mục
+## Thư mục chính
 
 ```
-EduRAG/
-│
-├── data/                    # Tài liệu nguồn (PDF, DOCX)
-├── chroma_db/               # Vector store (tạo tự động)
-├── chat_history.db          # SQLite database (tạo tự động)
-│
-├── backend/
-│   ├── main.py              # FastAPI app chính
-│   ├── rag_chain.py         # Pipeline RAG
-│   ├── db.py                # SQLite models & helpers
-│   ├── admin.py             # Router admin (upload/delete)
-│   └── requirements.txt     # Dependencies backend
-│
-├── frontend/
-│   ├── app.py               # Streamlit giao diện chat
-│   ├── admin_page.py        # Streamlit trang quản trị
-│   └── requirements.txt     # Dependencies frontend
-│
-├── scripts/
-│   └── build_index.py       # Script tạo/cập nhật vector store
-│
-├── Dockerfile.backend
-├── Dockerfile.frontend
-├── docker-compose.yml
-├── .gitignore
-└── README.md
+backend/             FastAPI, RAG pipeline và API quản trị
+frontend/            React + TypeScript + Vite frontend
+data/                Tài liệu nguồn PDF/DOCX
+chroma_db/           Vector store được tạo từ tài liệu
+scripts/             Lệnh tạo lại chỉ mục vector
 ```
 
----
+`chroma_db/` và `chat_history.db` chứa dữ liệu vận hành. Không xóa chúng nếu cần giữ chỉ mục hoặc lịch sử trò chuyện.
 
-## ⚙️ Yêu cầu hệ thống
+## Chạy bằng Docker
 
-| Thành phần | Yêu cầu |
-|---|---|
-| OS | Windows 10/11, Ubuntu 20.04+ |
-| Python | 3.10+ |
-| RAM | Tối thiểu 8GB (khuyến nghị 16GB) |
-| GPU | NVIDIA GPU (tùy chọn, tăng tốc embedding) |
-| Ollama | Đã cài & pull model `qwen2.5:7b` |
-| Docker | Docker Desktop (nếu chạy bằng Docker) |
+Đảm bảo Ollama chạy trên máy host và đã có model `qwen2.5:7b`, sau đó chạy từ thư mục gốc:
 
----
-
-## 🚀 Hướng dẫn cài đặt & chạy
-
-### Cách 1: Chạy thủ công (Recommended for Development)
-
-#### Bước 1: Clone & chuẩn bị môi trường
-
-```bash
-# Clone repository
-git clone <your-repo-url>
-cd EduRAG
-
-# Tạo virtual environment
-python -m venv venv
-
-# Kích hoạt venv
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+```powershell
+docker compose up --build -d
 ```
 
-#### Bước 2: Cài đặt dependencies
+- Giao diện: `http://localhost:3000`
+- FastAPI docs: `http://localhost:8000/docs`
 
-```bash
-# Cài backend + frontend (trong cùng venv)
-pip install -r backend/requirements.txt
-pip install -r frontend/requirements.txt
+Xem trạng thái:
+
+```powershell
+docker compose ps
 ```
 
-#### Bước 3: Kiểm tra Ollama
+## Chạy để phát triển frontend
 
-```bash
-# Kiểm tra Ollama đang chạy
-ollama list
-
-# Nếu chưa pull model:
-ollama pull qwen2.5:7b
-
-# Chạy Ollama (nếu chưa chạy)
-ollama serve
-```
-
-#### Bước 4: Chuẩn bị tài liệu
-
-```bash
-# Đặt file PDF/DOCX vào thư mục data/
-mkdir data
-# copy your documents to data/
-```
-
-#### Bước 5: Tạo vector store lần đầu
-
-```bash
-# Từ thư mục gốc dự án
-python scripts/build_index.py
-```
-
-Lệnh này sẽ:
-- Đọc tất cả PDF/DOCX trong `data/`
-- Chunk thành đoạn 700 token, overlap 150
-- Tạo embedding bằng `BAAI/bge-small-vi`
-- Lưu vào `chroma_db/`
-
-> Lần đầu chạy sẽ tự động tải model embedding (~130MB). Cần kết nối internet.
-
-#### Bước 6: Chạy Backend (FastAPI)
-
-```bash
-# Terminal 1
-cd backend
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-API docs: http://localhost:8000/docs
-
-#### Bước 7: Chạy Frontend (Streamlit)
-
-```bash
-# Terminal 2
+```powershell
 cd frontend
-streamlit run app.py --server.port 8501
+Copy-Item .env.example .env
+npm install
+npm run dev
 ```
 
-Giao diện: http://localhost:8501
+Frontend gọi API tại `http://localhost:8000` theo mặc định.
 
----
+## Tạo lại chỉ mục RAG
 
-### Cách 2: Chạy bằng Docker Compose
+Đặt tài liệu vào `data/`, sau đó:
 
-```bash
-# Đảm bảo Ollama đang chạy trên host
-ollama serve
-
-# Build và chạy tất cả services
-docker-compose up --build
-
-# Truy cập:
-# Frontend: http://localhost:8501
-# Backend API: http://localhost:8000
+```powershell
+docker compose exec backend python /app/scripts/build_index.py
 ```
-
-Tạo vector store trong Docker:
-```bash
-docker-compose exec backend python /app/scripts/build_index.py
-```
-
----
-
-## 🔑 Tài khoản Admin mặc định
-
-- **Password**: `admin123`
-
----
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| `POST` | `/auth/register` | Đăng ký tài khoản sinh viên |
-| `POST` | `/auth/login` | Đăng nhập tài khoản sinh viên |
-| `POST` | `/chat` | Gửi câu hỏi, nhận trả lời RAG |
-| `GET` | `/history/{session_id}` | Lấy lịch sử hội thoại |
-| `GET` | `/admin/documents` | Liệt kê tài liệu đã nạp |
-| `POST` | `/admin/upload` | Upload tài liệu mới |
-| `DELETE` | `/admin/delete/{filename}` | Xóa tài liệu |
-| `POST` | `/admin/rebuild-index` | Rebuild toàn bộ vector store |
-| `GET` | `/health` | Health check |
-
-Các API chat, lịch sử và danh sách phiên yêu cầu header `Authorization: Bearer <access_token>`. Mỗi phiên chat được gắn với tài khoản đăng nhập, nên sinh viên chỉ xem được lịch sử của chính mình.
-
----
-
-## 🧠 Luồng hoạt động RAG
-
-```
-1. User nhập câu hỏi
-2. Embed câu hỏi → vector (BAAI/bge-small-vi)
-3. Tìm kiếm ngữ nghĩa trong Chroma (Top-K=5 chunks)
-4. Ghép context từ các chunks tìm được
-5. Tạo prompt ChatML → gọi Qwen2.5-7B qua Ollama
-6. Trả về câu trả lời + danh sách nguồn
-7. Lưu vào SQLite (session_id, question, answer, sources, timestamp)
-```
-
----
-
-## 🐛 Troubleshooting
-
-**Lỗi kết nối Ollama:**
-```bash
-curl http://localhost:11434/api/tags
-# Nếu không có kết quả → chạy: ollama serve
-```
-
-**Vector store trống:**
-```bash
-python scripts/build_index.py --reset
-```
-
----
-
-## 📝 License
-
-MIT License - Dự án đồ án chuyên ngành.

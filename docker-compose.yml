@@ -41,19 +41,18 @@ services:
       retries: 20
       start_period: 240s
 
-  # ── Frontend (Streamlit) ───────────────────────────────────────────
+  # ── Frontend (React + Vite build served by Nginx) ───────────────────
   frontend:
     image: edurag_frontend
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        # This URL is used by the browser, not by the Docker network.
+        VITE_API_URL: http://localhost:8000
     container_name: edurag_frontend
     ports:
-      - "8501:8501"
-    volumes:
-      - ./frontend:/app/frontend
-    environment:
-      - BACKEND_URL=http://backend:8000
+      - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy

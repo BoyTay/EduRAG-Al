@@ -1,0 +1,8 @@
+import { BookOpenText, GearSix, Plus, SignOut, UserCircle } from "@phosphor-icons/react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../stores/authStore";
+import { useChatStore } from "../../stores/chatStore";
+import { Brand } from "../common/Brand";
+import { Button } from "../ui/Button";
+import { ConversationHistory } from "./ConversationHistory";
+export function Sidebar() { const navigate = useNavigate(); const logout = useAuthStore((state) => state.logout); const user = useAuthStore((state) => state.user); const newChat = useChatStore((state) => state.newChat); const start = () => { newChat(); navigate("/chat"); }; const signOut = () => { newChat(); logout(); navigate("/login"); }; return <aside className="flex h-full w-72 shrink-0 flex-col border-r border-line/90 bg-white p-4 md:p-5"><Brand /><Button onClick={start} className="mt-7 w-full"><Plus size={18} weight="bold" />Hội thoại mới</Button><NavLink to="/library" className="mt-3"><Button variant="secondary" className="w-full"><BookOpenText size={18} />Thư viện tài liệu</Button></NavLink><div className="my-5 border-t border-line" /><ConversationHistory /><div className="mt-auto border-t border-line pt-4"><div className="mb-3 flex items-center gap-2 px-2 text-sm text-muted"><UserCircle size={22} /><span className="truncate">{user?.display_name || user?.email}</span></div>{user?.role === "admin" && <NavLink to="/admin"><Button variant="ghost" className="mb-1 w-full justify-start"><GearSix size={19} />Quản trị</Button></NavLink>}<Button variant="danger" onClick={signOut} className="w-full justify-start"><SignOut size={19} />Đăng xuất</Button></div></aside>; }

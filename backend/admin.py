@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from loguru import logger
 
-from db import get_db, add_document_metadata, remove_document_metadata, list_documents
+from db import get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata
 
 # ─── Cấu hình ─────────────────────────────────────────────────────────────────
 DATA_PATH = Path(os.getenv("DATA_PATH", str(Path(__file__).parent.parent / "data")))
@@ -21,6 +22,15 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "150"))
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+class DocumentMetadataUpdate(BaseModel):
+    display_name: Optional[str] = Field(None, max_length=255)
+    category: Optional[str] = Field(None, max_length=80)
+    issuing_unit: Optional[str] = Field(None, max_length=150)
+    document_year: Optional[int] = Field(None, ge=1900, le=2100)
+    summary: Optional[str] = Field(None, max_length=2000)
+    status: Optional[str] = Field(None, max_length=30)
 
 # Import rag_chain_instance sẽ được inject sau
 _rag_chain = None
@@ -204,6 +214,12 @@ def get_documents(db: Session = Depends(get_db)):
                 "file_size_kb": round(doc.file_size_kb, 2),
                 "uploaded_at": doc.uploaded_at.isoformat(),
                 "description": doc.description,
+                "display_name": doc.display_name,
+                "category": doc.category,
+                "issuing_unit": doc.issuing_unit,
+                "document_year": doc.document_year,
+                "summary": doc.summary,
+                "status": doc.status or "active",
             }
             for doc in docs
         ],
@@ -215,6 +231,12 @@ def get_documents(db: Session = Depends(get_db)):
 async def upload_document(
     file: UploadFile = File(...),
     description: Optional[str] = Form(None),
+    display_name: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
+    issuing_unit: Optional[str] = Form(None),
+    document_year: Optional[int] = Form(None),
+    summary: Optional[str] = Form(None),
+    status: Optional[str] = Form("active"),
     db: Session = Depends(get_db),
 ):
     """
@@ -260,6 +282,12 @@ async def upload_document(
             chunk_count=len(chunks),
             file_size_kb=file_size_kb,
             description=description,
+            display_name=display_name,
+            category=category,
+            issuing_unit=issuing_unit,
+            document_year=document_year,
+            summary=summary,
+            status=status,
         )
 
         return {
@@ -274,6 +302,19 @@ async def upload_document(
         safe_delete_file(file_path)
         logger.error(f"Error processing {file.filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý tài liệu: {str(e)}")
+
+
+@router.patch("/documents/{filename}")
+def update_document(
+    filename: str,
+    request: DocumentMetadataUpdate,
+    db: Session = Depends(get_db),
+):
+    """Cập nhật thông tin hiển thị của một tài liệu đã upload."""
+    document = update_document_metadata(db, filename, **request.model_dump())
+    if not document:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu")
+    return {"success": True, "filename": document.filename}
 
 
 @router.post("/upload-multiple")
