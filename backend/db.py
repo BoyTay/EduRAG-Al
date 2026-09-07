@@ -8,7 +8,8 @@ import hashlib
 import hmac
 import json
 import os
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -112,6 +113,32 @@ class StudentUser(Base):
     display_name = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, nullable=True)
+
+
+class AuthSession(Base):
+    """Phiên đăng nhập đã hash; token thô không bao giờ lưu trong SQLite."""
+    __tablename__ = "auth_sessions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    user_role = Column(String(20), nullable=False, index=True)
+    email = Column(String(255), nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PasswordResetToken(Base):
+    """Token đặt lại mật khẩu, chỉ dùng một lần và tự hết hạn."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    user_role = Column(String(20), nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 # ─── Password Hashing ────────────────────────────────────────────────────────
@@ -259,6 +286,110 @@ def verify_student(db: Session, email: str, password: str) -> Optional[StudentUs
     db.commit()
     db.refresh(student)
     return student
+
+
+def get_account_user(db: Session, user_id: int, role: str) -> Optional[AdminUser | StudentUser]:
+    """Lấy đúng tài khoản theo token hiện hành."""
+    if role == "admin":
+        return db.query(AdminUser).filter(AdminUser.id == user_id).first()
+    if role == "student":
+        return db.query(StudentUser).filter(StudentUser.id == user_id).first()
+    return None
+
+
+def update_account_display_name(
+    db: Session, user_id: int, role: str, display_name: str
+) -> Optional[AdminUser | StudentUser]:
+    account = get_account_user(db, user_id, role)
+    if not account:
+        return None
+    account.display_name = display_name.strip()
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def change_account_password(
+    db: Session, user_id: int, role: str, current_password: str, new_password: str
+) -> bool:
+    """Đổi mật khẩu sau khi kiểm tra mật khẩu hiện tại."""
+    account = get_account_user(db, user_id, role)
+    if not account or not _verify_password(current_password, account.password_hash):
+        return False
+    account.password_hash = _hash_password(new_password)
+    db.commit()
+    return True
+
+
+def create_auth_session(
+    db: Session, user_id: int, role: str, email: str, remember: bool = False
+) -> str:
+    token = secrets.token_urlsafe(32)
+    session = AuthSession(
+        token_hash=hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        user_id=user_id,
+        user_role=role,
+        email=email,
+        expires_at=datetime.utcnow() + timedelta(days=30 if remember else 0, hours=0 if remember else 12),
+    )
+    db.add(session)
+    db.commit()
+    return token
+
+
+def get_auth_session(db: Session, token: str) -> Optional[AuthSession]:
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    session = db.query(AuthSession).filter(AuthSession.token_hash == token_hash).first()
+    if not session:
+        return None
+    if session.expires_at <= datetime.utcnow():
+        db.delete(session)
+        db.commit()
+        return None
+    return session
+
+
+def revoke_auth_session(db: Session, token: str) -> None:
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    db.query(AuthSession).filter(AuthSession.token_hash == token_hash).delete()
+    db.commit()
+
+
+def revoke_user_sessions(db: Session, user_id: int, role: str) -> None:
+    db.query(AuthSession).filter(AuthSession.user_id == user_id, AuthSession.user_role == role).delete()
+    db.commit()
+
+
+def create_password_reset_token(db: Session, user_id: int, role: str) -> str:
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user_id,
+        PasswordResetToken.user_role == role,
+        PasswordResetToken.used_at.is_(None),
+    ).update({"used_at": datetime.utcnow()})
+    token = secrets.token_urlsafe(32)
+    db.add(PasswordResetToken(
+        token_hash=hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        user_id=user_id,
+        user_role=role,
+        expires_at=datetime.utcnow() + timedelta(minutes=30),
+    ))
+    db.commit()
+    return token
+
+
+def consume_password_reset_token(db: Session, token: str, new_password: str) -> bool:
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    reset = db.query(PasswordResetToken).filter(PasswordResetToken.token_hash == token_hash).first()
+    if not reset or reset.used_at or reset.expires_at <= datetime.utcnow():
+        return False
+    account = get_account_user(db, reset.user_id, reset.user_role)
+    if not account:
+        return False
+    account.password_hash = _hash_password(new_password)
+    reset.used_at = datetime.utcnow()
+    db.query(AuthSession).filter(AuthSession.user_id == reset.user_id, AuthSession.user_role == reset.user_role).delete()
+    db.commit()
+    return True
 
 
 # ─── Chat History Helpers ─────────────────────────────────────────────────────

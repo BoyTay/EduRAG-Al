@@ -3,14 +3,19 @@ main.py - FastAPI application chính
 Khởi tạo app, các endpoints chính và lifespan management.
 """
 
-import secrets
+import os
 import re
+import smtplib
+import ssl
+import secrets
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
+from email.message import EmailMessage
 from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Header
+import httpx
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -21,7 +26,10 @@ from db import (
     get_db, init_db, save_chat, get_chat_history, get_all_sessions,
     get_all_sessions_with_info, create_default_admin, verify_admin,
     save_feedback, get_system_stats, create_student, get_student_by_email,
-    verify_student, DocumentMetadata,
+    verify_student, DocumentMetadata, get_account_user,
+    update_account_display_name, change_account_password, create_auth_session,
+    get_auth_session, revoke_auth_session, create_password_reset_token,
+    consume_password_reset_token,
 )
 from rag_chain import rag_chain_instance
 from admin import DATA_PATH, router as admin_router, set_rag_chain
@@ -70,6 +78,7 @@ class LoginRequest(BaseModel):
     """Request body cho endpoint /admin/login."""
     username: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=1, max_length=100)
+    remember: bool = False
 
 
 class RegisterRequest(BaseModel):
@@ -83,25 +92,72 @@ class FeedbackRequest(BaseModel):
     feedback: str = Field(..., pattern="^(up|down)$", description="Feedback: 'up' hoặc 'down'")
 
 
+class AccountProfileUpdate(BaseModel):
+    display_name: str = Field(..., min_length=2, max_length=100)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=100)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=20, max_length=200)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class GoogleLoginRequest(BaseModel):
+    credential: str = Field(..., min_length=20, max_length=5000)
+
+
 # ─── Startup timestamp ───────────────────────────────────────────────────────
 _startup_time: Optional[datetime] = None
-# Token chỉ tồn tại trong bộ nhớ backend: khởi động lại dịch vụ yêu cầu đăng nhập lại.
-_access_tokens: dict[str, dict] = {}
 
 
-def _issue_token(user_id: int, role: str, email: str) -> str:
-    token = secrets.token_urlsafe(32)
-    _access_tokens[token] = {"user_id": user_id, "role": role, "email": email}
-    return token
+def _issue_token(db: Session, user_id: int, role: str, email: str, remember: bool = False) -> str:
+    return create_auth_session(db, user_id, role, email, remember)
 
 
-def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+def get_current_user(
+    authorization: Optional[str] = Header(None), db: Session = Depends(get_db)
+) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Vui lòng đăng nhập để tiếp tục")
-    user = _access_tokens.get(authorization.removeprefix("Bearer ").strip())
-    if not user:
+    session = get_auth_session(db, authorization.removeprefix("Bearer ").strip())
+    if not session:
         raise HTTPException(status_code=401, detail="Phiên đăng nhập đã hết hạn; vui lòng đăng nhập lại")
-    return user
+    return {"user_id": session.user_id, "role": session.user_role, "email": session.email}
+
+
+def _send_reset_email(email: str, token: str) -> None:
+    """Gửi liên kết reset qua SMTP; thông tin nhạy cảm lấy từ biến môi trường."""
+    host = os.getenv("SMTP_HOST")
+    sender = os.getenv("SMTP_FROM")
+    if not host or not sender:
+        raise RuntimeError("SMTP chưa được cấu hình")
+    reset_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/reset-password?token={token}"
+    message = EmailMessage()
+    message["Subject"] = "Đặt lại mật khẩu EduRAG"
+    message["From"] = sender
+    message["To"] = email
+    message.set_content(f"Bạn đã yêu cầu đặt lại mật khẩu EduRAG. Liên kết có hiệu lực 30 phút:\n{reset_url}\n\nNếu không phải bạn yêu cầu, hãy bỏ qua email này.")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    username, password = os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD")
+    if port == 465:
+        with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context()) as server:
+            if username and password:
+                server.login(username, password)
+            server.send_message(message)
+    else:
+        with smtplib.SMTP(host, port) as server:
+            server.starttls(context=ssl.create_default_context())
+            if username and password:
+                server.login(username, password)
+            server.send_message(message)
 
 
 def enrich_sources(db: Session, sources: list) -> list[dict]:
@@ -268,7 +324,7 @@ def admin_login(
         "username": admin.username,
         "display_name": admin.display_name or admin.username,
         "last_login": admin.last_login.isoformat() if admin.last_login else None,
-        "access_token": _issue_token(admin.id, "admin", admin.username),
+        "access_token": _issue_token(db, admin.id, "admin", admin.username, request.remember),
     }
 
 
@@ -284,7 +340,7 @@ def register_student(request: RegisterRequest, db: Session = Depends(get_db)):
     return {
         "success": True,
         "user": {"id": student.id, "email": student.email, "display_name": student.display_name or student.email},
-        "access_token": _issue_token(student.id, "student", student.email),
+        "access_token": _issue_token(db, student.id, "student", student.email, True),
     }
 
 
@@ -297,8 +353,115 @@ def student_login(request: LoginRequest, db: Session = Depends(get_db)):
     return {
         "success": True,
         "user": {"id": student.id, "email": student.email, "display_name": student.display_name or student.email},
-        "access_token": _issue_token(student.id, "student", student.email),
+        "access_token": _issue_token(db, student.id, "student", student.email, request.remember),
     }
+
+
+@app.get("/auth/providers", tags=["auth"])
+def auth_providers():
+    """Cấu hình provider có thể hiển thị ở frontend; Client ID Google vốn là public."""
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    return {"google": {"enabled": bool(client_id), "client_id": client_id}}
+
+
+@app.post("/auth/forgot-password", tags=["auth"])
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Tạo token một lần và gửi mail cho sinh viên nếu địa chỉ tồn tại."""
+    if not os.getenv("SMTP_HOST") or not os.getenv("SMTP_FROM"):
+        raise HTTPException(status_code=503, detail="Chức năng email chưa được cấu hình")
+    student = get_student_by_email(db, request.email)
+    if student:
+        token = create_password_reset_token(db, student.id, "student")
+        try:
+            _send_reset_email(student.email, token)
+        except Exception as error:
+            logger.error(f"Cannot send password reset email: {error}")
+            raise HTTPException(status_code=503, detail="Không thể gửi email đặt lại mật khẩu")
+    # Phản hồi chung để không tiết lộ email nào đã tồn tại.
+    return {"success": True, "message": "Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi."}
+
+
+@app.post("/auth/reset-password", tags=["auth"])
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    if not consume_password_reset_token(db, request.token, request.new_password):
+        raise HTTPException(status_code=400, detail="Liên kết không hợp lệ hoặc đã hết hạn")
+    return {"success": True, "message": "Đặt lại mật khẩu thành công. Hãy đăng nhập lại."}
+
+
+@app.post("/auth/google", tags=["auth"])
+async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db)):
+    """Xác minh Google ID token ở Google trước khi tạo/đăng nhập sinh viên."""
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google Sign-In chưa được cấu hình")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": request.credential})
+            response.raise_for_status()
+            claims = response.json()
+    except httpx.HTTPError:
+        raise HTTPException(status_code=401, detail="Không thể xác minh tài khoản Google")
+    if claims.get("aud") != client_id or claims.get("email_verified") not in (True, "true"):
+        raise HTTPException(status_code=401, detail="Google credential không hợp lệ")
+    email = str(claims.get("email", "")).lower().strip()
+    if not email:
+        raise HTTPException(status_code=401, detail="Google không cung cấp email hợp lệ")
+    student = get_student_by_email(db, email)
+    if not student:
+        student = create_student(db, email, secrets.token_urlsafe(32), str(claims.get("name") or "Sinh viên"))
+    return {
+        "success": True,
+        "user": {"id": student.id, "email": student.email, "display_name": student.display_name or student.email},
+        "access_token": _issue_token(db, student.id, "student", student.email, True),
+    }
+
+
+@app.post("/auth/logout", tags=["auth"])
+def logout(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    if authorization and authorization.startswith("Bearer "):
+        revoke_auth_session(db, authorization.removeprefix("Bearer ").strip())
+    return {"success": True}
+
+
+@app.get("/account", tags=["account"])
+def get_account(
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    """Thông tin hồ sơ của tài khoản hiện tại."""
+    account = get_account_user(db, current_user["user_id"], current_user["role"])
+    if not account:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+    identifier = account.username if current_user["role"] == "admin" else account.email
+    return {"user": {"id": account.id, "email": identifier, "display_name": account.display_name or identifier, "role": current_user["role"]}}
+
+
+@app.patch("/account/profile", tags=["account"])
+def update_account_profile(
+    request: AccountProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    display_name = request.display_name.strip()
+    if len(display_name) < 2:
+        raise HTTPException(status_code=422, detail="Tên hiển thị phải có ít nhất 2 ký tự")
+    account = update_account_display_name(db, current_user["user_id"], current_user["role"], display_name)
+    if not account:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+    identifier = account.username if current_user["role"] == "admin" else account.email
+    return {"success": True, "user": {"id": account.id, "email": identifier, "display_name": account.display_name or identifier, "role": current_user["role"]}}
+
+
+@app.post("/account/password", tags=["account"])
+def update_account_password(
+    request: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if request.current_password == request.new_password:
+        raise HTTPException(status_code=422, detail="Mật khẩu mới phải khác mật khẩu hiện tại")
+    if not change_account_password(db, current_user["user_id"], current_user["role"], request.current_password, request.new_password):
+        raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không đúng")
+    return {"success": True, "message": "Đã cập nhật mật khẩu"}
 
 
 @app.get("/admin/stats", tags=["admin"])

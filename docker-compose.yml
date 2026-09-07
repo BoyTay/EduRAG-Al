@@ -30,6 +30,14 @@ services:
       - TOP_K=5
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin123
+      # Đặt trong file .env, không commit Client Secret hoặc mật khẩu SMTP.
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     extra_hosts:
       # Cho phép container truy cập host machine (Ollama)
       - "host.docker.internal:host-gateway"
