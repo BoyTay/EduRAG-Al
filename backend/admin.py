@@ -8,12 +8,12 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from loguru import logger
 
-from db import get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata
+from db import DocumentMetadata, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, get_auth_session, log_activity
 
 # ─── Cấu hình ─────────────────────────────────────────────────────────────────
 DATA_PATH = Path(os.getenv("DATA_PATH", str(Path(__file__).parent.parent / "data")))
@@ -22,6 +22,18 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "150"))
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def require_admin(
+    authorization: Optional[str] = Header(None), db: Session = Depends(get_db)
+) -> dict:
+    """Bảo vệ thao tác quản trị tài liệu và dùng actor cho nhật ký."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Vui lòng đăng nhập để tiếp tục")
+    session = get_auth_session(db, authorization.removeprefix("Bearer ").strip())
+    if not session or session.user_role != "admin":
+        raise HTTPException(status_code=403, detail="Chỉ quản trị viên được phép thực hiện")
+    return {"name": session.email, "role": session.user_role}
 
 
 class DocumentMetadataUpdate(BaseModel):
@@ -238,6 +250,7 @@ async def upload_document(
     summary: Optional[str] = Form(None),
     status: Optional[str] = Form("active"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Upload tài liệu PDF/DOCX mới:
@@ -274,7 +287,7 @@ async def upload_document(
         add_to_vector_store(chunks, file.filename)
 
         # Cập nhật metadata trong SQLite
-        add_document_metadata(
+        document = add_document_metadata(
             db=db,
             filename=file.filename,
             file_path=str(file_path),
@@ -289,6 +302,7 @@ async def upload_document(
             summary=summary,
             status=status,
         )
+        log_activity(db, "document_uploaded", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
 
         return {
             "success": True,
@@ -309,11 +323,13 @@ def update_document(
     filename: str,
     request: DocumentMetadataUpdate,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
 ):
     """Cập nhật thông tin hiển thị của một tài liệu đã upload."""
     document = update_document_metadata(db, filename, **request.model_dump())
     if not document:
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu")
+    log_activity(db, "document_updated", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
     return {"success": True, "filename": document.filename}
 
 
@@ -321,6 +337,7 @@ def update_document(
 async def upload_multiple_documents(
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Upload nhiều tài liệu PDF/DOCX cùng lúc.
@@ -359,7 +376,7 @@ async def upload_multiple_documents(
             add_to_vector_store(chunks, file.filename)
 
             # Metadata
-            add_document_metadata(
+            document = add_document_metadata(
                 db=db,
                 filename=file.filename,
                 file_path=str(file_path),
@@ -367,6 +384,7 @@ async def upload_multiple_documents(
                 chunk_count=len(chunks),
                 file_size_kb=file_size_kb,
             )
+            log_activity(db, "document_uploaded", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
 
             results.append({
                 "filename": file.filename,
@@ -399,6 +417,7 @@ async def upload_multiple_documents(
 def delete_document(
     filename: str,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Xóa tài liệu:
@@ -424,7 +443,10 @@ def delete_document(
         logger.info(f"File deleted: {file_path}")
 
         # 3. Xóa metadata SQLite
+        document = db.query(DocumentMetadata).filter_by(filename=filename).first()
+        display_name = (document.display_name or document.filename) if document else filename
         remove_document_metadata(db, filename)
+        log_activity(db, "document_deleted", "document", display_name, current_user["name"], current_user["role"])
 
         return {
             "success": True,

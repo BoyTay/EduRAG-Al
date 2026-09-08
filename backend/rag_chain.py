@@ -95,10 +95,12 @@ Quy tắc bắt buộc:
 2. Nếu không tìm thấy thông tin liên quan, hãy trả lời: "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ."
 3. KHÔNG bịa đặt, suy đoán, hoặc dùng kiến thức bên ngoài tài liệu.
 4. Không chép nguyên văn các đoạn dài. Hãy diễn giải ngắn gọn, chính xác.
-5. Mở đầu bằng đúng một câu trả lời trực tiếp cho câu hỏi.
-6. Nếu có nhiều ý, dùng danh sách gạch đầu dòng; mỗi ý không quá 10 từ.
-7. Toàn bộ câu trả lời tối đa 100 từ, không dùng dấu ngoặc kép.
-8. Không viết "Trích dẫn từ", "Theo Điều...", tên tệp, đường dẫn, đuôi .pdf/.docx hoặc tên có dấu gạch dưới. Nguồn đã được hiển thị riêng bên dưới câu trả lời."""
+5. Ưu tiên đoạn/điều khoản trả lời trực tiếp câu hỏi; bỏ qua các đoạn chỉ liên quan lỏng lẻo.
+6. Giữ nguyên mức độ bắt buộc của văn bản: nếu nguồn ghi "phải" hoặc "bắt buộc", câu trả lời phải giữ nghĩa bắt buộc. TUYỆT ĐỐI không thêm điều kiện, ngoại lệ hoặc cụm như "khi được yêu cầu" nếu nguồn không nêu.
+7. Mở đầu bằng đúng một câu trả lời trực tiếp cho câu hỏi. Nếu chỉ có một ý, không dùng bullet.
+8. Nếu có từ hai ý độc lập, dùng bullet; mỗi ý không quá 10 từ.
+9. Toàn bộ câu trả lời tối đa 100 từ, không dùng dấu ngoặc kép.
+10. Không viết "Trích dẫn từ", "Theo Điều...", tên tệp, đường dẫn, đuôi .pdf/.docx hoặc tên có dấu gạch dưới. Nguồn đã được hiển thị riêng bên dưới câu trả lời."""
 
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 {context}
@@ -106,7 +108,7 @@ USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 [Câu hỏi của sinh viên]
 {question}
 
-Hãy trả lời ngắn gọn dựa trên tài liệu tham khảo ở trên. Nguồn sẽ được hệ thống hiển thị riêng bên dưới."""
+Hãy chỉ dùng chi tiết được nêu trực tiếp trong đoạn phù hợp nhất. Không suy diễn thêm điều kiện. Nguồn sẽ được hệ thống hiển thị riêng bên dưới."""
 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", SYSTEM_PROMPT),
@@ -140,13 +142,32 @@ def format_docs(
     return "\n\n" + "─" * 60 + "\n\n".join(parts)
 
 
-def extract_sources(docs: list[Document]) -> list[dict]:
+def _support_score(answer: str, document_text: str) -> float:
+    """Đo mức độ đoạn nguồn thực sự nâng đỡ câu trả lời, không chỉ câu hỏi."""
+    answer_tokens = re.findall(r"[\wÀ-ỹ]+", (answer or "").lower())
+    document_lower = (document_text or "").lower()
+    if not answer_tokens or not document_lower:
+        return 0.0
+    meaningful = [token for token in answer_tokens if len(token) > 2]
+    token_score = sum(token in document_lower for token in meaningful) / max(len(meaningful), 1)
+    # Cụm 3 từ khớp nguyên vẹn là tín hiệu mạnh hơn từ khóa rời rạc.
+    phrases = [" ".join(answer_tokens[i:i + 3]) for i in range(len(answer_tokens) - 2)]
+    phrase_score = sum(phrase in document_lower for phrase in phrases) / max(len(phrases), 1)
+    return token_score + phrase_score * 2
+
+
+def extract_sources(
+    docs: list[Document], answer: str, scores: Optional[list[float]] = None
+) -> list[dict]:
     """
     Trích xuất thông tin nguồn từ danh sách documents để trả về client.
     """
+    support_scores = [_support_score(answer, doc.page_content) for doc in docs]
+    # Nếu LLM diễn giải quá xa khiến không còn từ chung, giữ kết quả retrieval tốt nhất.
+    primary_index = max(range(len(docs)), key=lambda index: (support_scores[index], (scores or [0] * len(docs))[index])) if docs else 0
     sources = []
     seen = set()
-    for doc in docs:
+    for index, doc in enumerate(docs):
         meta = doc.metadata
         source = meta.get("source", "")
         source_name = Path(source).name if source else "Không rõ nguồn"
@@ -159,8 +180,51 @@ def extract_sources(docs: list[Document]) -> list[dict]:
                 "filename": source_name,
                 "page": (page + 1) if page is not None else None,
                 "source_path": source,
+                # Ưu tiên đoạn chứng minh trực tiếp nội dung answer.
+                "is_primary": index == primary_index,
             })
     return sources
+
+
+def normalize_answer(answer: str, max_words: int = 100) -> str:
+    """Dọn output local LLM và chặn câu trả lời dài vượt chuẩn UI."""
+    cleaned = re.sub(r"[ \t]+", " ", answer or "")
+    cleaned = re.sub(r"\s*\n\s*", "\n", cleaned).strip()
+    cleaned = re.sub(r"\s+([,.;:!?])", r"\1", cleaned)
+    words = cleaned.split()
+    if len(words) <= max_words:
+        return cleaned
+
+    shortened = " ".join(words[:max_words])
+    # Kết thúc ở ranh giới câu gần nhất để tránh câu bị cụt.
+    boundaries = [shortened.rfind(mark) for mark in (".", "!", "?")]
+    boundary = max(boundaries)
+    return shortened[:boundary + 1].strip() if boundary >= max_words // 2 else f"{shortened.rstrip(' ,;:')}…"
+
+
+def remove_embedded_citations(answer: str) -> str:
+    """Nguồn chỉ hiển thị ở badge UI, không để local LLM chèn lại vào nội dung."""
+    kept_lines = []
+    for line in (answer or "").splitlines():
+        normalized = line.strip()
+        # Ví dụ LLM thường sinh: [Quy chế ... (Trang 7)] hoặc [Nguồn: ...]
+        is_bracket_citation = bool(re.match(
+            r"^\[.*(?:trang|tr\.|nguồn|quy chế|sổ tay|văn bản).*(?:\d|\])", normalized,
+            flags=re.IGNORECASE,
+        ))
+        is_label_citation = bool(re.match(
+            r"^(?:nguồn|trích dẫn|tham khảo)\s*[:：]", normalized,
+            flags=re.IGNORECASE,
+        ))
+        if not is_bracket_citation and not is_label_citation:
+            kept_lines.append(line)
+    cleaned = "\n".join(kept_lines).strip()
+    # Xử lý citation nằm cuối cùng một dòng, sau nội dung trả lời.
+    cleaned = re.sub(
+        r"\s*\[(?:[^\]]*)(?:trang\s*\d+|tr\.\s*\d+|nguồn\s*:[^\]]+)[^\]]*\]\s*$",
+        "", cleaned, flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
 
 
 # ─── RAGChain Class ───────────────────────────────────────────────────────────
@@ -197,7 +261,7 @@ class RAGChain:
             base_url=OLLAMA_BASE_URL,
             temperature=0.1,        # Thấp để câu trả lời ổn định, ít hallucination
             num_ctx=4096,           # Context window
-            num_predict=1024,       # Max tokens sinh ra
+            num_predict=220,        # Đủ cho câu trả lời ngắn, tránh lan man
             top_p=0.9,
             repeat_penalty=1.1,
         )
@@ -280,9 +344,10 @@ class RAGChain:
         )
         response = await self._llm.ainvoke(prompt_messages)
         answer = response.content if hasattr(response, "content") else str(response)
+        answer = remove_embedded_citations(normalize_answer(answer))
 
         # Trích xuất sources
-        sources = extract_sources(docs)
+        sources = extract_sources(docs, answer, scores)
 
         logger.info(
             f"RAG query: '{question[:50]}...' → "

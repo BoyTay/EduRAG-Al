@@ -1,20 +1,103 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-brand: #2e7d32;
-  --color-brand-dark: #1b5e20;
-  --color-canvas: #f1f8e9;
-  --color-ink: #1b2a1e;
-  --color-muted: #4a6a4a;
-  --color-line: #c8e6c9;
-  --color-error: #d32f2f;
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #059669;
+  --color-brand-dark: #047857;
+  --color-canvas: #f8fafc;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-error: #ef4444;
+  --font-sans: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
-* { box-sizing: border-box; }
-html, body, #root { min-height: 100%; margin: 0; }
-body { background: #f1f8e9; color: #1b2a1e; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-button, input { font: inherit; }
-button { cursor: pointer; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Sleek unobtrusive scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+/* Dedicated history sidebar scrollbar */
+.custom-history-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+.custom-history-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-history-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-history-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+.custom-history-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Styling for DOCX in-browser preview */
+.docx-preview-content {
+  background: #ffffff;
+  color: #1e293b;
+}
+.docx-preview-content section {
+  background: #ffffff;
+  padding: 1.25rem !important;
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.docx-preview-content table {
+  border-collapse: collapse;
+  width: 100% !important;
+  margin: 0.75rem 0;
+}
+.docx-preview-content td, .docx-preview-content th {
+  border: 1px solid #e2e8f0;
+  padding: 6px 10px;
+}

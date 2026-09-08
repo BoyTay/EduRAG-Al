@@ -9,7 +9,7 @@ import hmac
 import json
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +36,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
     pass
+
+
+def as_utc_iso(value: Optional[datetime]) -> str:
+    """SQLite lưu UTC dạng naive; API phải ghi rõ timezone để client không lệch ngày."""
+    if not value:
+        return ""
+    return value.replace(tzinfo=timezone.utc).isoformat() if value.tzinfo is None else value.astimezone(timezone.utc).isoformat()
 
 
 # ─── Models ───────────────────────────────────────────────────────────────────
@@ -139,6 +146,19 @@ class PasswordResetToken(Base):
     expires_at = Column(DateTime, nullable=False, index=True)
     used_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ActivityLog(Base):
+    """Nhật ký hành động thật để hiển thị trên dashboard quản trị."""
+    __tablename__ = "activity_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    action = Column(String(40), nullable=False, index=True)
+    entity_type = Column(String(40), nullable=False)
+    entity_name = Column(String(255), nullable=True)
+    actor_name = Column(String(120), nullable=False)
+    actor_role = Column(String(20), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
 # ─── Password Hashing ────────────────────────────────────────────────────────
@@ -392,6 +412,24 @@ def consume_password_reset_token(db: Session, token: str, new_password: str) -> 
     return True
 
 
+def log_activity(
+    db: Session, action: str, entity_type: str, entity_name: Optional[str],
+    actor_name: str, actor_role: str,
+) -> ActivityLog:
+    record = ActivityLog(
+        action=action, entity_type=entity_type, entity_name=entity_name,
+        actor_name=actor_name, actor_role=actor_role,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def get_recent_activities(db: Session, limit: int = 50) -> list[ActivityLog]:
+    return db.query(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(limit).all()
+
+
 # ─── Chat History Helpers ─────────────────────────────────────────────────────
 
 def save_chat(
@@ -486,7 +524,7 @@ def get_all_sessions_with_info(db: Session, limit: int = 30, user_id: Optional[i
     return [
         {
             "session_id": r[0],
-            "last_time": r[1].isoformat() if r[1] else "",
+            "last_time": as_utc_iso(r[1]),
             "title": r[2] if r[2] else f"Phiên {r[0][:8]}..."
         }
         for r in records

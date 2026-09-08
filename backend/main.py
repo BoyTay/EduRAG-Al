@@ -29,7 +29,7 @@ from db import (
     verify_student, DocumentMetadata, get_account_user,
     update_account_display_name, change_account_password, create_auth_session,
     get_auth_session, revoke_auth_session, create_password_reset_token,
-    consume_password_reset_token,
+    consume_password_reset_token, get_recent_activities, log_activity, as_utc_iso,
 )
 from rag_chain import rag_chain_instance
 from admin import DATA_PATH, router as admin_router, set_rag_chain
@@ -52,6 +52,7 @@ class SourceInfo(BaseModel):
     category: Optional[str] = None
     issuing_unit: Optional[str] = None
     document_year: Optional[int] = None
+    is_primary: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -131,6 +132,12 @@ def get_current_user(
     if not session:
         raise HTTPException(status_code=401, detail="Phiên đăng nhập đã hết hạn; vui lòng đăng nhập lại")
     return {"user_id": session.user_id, "role": session.user_role, "email": session.email}
+
+
+def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Chỉ quản trị viên được phép truy cập")
+    return current_user
 
 
 def _send_reset_email(email: str, token: str) -> None:
@@ -274,18 +281,24 @@ def preview_pdf_document(
     filename: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Trả file PDF đã nạp để frontend hiển thị preview có xác thực."""
+    """Trả file PDF hoặc DOCX đã nạp để frontend hiển thị preview có xác thực."""
     safe_filename = filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
-    if safe_filename != filename or not safe_filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ xem trước file PDF hợp lệ")
+    ext = safe_filename.lower().rsplit(".", 1)[-1] if "." in safe_filename else ""
+    if safe_filename != filename or ext not in {"pdf", "docx"}:
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ xem trước file PDF hoặc DOCX hợp lệ")
 
     file_path = DATA_PATH / safe_filename
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu")
 
+    media_type = (
+        "application/pdf"
+        if ext == "pdf"
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
     return FileResponse(
         path=file_path,
-        media_type="application/pdf",
+        media_type=media_type,
         filename=safe_filename,
         content_disposition_type="inline",
     )
@@ -465,7 +478,7 @@ def update_account_password(
 
 
 @app.get("/admin/stats", tags=["admin"])
-def admin_stats(db: Session = Depends(get_db)):
+def admin_stats(db: Session = Depends(get_db), _: dict = Depends(require_admin)):
     """Lấy thống kê tổng quát của hệ thống."""
     stats = get_system_stats(db)
 
@@ -479,6 +492,25 @@ def admin_stats(db: Session = Depends(get_db)):
         stats["uptime"] = "N/A"
 
     return stats
+
+
+@app.get("/admin/activities", tags=["admin"])
+def admin_activities(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """Danh sách hoạt động thật được ghi trong SQLite."""
+    activities = get_recent_activities(db, max(1, min(limit, 100)))
+    return {"activities": [{
+        "id": activity.id,
+        "action": activity.action,
+        "entity_type": activity.entity_type,
+        "entity_name": activity.entity_name,
+        "actor_name": activity.actor_name,
+        "actor_role": activity.actor_role,
+        "created_at": as_utc_iso(activity.created_at),
+    } for activity in activities]}
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["chat"])
@@ -517,6 +549,10 @@ async def chat(
             retrieval_score=avg_score,
             user_id=current_user["user_id"],
             user_role=current_user["role"],
+        )
+        log_activity(
+            db, "chat_processed", "chat", None,
+            current_user["email"], current_user["role"],
         )
 
         return ChatResponse(
@@ -573,7 +609,7 @@ def get_history(
                 user_message=msg.user_message,
                 bot_response=msg.bot_response,
                 sources=enrich_sources(db, msg.sources_list()),
-                timestamp=msg.timestamp.isoformat(),
+                timestamp=as_utc_iso(msg.timestamp),
                 retrieval_score=msg.retrieval_score,
                 feedback=msg.feedback,
             )
@@ -593,3 +629,15 @@ def get_sessions(db: Session = Depends(get_db), current_user: dict = Depends(get
         "sessions_detail": sessions_detail,
         "total": len(sessions_detail),
     }
+
+
+@app.delete("/sessions/{session_id}", tags=["chat"])
+def delete_session(session_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Xóa một phiên hội thoại cùng toàn bộ tin nhắn thuộc phiên đó."""
+    query = db.query(ChatHistory).filter(ChatHistory.session_id == session_id)
+    if current_user.get("role") != "admin":
+        query = query.filter(ChatHistory.user_id == current_user["user_id"])
+    count = query.delete(synchronize_session=False)
+    db.commit()
+    return {"status": "deleted", "session_id": session_id, "count": count}
+

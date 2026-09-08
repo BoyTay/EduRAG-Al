@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Document, DocumentMetadataInput, Message, SessionInfo, Source, User } from "../types";
+import type { Activity, Document, DocumentMetadataInput, Message, SessionInfo, Source, User } from "../types";
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000", headers: { "Content-Type": "application/json" } });
 api.interceptors.request.use((config) => {
@@ -48,10 +48,12 @@ export async function changeAccountPassword(current_password: string, new_passwo
 export async function ask(question: string, session_id: string): Promise<{ answer: string; sources: Source[]; retrieval_score: number; message_id: number; session_id: string }> { const { data } = await api.post("/chat", { question, session_id }); return data; }
 export async function saveFeedback(messageId: number, feedback: "up" | "down") { const { data } = await api.post(`/chat/${messageId}/feedback`, { feedback }); return data; }
 export async function getSessions(): Promise<SessionInfo[]> { const { data } = await api.get("/sessions"); return data.sessions_detail || data.sessions.map((session_id: string) => ({ session_id })); }
+export async function deleteSession(sessionId: string): Promise<{ status: string; session_id: string; count: number }> { const { data } = await api.delete(`/sessions/${encodeURIComponent(sessionId)}`); return data; }
 export async function getHistory(sessionId: string): Promise<Message[]> { const { data } = await api.get(`/history/${sessionId}`); return data.messages.flatMap((item: { id: number; user_message: string; bot_response: string; sources: Source[]; retrieval_score: number; feedback?: "up" | "down"; timestamp: string }) => [{ role: "user" as const, content: item.user_message, timestamp: item.timestamp }, { id: item.id, role: "assistant" as const, content: item.bot_response, sources: item.sources, score: item.retrieval_score, feedback: item.feedback, timestamp: item.timestamp }]); }
 export async function getDocuments(): Promise<Document[]> { const { data } = await api.get("/admin/documents"); return data.documents; }
 export async function getDocumentPreview(filename: string): Promise<Blob> { const { data } = await api.get(`/documents/${encodeURIComponent(filename)}/preview`, { responseType: "blob" }); return data; }
 export async function getStats() { const { data } = await api.get("/admin/stats"); return data; }
+export async function getActivities(): Promise<Activity[]> { const { data } = await api.get("/admin/activities?limit=20"); return data.activities; }
 export async function uploadDocument(file: File, metadata: DocumentMetadataInput = {}) { const form = new FormData(); form.append("file", file); Object.entries(metadata).forEach(([key, value]) => { if (value !== undefined && value !== "") form.append(key, String(value)); }); const { data } = await api.post("/admin/upload", form, { headers: { "Content-Type": "multipart/form-data" } }); return data; }
 export async function updateDocumentMetadata(filename: string, metadata: DocumentMetadataInput) { const { data } = await api.patch(`/admin/documents/${encodeURIComponent(filename)}`, metadata); return data; }
 export async function deleteDocument(filename: string) { await api.delete(`/admin/delete/${encodeURIComponent(filename)}`); }

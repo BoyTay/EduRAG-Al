@@ -1,85 +1,475 @@
-import { FileDoc, FilePdf, Funnel, MagnifyingGlass, PaperPlaneTilt, X } from "@phosphor-icons/react";
+import {
+  ArrowUpRight,
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+  ChatCircleDots,
+  Funnel,
+  List,
+  MagnifyingGlass,
+  Sparkle,
+  SquaresFour,
+  X,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getDocumentPreview, getDocuments } from "../services/api";
+import { DocumentCard } from "../components/library/DocumentCard";
+import { DocumentRow } from "../components/library/DocumentRow";
+import { PreviewDrawer } from "../components/library/PreviewDrawer";
+import { QuickQuestionModal } from "../components/library/QuickQuestionModal";
+import { getDocuments } from "../services/api";
+import { useAuthStore } from "../stores/authStore";
 import { useChatStore } from "../stores/chatStore";
 import type { Document } from "../types";
 
-type FileFilter = "all" | "pdf" | "docx";
-type SortOrder = "newest" | "name";
+type FileFilter = "all" | "pdf" | "docx" | "other";
+type SortOrder = "newest" | "oldest" | "name_asc" | "name_desc" | "size_desc";
+type ViewMode = "grid" | "list";
 
-function formatSize(sizeKb: number) {
-  return sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(sizeKb))} KB`;
-}
-
-function statusLabel(status?: string | null) {
-  return status === "expired" ? "Hết hiệu lực" : status === "updating" ? "Đang cập nhật" : "Còn hiệu lực";
-}
-
-function PreviewPanel({ document, onClose }: { document: Document; onClose: () => void }) {
-  const isPdf = document.file_type.toLowerCase() === "pdf";
-  const { data: fileBlob, isLoading, isError } = useQuery({
-    queryKey: ["document-preview", document.filename],
-    queryFn: () => getDocumentPreview(document.filename),
-    enabled: isPdf,
-    staleTime: 5 * 60 * 1000,
-  });
-  const [previewUrl, setPreviewUrl] = useState("");
-
-  useEffect(() => {
-    setPreviewUrl("");
-  }, [document.filename]);
-
-  useEffect(() => {
-    if (!fileBlob) return;
-    const url = URL.createObjectURL(fileBlob);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [fileBlob]);
-
-  return (
-    <aside aria-label="Xem trước tài liệu" className="flex min-h-0 w-full shrink-0 flex-col border-t border-line bg-white xl:w-[min(40%,34rem)] xl:border-l xl:border-t-0">
-      <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
-        <div className="min-w-0"><p className="text-[10px] font-bold tracking-[.14em] text-brand">XEM TRƯỚC</p><h2 className="mt-1 truncate text-sm font-semibold text-ink" title={document.display_name || document.filename}>{document.display_name || document.filename}</h2><p className="mt-1 truncate text-[11px] text-muted">{document.issuing_unit || "Chưa có đơn vị ban hành"}{document.document_year ? ` · ${document.document_year}` : ""}</p></div>
-        <button type="button" onClick={onClose} className="grid size-9 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-green-50 hover:text-brand" aria-label="Đóng xem trước"><X size={19} /></button>
-      </div>
-      {isPdf ? <div className="min-h-0 flex-1 bg-green-50/50 p-3">{isLoading && <div className="h-full animate-pulse rounded-xl bg-green-100" />}{isError && <div className="grid h-full place-items-center rounded-xl border border-dashed border-line bg-white p-6 text-center text-sm leading-6 text-muted">Không thể tải bản xem trước. Hãy thử lại sau.</div>}{previewUrl && <iframe title={`Xem trước ${document.filename}`} src={previewUrl} className="h-full w-full rounded-xl border border-line bg-white" />}</div> : <div className="grid flex-1 place-items-center p-8 text-center"><div><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-green-100 text-brand"><FileDoc size={30} weight="duotone" /></span><h3 className="mt-4 font-semibold text-ink">DOCX chưa có xem trước trực tiếp</h3><p className="mt-2 max-w-xs text-sm leading-6 text-muted">Tài liệu này vẫn có thể được tra cứu trong hội thoại EduRAG.</p></div></div>}
-    </aside>
-  );
-}
+const ITEMS_PER_PAGE = 4;
 
 export function Library() {
-  const { data = [], isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: getDocuments });
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === "admin";
+  const send = useChatStore((state) => state.send);
+
+  const { data = [], isLoading, isError } = useQuery({
+    queryKey: ["documents"],
+    queryFn: getDocuments,
+  });
+
+  // Filter & Search states
   const [keyword, setKeyword] = useState("");
   const [fileFilter, setFileFilter] = useState<FileFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Selected for preview & AI modal
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const navigate = useNavigate();
-  const send = useChatStore((state) => state.send);
-  const categories = useMemo(() => [...new Set(data.map((doc) => doc.category || "Chưa phân loại"))].sort((a, b) => a.localeCompare(b, "vi")), [data]);
-  const items = useMemo(() => data
-    .filter((doc) => `${doc.filename} ${doc.display_name || ""} ${doc.summary || doc.description || ""}`.toLowerCase().includes(keyword.trim().toLowerCase()))
-    .filter((doc) => fileFilter === "all" || doc.file_type.toLowerCase() === fileFilter)
-    .filter((doc) => categoryFilter === "all" || (doc.category || "Chưa phân loại") === categoryFilter)
-    .sort((a, b) => sortOrder === "name" ? (a.display_name || a.filename).localeCompare(b.display_name || b.filename, "vi") : new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()), [data, keyword, fileFilter, categoryFilter, sortOrder]);
-  const ask = async (name: string) => { navigate("/chat"); await send(`Cho tôi biết nội dung chính của tài liệu ${name}`); };
+  const [questionTargetDoc, setQuestionTargetDoc] = useState<Document | null>(null);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [keyword, fileFilter, categoryFilter, sortOrder]);
+
+  // Counts for filter pills
+  const counts = useMemo(() => {
+    const total = data.length;
+    const pdf = data.filter((d) => d.file_type.toLowerCase() === "pdf").length;
+    const docx = data.filter((d) => d.file_type.toLowerCase() === "docx").length;
+    const other = total - pdf - docx;
+    return { all: total, pdf, docx, other: Math.max(0, other) };
+  }, [data]);
+
+  // Unique categories list
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    data.forEach((doc) => {
+      if (doc.category && doc.category.trim()) {
+        set.add(doc.category.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [data]);
+
+  // Filtered & Sorted items
+  const filteredItems = useMemo(() => {
+    return data
+      .filter((doc) => {
+        const query = keyword.trim().toLowerCase();
+        if (!query) return true;
+        const searchable = `${doc.filename} ${doc.display_name || ""} ${doc.summary || doc.description || ""} ${
+          doc.issuing_unit || ""
+        }`.toLowerCase();
+        return searchable.includes(query);
+      })
+      .filter((doc) => {
+        const ext = doc.file_type.toLowerCase();
+        if (fileFilter === "all") return true;
+        if (fileFilter === "pdf") return ext === "pdf";
+        if (fileFilter === "docx") return ext === "docx";
+        return ext !== "pdf" && ext !== "docx";
+      })
+      .filter((doc) => {
+        if (categoryFilter === "all") return true;
+        return (doc.category || "").trim() === categoryFilter;
+      })
+      .sort((a, b) => {
+        switch (sortOrder) {
+          case "oldest":
+            return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
+          case "name_asc":
+            return (a.display_name || a.filename).localeCompare(b.display_name || b.filename, "vi");
+          case "name_desc":
+            return (b.display_name || b.filename).localeCompare(a.display_name || a.filename, "vi");
+          case "size_desc":
+            return b.file_size_kb - a.file_size_kb;
+          case "newest":
+          default:
+            return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+        }
+      });
+  }, [data, keyword, fileFilter, categoryFilter, sortOrder]);
+
+  // Paginated items
+  const totalItems = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentItems = filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Ask AI handler
+  const handleAskQuestion = async (question: string) => {
+    setQuestionTargetDoc(null);
+    navigate("/chat");
+    await send(question);
+  };
 
   return (
-    <section className="flex h-full min-h-0 overflow-hidden bg-canvas">
-      <div className="min-w-0 flex-1 overflow-y-auto px-5 py-7 md:px-8">
+    <section className="flex h-full min-h-0 overflow-hidden bg-slate-50/50">
+      {/* Main Container */}
+      <div className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-8">
         <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-bold tracking-[.14em] text-brand">KHO TÀI LIỆU</p>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-3xl font-bold tracking-tight text-ink">Thư viện tài liệu</h1><p className="mt-2 text-sm text-muted">{data.length} tài liệu đã sẵn sàng để tra cứu.</p></div></div>
-          <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-line/90 bg-white p-3 shadow-[0_6px_20px_rgba(46,125,50,.045)] md:flex-row md:items-center">
-            <div className="relative flex-1"><MagnifyingGlass className="absolute left-3 top-3 text-muted" size={18} /><input value={keyword} onChange={(event) => setKeyword(event.target.value)} className="h-10 w-full rounded-xl bg-green-50/70 pl-10 pr-4 text-sm text-ink outline-none transition placeholder:text-muted focus:bg-white focus:ring-2 focus:ring-green-200" placeholder="Tìm theo tên hoặc nội dung mô tả" /></div>
-            <div className="flex flex-wrap items-center gap-2"><Funnel size={17} className="text-muted" /><div className="flex rounded-xl bg-green-50 p-1">{(["all", "pdf", "docx"] as FileFilter[]).map((filter) => <button key={filter} type="button" onClick={() => setFileFilter(filter)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${fileFilter === filter ? "bg-white text-brand shadow-sm" : "text-muted hover:text-brand"}`}>{filter === "all" ? "Tất cả" : filter.toUpperCase()}</button>)}</div><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Lọc theo danh mục" className="h-9 max-w-40 rounded-lg border border-line bg-white px-2 text-xs font-medium text-muted outline-none focus:border-brand"><option value="all">Mọi danh mục</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as SortOrder)} aria-label="Sắp xếp tài liệu" className="h-9 rounded-lg border border-line bg-white px-2 text-xs font-medium text-muted outline-none focus:border-brand"><option value="newest">Mới nhất</option><option value="name">Tên A–Z</option></select></div>
+          {/* Header Section */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold tracking-wider text-emerald-700 ring-1 ring-emerald-500/20 uppercase">
+                <Sparkle size={13} weight="fill" />
+                <span>Kho tài liệu học vụ & quy chế</span>
+              </div>
+              <h1 className="mt-2.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                Thư viện tài liệu RAG
+              </h1>
+              <p className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+                {data.length} tài liệu đã sẵn sàng & lập chỉ mục vector, phục vụ AI đối chiếu ngữ cảnh theo thời gian thực.
+              </p>
+            </div>
+
+            {/* Header Right Action */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:border-emerald-400 hover:text-emerald-700 transition active:scale-[0.98]"
+                >
+                  <span>Quản trị tài liệu</span>
+                  <ArrowUpRight size={14} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => navigate("/chat")}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-emerald-950/20 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition"
+              >
+                <ChatCircleDots size={16} weight="bold" />
+                <span>Đặt câu hỏi AI</span>
+              </button>
+            </div>
           </div>
-          {isLoading ? <div className="mt-8 grid gap-5 md:grid-cols-2"><div className="h-72 animate-pulse rounded-2xl bg-green-100" /><div className="h-72 animate-pulse rounded-2xl bg-green-100" /></div> : isError ? <p role="alert" className="mt-8 rounded-xl bg-red-50 p-4 text-sm text-error">Không thể tải thư viện tài liệu. Vui lòng thử lại.</p> : items.length ? <div className="mt-7 grid gap-4 md:grid-cols-2">{items.map((doc) => { const isPdf = doc.file_type.toLowerCase() === "pdf"; const Icon = isPdf ? FilePdf : FileDoc; const title = doc.display_name || doc.filename; return <article key={doc.id} className={`group rounded-2xl border bg-white p-4 shadow-[0_4px_14px_rgba(46,125,50,.04)] transition duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_14px_28px_rgba(46,125,50,.1)] ${selectedDocument?.id === doc.id ? "border-brand ring-2 ring-green-100" : "border-line"}`}><button type="button" onClick={() => setSelectedDocument(doc)} className="flex w-full gap-4 text-left"><span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-green-100 text-brand"><Icon size={29} weight="duotone" /></span><span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="rounded-md bg-green-50 px-2 py-1 text-[10px] font-bold tracking-wide text-brand">{doc.category || "Chưa phân loại"}</span><span className="text-[11px] text-muted">{formatSize(doc.file_size_kb)}</span></span><h2 className="mt-2 truncate text-sm font-semibold text-ink" title={title}>{title}</h2><p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{doc.summary || doc.description || "Chưa có tóm tắt văn bản."}</p><p className="mt-2 truncate text-[11px] text-muted">{doc.issuing_unit || "Chưa có đơn vị ban hành"}{doc.document_year ? ` · ${doc.document_year}` : ""}</p></span></button><div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3"><span className={`text-[11px] font-medium ${doc.status === "expired" ? "text-error" : doc.status === "updating" ? "text-amber-700" : "text-brand"}`}>{statusLabel(doc.status)}</span><div className="flex gap-2"><button type="button" onClick={() => setSelectedDocument(doc)} className="text-xs font-semibold text-brand hover:text-brand-dark">Xem trước</button><button type="button" onClick={() => void ask(title)} className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-dark"><PaperPlaneTilt size={14} />Hỏi</button></div></div></article>; })}</div> : <div className="mt-8 rounded-2xl border border-dashed border-line bg-white p-10 text-center"><FilePdf className="mx-auto text-brand" size={32} weight="duotone" /><h2 className="mt-4 font-semibold text-ink">Không tìm thấy tài liệu phù hợp</h2><p className="mt-2 text-sm text-muted">Thử đổi từ khóa hoặc bộ lọc định dạng.</p></div>}
+
+          {/* Search & Control Toolbar */}
+          <div className="mt-6 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              {/* Search input with MagnifyingGlass and Clear icon */}
+              <div className="relative flex-1">
+                <MagnifyingGlass
+                  size={18}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="Tìm theo tên quy chế, số hiệu, nội dung..."
+                  className="h-10 w-full rounded-xl bg-slate-50/80 pl-10 pr-9 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 border border-transparent"
+                />
+                {keyword && (
+                  <button
+                    type="button"
+                    onClick={() => setKeyword("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition"
+                    aria-label="Xóa tìm kiếm"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters & View Toggles */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Format Pills with Dynamic Counts */}
+                <div className="flex rounded-xl bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setFileFilter("all")}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                      fileFilter === "all"
+                        ? "bg-white text-emerald-700 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    Tất cả ({counts.all})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFileFilter("pdf")}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                      fileFilter === "pdf"
+                        ? "bg-white text-emerald-700 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    PDF ({counts.pdf})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFileFilter("docx")}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                      fileFilter === "docx"
+                        ? "bg-white text-emerald-700 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    DOCX ({counts.docx})
+                  </button>
+
+                  {counts.other > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFileFilter("other")}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                        fileFilter === "other"
+                          ? "bg-white text-emerald-700 shadow-xs"
+                          : "text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      Khác ({counts.other})
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Dropdown */}
+                <div className="relative">
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    aria-label="Lọc theo danh mục"
+                    className="h-9 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-7 text-xs font-medium text-slate-700 outline-none hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition cursor-pointer"
+                  >
+                    <option value="all">Mọi danh mục</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                  <CaretDown
+                    size={13}
+                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                </div>
+
+                {/* Sort Order Dropdown */}
+                <div className="relative">
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                    aria-label="Sắp xếp tài liệu"
+                    className="h-9 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-7 text-xs font-medium text-slate-700 outline-none hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition cursor-pointer"
+                  >
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                    <option value="name_asc">Tên A–Z</option>
+                    <option value="name_desc">Tên Z–A</option>
+                    <option value="size_desc">Dung lượng</option>
+                  </select>
+                  <CaretDown
+                    size={13}
+                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                </div>
+
+                {/* View Mode Switcher: Grid vs List */}
+                <div className="flex items-center rounded-xl border border-slate-200 p-0.5 bg-slate-50/80">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    className={`flex size-8 items-center justify-center rounded-lg transition ${
+                      viewMode === "grid"
+                        ? "bg-white text-emerald-700 shadow-xs"
+                        : "text-slate-400 hover:text-slate-700"
+                    }`}
+                    title="Chế độ xem lưới (Grid)"
+                    aria-label="Xem lưới"
+                  >
+                    <SquaresFour size={18} weight="bold" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("list")}
+                    className={`flex size-8 items-center justify-center rounded-lg transition ${
+                      viewMode === "list"
+                        ? "bg-white text-emerald-700 shadow-xs"
+                        : "text-slate-400 hover:text-slate-700"
+                    }`}
+                    title="Chế độ xem danh sách (List)"
+                    aria-label="Xem danh sách"
+                  >
+                    <List size={18} weight="bold" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Document Content Area */}
+          <div className="mt-6">
+            {isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {[1, 2, 3, 4].map((n) => (
+                  <div
+                    key={n}
+                    className="h-44 animate-pulse rounded-2xl border border-slate-200/80 bg-slate-100 p-5"
+                  />
+                ))}
+              </div>
+            ) : isError ? (
+              <div
+                role="alert"
+                className="rounded-2xl border border-red-200 bg-red-50/60 p-6 text-center text-xs text-red-700"
+              >
+                <p className="font-semibold text-sm">Không thể tải thư viện tài liệu</p>
+                <p className="mt-1 text-red-500">Vui lòng kiểm tra kết nối mạng và thử lại sau.</p>
+              </div>
+            ) : totalItems === 0 ? (
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
+                <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                  <Funnel size={28} weight="duotone" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-slate-800">
+                  Không tìm thấy tài liệu phù hợp
+                </h3>
+                <p className="mt-1 text-xs text-slate-400 max-w-sm mx-auto">
+                  Hãy thử thay đổi từ khóa tìm kiếm, đặt lại bộ lọc định dạng hoặc chọn lại danh mục học vụ.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKeyword("");
+                    setFileFilter("all");
+                    setCategoryFilter("all");
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {currentItems.map((doc) => (
+                  <DocumentCard
+                    key={doc.id}
+                    document={doc}
+                    isSelected={selectedDocument?.id === doc.id}
+                    onPreview={(d) => setSelectedDocument(d)}
+                    onAsk={(d) => setQuestionTargetDoc(d)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {currentItems.map((doc) => (
+                  <DocumentRow
+                    key={doc.id}
+                    document={doc}
+                    isSelected={selectedDocument?.id === doc.id}
+                    onPreview={(d) => setSelectedDocument(d)}
+                    onAsk={(d) => setQuestionTargetDoc(d)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination & Counter Footer */}
+          {totalItems > 0 && (
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-slate-200/80 pt-5 text-xs text-slate-500">
+              <p>
+                Hiển thị{" "}
+                <strong className="font-semibold text-slate-800">
+                  {startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, totalItems)}
+                </strong>{" "}
+                trong tổng số{" "}
+                <strong className="font-semibold text-slate-800">{totalItems}</strong> tài liệu học vụ
+              </p>
+
+              {/* Page Buttons */}
+              <div className="flex items-center gap-1.5 self-center sm:self-auto">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-xs hover:border-emerald-400 hover:text-emerald-700 disabled:pointer-events-none disabled:opacity-40 transition"
+                >
+                  <CaretLeft size={13} weight="bold" />
+                  <span>Trước</span>
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`flex size-8 items-center justify-center rounded-xl text-xs font-bold transition ${
+                      currentPage === pageNum
+                        ? "bg-emerald-600 text-white shadow-xs shadow-emerald-900/20"
+                        : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-xs hover:border-emerald-400 hover:text-emerald-700 disabled:pointer-events-none disabled:opacity-40 transition"
+                >
+                  <span>Sau</span>
+                  <CaretRight size={13} weight="bold" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      {selectedDocument && <PreviewPanel document={selectedDocument} onClose={() => setSelectedDocument(null)} />}
+
+      {/* Right Slide-over Preview Drawer */}
+      {selectedDocument && (
+        <PreviewDrawer
+          document={selectedDocument}
+          onClose={() => setSelectedDocument(null)}
+          onAsk={handleAskQuestion}
+        />
+      )}
+
+      {/* Contextual Smart Question Modal */}
+      {questionTargetDoc && (
+        <QuickQuestionModal
+          document={questionTargetDoc}
+          onClose={() => setQuestionTargetDoc(null)}
+          onAsk={handleAskQuestion}
+        />
+      )}
     </section>
   );
 }
