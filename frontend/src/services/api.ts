@@ -45,7 +45,7 @@ export async function logoutRequest() { await api.post("/auth/logout"); }
 export async function getAccount(): Promise<User> { const { data } = await api.get("/account"); return data.user; }
 export async function updateAccountProfile(display_name: string): Promise<User> { const { data } = await api.patch("/account/profile", { display_name }); return data.user; }
 export async function changeAccountPassword(current_password: string, new_password: string) { const { data } = await api.post("/account/password", { current_password, new_password }); return data; }
-export async function ask(question: string, session_id: string): Promise<{ answer: string; sources: Source[]; retrieval_score: number; message_id: number; session_id: string }> { const { data } = await api.post("/chat", { question, session_id }); return data; }
+export async function ask(question: string, session_id: string, document_filename?: string): Promise<{ answer: string; sources: Source[]; retrieval_score: number; message_id: number; session_id: string }> { const { data } = await api.post("/chat", { question, session_id, document_filename }); return data; }
 export async function saveFeedback(messageId: number, feedback: "up" | "down") { const { data } = await api.post(`/chat/${messageId}/feedback`, { feedback }); return data; }
 export async function getSessions(): Promise<SessionInfo[]> { const { data } = await api.get("/sessions"); return data.sessions_detail || data.sessions.map((session_id: string) => ({ session_id })); }
 export async function deleteSession(sessionId: string): Promise<{ status: string; session_id: string; count: number }> { const { data } = await api.delete(`/sessions/${encodeURIComponent(sessionId)}`); return data; }

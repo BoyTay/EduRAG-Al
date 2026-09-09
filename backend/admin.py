@@ -5,6 +5,9 @@ Cung cấp endpoints để upload, xóa tài liệu và cập nhật vector stor
 
 import os
 import shutil
+import threading
+import uuid
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -20,6 +23,9 @@ DATA_PATH = Path(os.getenv("DATA_PATH", str(Path(__file__).parent.parent / "data
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "700"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "150"))
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))
+MAX_BATCH_UPLOAD_BYTES = int(os.getenv("MAX_BATCH_UPLOAD_BYTES", str(100 * 1024 * 1024)))
+UPLOAD_CHUNK_BYTES = 1024 * 1024
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -46,12 +52,79 @@ class DocumentMetadataUpdate(BaseModel):
 
 # Import rag_chain_instance sẽ được inject sau
 _rag_chain = None
+_rebuild_lock = threading.Lock()
 
 
 def set_rag_chain(chain):
     """Inject RAG chain instance từ main.py."""
     global _rag_chain
     _rag_chain = chain
+
+
+def normalize_document_filename(filename: Optional[str]) -> str:
+    """Only accept a plain filename, never a client-supplied path."""
+    if not filename or not filename.strip():
+        raise HTTPException(status_code=400, detail="Tên file không hợp lệ")
+    filename = filename.strip()
+    if "/" in filename or "\\" in filename or filename in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Tên file không được chứa đường dẫn")
+    if len(filename) > 255 or any(ord(char) < 32 for char in filename):
+        raise HTTPException(status_code=400, detail="Tên file không hợp lệ")
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Tên file không hợp lệ")
+    return filename
+
+
+def get_safe_document_path(filename: Optional[str]) -> tuple[str, Path]:
+    """Resolve a document path and prove it stays directly inside DATA_PATH."""
+    safe_filename = normalize_document_filename(filename)
+    DATA_PATH.mkdir(parents=True, exist_ok=True)
+    data_root = DATA_PATH.resolve()
+    file_path = (data_root / safe_filename).resolve()
+    if file_path.parent != data_root:
+        raise HTTPException(status_code=400, detail="Đường dẫn tài liệu không hợp lệ")
+    return safe_filename, file_path
+
+
+def validate_document_content(file_path: Path, file_ext: str) -> None:
+    """Validate lightweight file signatures before a loader receives the upload."""
+    if file_ext == ".pdf":
+        with file_path.open("rb") as uploaded_file:
+            if not uploaded_file.read(5).startswith(b"%PDF-"):
+                raise ValueError("Nội dung file không phải PDF hợp lệ")
+        return
+
+    if file_ext == ".docx":
+        if not zipfile.is_zipfile(file_path):
+            raise ValueError("Nội dung file không phải DOCX hợp lệ")
+        with zipfile.ZipFile(file_path) as archive:
+            members = set(archive.namelist())
+            if "[Content_Types].xml" not in members or "word/document.xml" not in members:
+                raise ValueError("File ZIP không có cấu trúc DOCX hợp lệ")
+        return
+
+    raise ValueError("Định dạng file không được hỗ trợ")
+
+
+async def save_upload_file(upload: UploadFile, destination: Path, byte_limit: int) -> int:
+    """Stream an upload to disk while enforcing a hard byte limit."""
+    temporary_path = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.upload")
+    total_bytes = 0
+    try:
+        with temporary_path.open("wb") as output:
+            while chunk := await upload.read(UPLOAD_CHUNK_BYTES):
+                total_bytes += len(chunk)
+                if total_bytes > byte_limit:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File vượt quá giới hạn {byte_limit // (1024 * 1024)} MB",
+                    )
+                output.write(chunk)
+        temporary_path.replace(destination)
+        return total_bytes
+    except Exception:
+        safe_delete_file(temporary_path)
+        raise
 
 
 # ─── Helper: Load & Chunk document ───────────────────────────────────────────
@@ -121,12 +194,12 @@ def load_and_chunk_document(file_path: Path) -> list:
     return chunks
 
 
-def add_to_vector_store(chunks: list, filename: str) -> None:
-    """Thêm chunks vào Chroma vector store."""
+def add_to_vector_store(chunks: list, filename: str, vector_store=None) -> int:
+    """Thêm chunks vào vector store được chỉ định và trả về số chunk đã nạp."""
     if _rag_chain is None:
         raise RuntimeError("RAG chain chưa được khởi tạo")
 
-    vs = _rag_chain.vector_store
+    vs = vector_store or _rag_chain.vector_store
     if vs is None:
         raise RuntimeError("Vector store chưa sẵn sàng")
     embedding_model = _rag_chain.embedding_model
@@ -150,6 +223,13 @@ def add_to_vector_store(chunks: list, filename: str) -> None:
             "File có thể là PDF scan/ảnh hoặc text bị rỗng."
         )
 
+    # Capture the old IDs before writing. New IDs are versioned so an upsert
+    # can succeed without overwriting an old chunk that has not been retired.
+    existing = vs._collection.get(
+        where={"filename": {"$eq": filename}}, include=["documents"]
+    )
+    old_ids = existing.get("ids", [])
+
     embeddings = embedding_model.embed_documents(texts)
     if not embeddings:
         raise ValueError(
@@ -161,14 +241,29 @@ def add_to_vector_store(chunks: list, filename: str) -> None:
             f"Số embedding ({len(embeddings)}) không khớp số chunk ({len(texts)})."
         )
 
-    ids = [f"{filename}_chunk_{i}" for i in range(len(texts))]
+    ingestion_id = uuid.uuid4().hex
+    for metadata in metadatas:
+        metadata["ingestion_id"] = ingestion_id
+    new_ids = [f"{filename}_{ingestion_id}_chunk_{i}" for i in range(len(texts))]
     vs._collection.upsert(
-        ids=ids,
+        ids=new_ids,
         embeddings=embeddings,
         documents=texts,
         metadatas=metadatas,
     )
+    try:
+        if old_ids:
+            vs._collection.delete(ids=old_ids)
+    except Exception:
+        # Do not leave a new version visible when retiring the old version
+        # failed. Best-effort rollback retains the previous searchable data.
+        try:
+            vs._collection.delete(ids=new_ids)
+        except Exception as rollback_error:
+            logger.error(f"Could not roll back new chunks for '{filename}': {rollback_error}")
+        raise
     logger.info(f"Added {len(texts)} chunks to vector store for '{filename}'")
+    return len(texts)
 
 
 def remove_from_vector_store(filename: str) -> int:
@@ -259,37 +354,45 @@ async def upload_document(
     3. Embed và thêm vào Chroma
     4. Lưu metadata vào SQLite
     """
-    # Kiểm tra định dạng file
-    file_ext = Path(file.filename).suffix.lower()
+    safe_filename = normalize_document_filename(file.filename)
+    file_ext = Path(safe_filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=f"Chỉ chấp nhận file PDF hoặc DOCX. File của bạn: {file_ext}",
         )
 
-    # Đảm bảo thư mục data tồn tại
-    DATA_PATH.mkdir(parents=True, exist_ok=True)
-    file_path = DATA_PATH / file.filename
+    safe_filename, file_path = get_safe_document_path(safe_filename)
+    if file_path.exists():
+        raise HTTPException(status_code=409, detail="Tài liệu cùng tên đã tồn tại")
 
-    # Lưu file
     try:
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
-        file_size_kb = len(content) / 1024
+        uploaded_bytes = await save_upload_file(file, file_path, MAX_UPLOAD_BYTES)
+        validate_document_content(file_path, file_ext)
+        file_size_kb = uploaded_bytes / 1024
         logger.info(f"File saved: {file_path} ({file_size_kb:.1f} KB)")
+    except HTTPException:
+        safe_delete_file(file_path)
+        await file.close()
+        raise
+    except ValueError as exc:
+        safe_delete_file(file_path)
+        await file.close()
+        raise HTTPException(status_code=422, detail=str(exc))
     except Exception as e:
+        safe_delete_file(file_path)
+        await file.close()
         raise HTTPException(status_code=500, detail=f"Lỗi lưu file: {str(e)}")
 
     # Xử lý document
     try:
         chunks = load_and_chunk_document(file_path)
-        add_to_vector_store(chunks, file.filename)
+        add_to_vector_store(chunks, safe_filename)
 
         # Cập nhật metadata trong SQLite
         document = add_document_metadata(
             db=db,
-            filename=file.filename,
+            filename=safe_filename,
             file_path=str(file_path),
             file_type=file_ext.lstrip("."),
             chunk_count=len(chunks),
@@ -306,16 +409,18 @@ async def upload_document(
 
         return {
             "success": True,
-            "message": f"Đã nạp thành công '{file.filename}'",
-            "filename": file.filename,
+            "message": f"Đã nạp thành công '{safe_filename}'",
+            "filename": safe_filename,
             "chunk_count": len(chunks),
             "file_size_kb": round(file_size_kb, 2),
         }
     except Exception as e:
         # Rollback: xóa file nếu xử lý lỗi
         safe_delete_file(file_path)
-        logger.error(f"Error processing {file.filename}: {e}")
+        logger.error(f"Error processing {safe_filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý tài liệu: {str(e)}")
+    finally:
+        await file.close()
 
 
 @router.patch("/documents/{filename}")
@@ -347,38 +452,61 @@ async def upload_multiple_documents(
     total_success = 0
     total_failed = 0
 
-    DATA_PATH.mkdir(parents=True, exist_ok=True)
+    batch_bytes = 0
 
     for file in files:
-        file_ext = Path(file.filename).suffix.lower()
+        original_filename = file.filename or ""
+        try:
+            safe_filename = normalize_document_filename(original_filename)
+        except HTTPException as exc:
+            results.append({"filename": original_filename, "success": False, "error": exc.detail})
+            total_failed += 1
+            await file.close()
+            continue
+
+        file_ext = Path(safe_filename).suffix.lower()
 
         # Kiểm tra định dạng
         if file_ext not in ALLOWED_EXTENSIONS:
             results.append({
-                "filename": file.filename,
+                "filename": safe_filename,
                 "success": False,
                 "error": f"Định dạng không hỗ trợ: {file_ext}",
             })
             total_failed += 1
+            await file.close()
             continue
 
-        file_path = DATA_PATH / file.filename
+        safe_filename, file_path = get_safe_document_path(safe_filename)
+        if file_path.exists():
+            results.append({
+                "filename": safe_filename,
+                "success": False,
+                "error": "Tài liệu cùng tên đã tồn tại",
+            })
+            total_failed += 1
+            await file.close()
+            continue
 
         try:
-            # Lưu file
-            content = await file.read()
-            with open(file_path, "wb") as f:
-                f.write(content)
-            file_size_kb = len(content) / 1024
+            remaining_batch_bytes = MAX_BATCH_UPLOAD_BYTES - batch_bytes
+            if remaining_batch_bytes <= 0:
+                raise HTTPException(status_code=413, detail="Tổng dung lượng upload đã vượt giới hạn")
+            uploaded_bytes = await save_upload_file(
+                file, file_path, min(MAX_UPLOAD_BYTES, remaining_batch_bytes)
+            )
+            validate_document_content(file_path, file_ext)
+            batch_bytes += uploaded_bytes
+            file_size_kb = uploaded_bytes / 1024
 
             # Xử lý
             chunks = load_and_chunk_document(file_path)
-            add_to_vector_store(chunks, file.filename)
+            add_to_vector_store(chunks, safe_filename)
 
             # Metadata
             document = add_document_metadata(
                 db=db,
-                filename=file.filename,
+                filename=safe_filename,
                 file_path=str(file_path),
                 file_type=file_ext.lstrip("."),
                 chunk_count=len(chunks),
@@ -387,7 +515,7 @@ async def upload_multiple_documents(
             log_activity(db, "document_uploaded", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
 
             results.append({
-                "filename": file.filename,
+                "filename": safe_filename,
                 "success": True,
                 "chunk_count": len(chunks),
                 "file_size_kb": round(file_size_kb, 2),
@@ -396,13 +524,15 @@ async def upload_multiple_documents(
 
         except Exception as e:
             safe_delete_file(file_path)
-            logger.error(f"Error processing {file.filename}: {e}")
+            logger.error(f"Error processing {safe_filename}: {e}")
             results.append({
-                "filename": file.filename,
+                "filename": safe_filename,
                 "success": False,
                 "error": str(e),
             })
             total_failed += 1
+        finally:
+            await file.close()
 
     return {
         "success": total_failed == 0,
@@ -425,32 +555,32 @@ def delete_document(
     2. Xóa file khỏi thư mục data/
     3. Xóa metadata khỏi SQLite
     """
-    file_path = DATA_PATH / filename
+    safe_filename, file_path = get_safe_document_path(filename)
 
     # Kiểm tra file tồn tại
     if not file_path.exists():
         raise HTTPException(
             status_code=404,
-            detail=f"Không tìm thấy file: {filename}",
+            detail=f"Không tìm thấy file: {safe_filename}",
         )
 
     try:
         # 1. Xóa khỏi vector store
-        deleted_chunks = remove_from_vector_store(filename)
+        deleted_chunks = remove_from_vector_store(safe_filename)
 
         # 2. Xóa file
         file_path.unlink()
         logger.info(f"File deleted: {file_path}")
 
         # 3. Xóa metadata SQLite
-        document = db.query(DocumentMetadata).filter_by(filename=filename).first()
-        display_name = (document.display_name or document.filename) if document else filename
-        remove_document_metadata(db, filename)
+        document = db.query(DocumentMetadata).filter_by(filename=safe_filename).first()
+        display_name = (document.display_name or document.filename) if document else safe_filename
+        remove_document_metadata(db, safe_filename)
         log_activity(db, "document_deleted", "document", display_name, current_user["name"], current_user["role"])
 
         return {
             "success": True,
-            "message": f"Đã xóa thành công '{filename}'",
+            "message": f"Đã xóa thành công '{safe_filename}'",
             "deleted_chunks": deleted_chunks,
         }
     except Exception as e:
@@ -459,56 +589,93 @@ def delete_document(
 
 
 @router.post("/rebuild-index")
-def rebuild_index(db: Session = Depends(get_db)):
+def rebuild_index(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
     """
     Rebuild toàn bộ vector store từ tất cả file trong data/.
     Hữu ích khi cần đồng bộ lại sau sự cố.
     """
-    if _rag_chain is None:
+    if _rag_chain is None or _rag_chain.vector_store is None:
         raise HTTPException(status_code=500, detail="RAG chain chưa sẵn sàng")
 
-    try:
-        # Xóa collection cũ
-        vs = _rag_chain.vector_store
-        vs._client.delete_collection(vs._collection.name)
-        logger.info("Old collection deleted")
+    if not _rebuild_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="Hệ thống đang rebuild index. Vui lòng thử lại sau.")
 
-        # Tải lại tất cả tài liệu
+    staging_collection = f"edurag_rebuild_{uuid.uuid4().hex}"
+    activated = False
+    try:
+        # Build entirely in an isolated collection. The live collection remains
+        # queryable until the staging collection has passed validation.
+        from rag_chain import get_vector_store
+
+        staging_store = get_vector_store(_rag_chain.embedding_model, staging_collection)
         DATA_PATH.mkdir(parents=True, exist_ok=True)
         all_files = list(DATA_PATH.glob("*.pdf")) + list(DATA_PATH.glob("*.docx"))
+        if not all_files:
+            raise HTTPException(status_code=422, detail="Không có tài liệu nào để rebuild index")
 
         total_chunks = 0
         processed_files = []
+        chunk_counts = {}
+        failures = []
 
         for file_path in all_files:
             try:
                 chunks = load_and_chunk_document(file_path)
-                add_to_vector_store(chunks, file_path.name)
-                total_chunks += len(chunks)
+                indexed_chunks = add_to_vector_store(chunks, file_path.name, staging_store)
+                total_chunks += indexed_chunks
                 processed_files.append(file_path.name)
-
-                # Cập nhật metadata
-                file_size_kb = file_path.stat().st_size / 1024
-                add_document_metadata(
-                    db=db,
-                    filename=file_path.name,
-                    file_path=str(file_path),
-                    file_type=file_path.suffix.lstrip("."),
-                    chunk_count=len(chunks),
-                    file_size_kb=file_size_kb,
-                )
+                chunk_counts[file_path.name] = indexed_chunks
             except Exception as e:
                 logger.error(f"Error rebuilding {file_path.name}: {e}")
+                failures.append({"filename": file_path.name, "error": str(e)})
 
-        # Reload vector store instance
-        _rag_chain.reload_vector_store()
+        if failures:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Rebuild bị hủy; index hiện tại vẫn được giữ nguyên", "failures": failures},
+            )
+        if total_chunks == 0 or staging_store._collection.count() != total_chunks:
+            raise RuntimeError("Index tạm không đầy đủ; index hiện tại vẫn được giữ nguyên")
+
+        previous_collection = _rag_chain.activate_collection(staging_collection)
+        activated = True
+
+        # Metadata is updated only after the new index is ready for queries.
+        for file_path in all_files:
+            file_size_kb = file_path.stat().st_size / 1024
+            add_document_metadata(
+                db=db,
+                filename=file_path.name,
+                file_path=str(file_path),
+                file_type=file_path.suffix.lstrip("."),
+                chunk_count=chunk_counts[file_path.name],
+                file_size_kb=file_size_kb,
+            )
+
+        log_activity(
+            db, "index_rebuilt", "search_index", f"{len(processed_files)} tài liệu",
+            current_user["name"], current_user["role"],
+        )
 
         return {
             "success": True,
-            "message": f"Đã rebuild index thành công",
+            "message": "Đã rebuild index thành công",
             "processed_files": processed_files,
             "total_chunks": total_chunks,
+            "previous_collection": previous_collection,
         }
     except Exception as e:
         logger.error(f"Error rebuilding index: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi rebuild index: {str(e)}")
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail="Không thể rebuild index; index hiện tại vẫn được giữ nguyên")
+    finally:
+        if not activated:
+            try:
+                _rag_chain.vector_store._client.delete_collection(staging_collection)
+            except Exception:
+                pass
+        _rebuild_lock.release()

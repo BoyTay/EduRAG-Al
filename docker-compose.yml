@@ -28,9 +28,12 @@ services:
       - CHUNK_SIZE=700
       - CHUNK_OVERLAP=150
       - TOP_K=5
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin123
-      # Đặt trong file .env, không commit Client Secret hoặc mật khẩu SMTP.
+      - MIN_RELEVANCE_SCORE=${MIN_RELEVANCE_SCORE:-0.42}
+      # Đặt trong file .env, không commit mật khẩu hoặc Client Secret.
+      # Chỉ cần cho lần tạo admin đầu tiên; không ghi đè admin đã có trong SQLite.
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}

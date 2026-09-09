@@ -9,7 +9,7 @@ interface ChatState {
   setMessages: (messages: Message[]) => void;
   loadSession: (sessionId: string, messages: Message[]) => void;
   newChat: () => void;
-  send: (question: string) => Promise<void>;
+  send: (question: string, documentFilename?: string) => Promise<void>;
   setFeedback: (messageId: number, feedback: "up" | "down") => Promise<void>;
 }
 
@@ -20,11 +20,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setMessages: (messages) => set({ messages }),
   loadSession: (sessionId, messages) => set({ sessionId, messages }),
   newChat: () => set({ sessionId: crypto.randomUUID(), messages: [] }),
-  send: async (question) => {
+  send: async (question, documentFilename) => {
     const current = get();
     set({ messages: [...current.messages, { role: "user", content: question }], isLoading: true });
     try {
-      const response = await ask(question, current.sessionId);
+      const response = await ask(question, current.sessionId, documentFilename);
       set((state) => ({
         sessionId: response.session_id,
         messages: [...state.messages, {
@@ -36,9 +36,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }],
         isLoading: false,
       }));
-    } catch {
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
       set((state) => ({
-        messages: [...state.messages, { role: "assistant", content: "Không thể gửi câu hỏi lúc này. Vui lòng thử lại." }],
+        messages: [...state.messages, { role: "assistant", content: detail || "Không thể gửi câu hỏi lúc này. Vui lòng thử lại." }],
         isLoading: false,
       }));
     }

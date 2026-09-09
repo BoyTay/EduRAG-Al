@@ -125,10 +125,10 @@ export function Library() {
   const currentItems = filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // Ask AI handler
-  const handleAskQuestion = async (question: string) => {
+  const handleAskQuestion = async (question: string, document?: Document) => {
     setQuestionTargetDoc(null);
     navigate("/chat");
-    await send(question);
+    await send(question, document?.filename);
   };
 
   return (
@@ -458,7 +458,7 @@ export function Library() {
         <PreviewDrawer
           document={selectedDocument}
           onClose={() => setSelectedDocument(null)}
-          onAsk={handleAskQuestion}
+          onAsk={(question) => void handleAskQuestion(question, selectedDocument)}
         />
       )}
 
@@ -467,7 +467,7 @@ export function Library() {
         <QuickQuestionModal
           document={questionTargetDoc}
           onClose={() => setQuestionTargetDoc(null)}
-          onAsk={handleAskQuestion}
+          onAsk={(question) => void handleAskQuestion(question, questionTargetDoc)}
         />
       )}
     </section>

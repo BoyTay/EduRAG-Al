@@ -7,7 +7,7 @@ dựa trên tài liệu được cung cấp.
 import os
 import re
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Sequence
 
 import torch
 from langchain_core.documents import Document
@@ -29,7 +29,23 @@ LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:7b")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "AITeamVN/Vietnamese_Embedding")
 CHROMA_PATH = os.getenv("CHROMA_PATH", str(Path(__file__).parent.parent / "chroma_db"))
 COLLECTION_NAME = "edurag_docs"
+# The active collection name is persisted separately so a completed staging
+# rebuild remains active after the backend restarts.
+ACTIVE_COLLECTION_FILE = Path(CHROMA_PATH) / ".active_collection"
 TOP_K = int(os.getenv("TOP_K", "5"))
+
+
+def _read_relevance_threshold() -> float:
+    """Read a safe score threshold without making a bad env value break startup."""
+    raw_value = os.getenv("MIN_RELEVANCE_SCORE", "0.42")
+    try:
+        return min(1.0, max(0.0, float(raw_value)))
+    except ValueError:
+        logger.warning(f"MIN_RELEVANCE_SCORE='{raw_value}' không hợp lệ; dùng 0.42")
+        return 0.42
+
+
+MIN_RELEVANCE_SCORE = _read_relevance_threshold()
 
 # ─── Phát hiện GPU ────────────────────────────────────────────────────────────
 
@@ -65,7 +81,34 @@ def get_embedding_model() -> HuggingFaceEmbeddings:
 
 # ─── Khởi tạo Chroma Vector Store ────────────────────────────────────────────
 
-def get_vector_store(embedding_model: Optional[HuggingFaceEmbeddings] = None) -> Chroma:
+def get_active_collection_name() -> str:
+    """Return the last successfully activated Chroma collection."""
+    try:
+        name = ACTIVE_COLLECTION_FILE.read_text(encoding="utf-8").strip()
+        # Collection names are internal identifiers; reject a corrupted file.
+        if re.fullmatch(r"[A-Za-z0-9_-]{3,120}", name):
+            return name
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        logger.warning(f"Could not read active collection marker: {exc}")
+    return COLLECTION_NAME
+
+
+def set_active_collection_name(collection_name: str) -> None:
+    """Atomically persist a collection only after it has been validated."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{3,120}", collection_name):
+        raise ValueError("Tên collection không hợp lệ")
+    ACTIVE_COLLECTION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary_file = ACTIVE_COLLECTION_FILE.with_suffix(".tmp")
+    temporary_file.write_text(collection_name, encoding="utf-8")
+    temporary_file.replace(ACTIVE_COLLECTION_FILE)
+
+
+def get_vector_store(
+    embedding_model: Optional[HuggingFaceEmbeddings] = None,
+    collection_name: Optional[str] = None,
+) -> Chroma:
     """
     Kết nối hoặc tạo mới Chroma vector store.
     Nếu chưa có dữ liệu, trả về store rỗng (không lỗi).
@@ -76,13 +119,14 @@ def get_vector_store(embedding_model: Optional[HuggingFaceEmbeddings] = None) ->
     # Tạo thư mục nếu chưa có
     Path(CHROMA_PATH).mkdir(parents=True, exist_ok=True)
 
+    selected_collection = collection_name or get_active_collection_name()
     vector_store = Chroma(
-        collection_name=COLLECTION_NAME,
+        collection_name=selected_collection,
         embedding_function=embedding_model,
         persist_directory=CHROMA_PATH,
     )
     count = vector_store._collection.count()
-    logger.info(f"Chroma loaded: {count} documents in collection '{COLLECTION_NAME}'")
+    logger.info(f"Chroma loaded: {count} documents in collection '{selected_collection}'")
     return vector_store
 
 
@@ -105,15 +149,56 @@ Quy tắc bắt buộc:
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 {context}
 
+[Ngữ cảnh hội thoại gần đây]
+{conversation_history}
+
 [Câu hỏi của sinh viên]
 {question}
 
-Hãy chỉ dùng chi tiết được nêu trực tiếp trong đoạn phù hợp nhất. Không suy diễn thêm điều kiện. Nguồn sẽ được hệ thống hiển thị riêng bên dưới."""
+Chỉ dùng ngữ cảnh hội thoại để hiểu các từ thay thế như điều đó, mục đó hoặc năm đó. Mọi thông tin thực tế trong câu trả lời phải có trong [Tài liệu tham khảo]. Không suy diễn thêm điều kiện. Nguồn sẽ được hệ thống hiển thị riêng bên dưới."""
 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", SYSTEM_PROMPT),
     ("human", USER_PROMPT_TEMPLATE),
 ])
+
+MAX_CONVERSATION_TURNS = 4
+MAX_CONVERSATION_CHARS = 3_500
+NO_ACTIVE_DOCUMENTS_MESSAGE = (
+    "Hiện chưa có tài liệu còn hiệu lực để tra cứu. "
+    "Vui lòng liên hệ quản trị viên để được hỗ trợ."
+)
+
+
+def format_conversation_history(conversation_history: Optional[Sequence[Mapping[str, str]]]) -> str:
+    """Create a bounded, clearly separated history section for the answer prompt."""
+    if not conversation_history:
+        return "Không có lượt hội thoại trước."
+
+    turns: list[str] = []
+    used_chars = 0
+    for turn in conversation_history[-MAX_CONVERSATION_TURNS:]:
+        question = str(turn.get("question", "")).strip()
+        answer = str(turn.get("answer", "")).strip()
+        if not question:
+            continue
+        entry = f"Sinh viên: {question[:900]}\nTrợ lý: {answer[:1_200]}"
+        if used_chars + len(entry) > MAX_CONVERSATION_CHARS:
+            break
+        turns.append(entry)
+        used_chars += len(entry)
+    return "\n---\n".join(turns) if turns else "Không có lượt hội thoại trước."
+
+
+def build_retrieval_query(question: str, conversation_history: Optional[Sequence[Mapping[str, str]]]) -> str:
+    """Use the preceding user question to make a short follow-up searchable."""
+    if not conversation_history:
+        return question
+    previous_questions = [str(turn.get("question", "")).strip() for turn in conversation_history]
+    previous_question = next((item for item in reversed(previous_questions) if item), "")
+    if not previous_question:
+        return question
+    return f"Chủ đề ở lượt trước: {previous_question[:900]}\nCâu hỏi tiếp theo: {question}"
 
 
 # ─── Format context từ documents ─────────────────────────────────────────────
@@ -291,7 +376,11 @@ class RAGChain:
                 docs=retriever,
             )
             | {
-                "answer": (lambda x: {"context": x["context"], "question": x["question"]})
+                "answer": (lambda x: {
+                    "context": x["context"],
+                    "question": x["question"],
+                    "conversation_history": "Không có lượt hội thoại trước.",
+                })
                           | RAG_PROMPT
                           | self._llm
                           | StrOutputParser(),
@@ -301,7 +390,12 @@ class RAGChain:
         return chain
 
     async def achat(
-        self, question: str, source_labels: Optional[Mapping[str, str]] = None
+        self,
+        question: str,
+        source_labels: Optional[Mapping[str, str]] = None,
+        conversation_history: Optional[Sequence[Mapping[str, str]]] = None,
+        document_filename: Optional[str] = None,
+        active_filenames: Optional[Sequence[str]] = None,
     ) -> tuple[str, list[dict], float]:
         """
         Async chat: trả về (answer, sources, avg_score).
@@ -319,8 +413,18 @@ class RAGChain:
             return no_data_msg, [], 0.0
 
         # Retrieve documents với score
+        retrieval_query = build_retrieval_query(question, conversation_history)
+        if active_filenames is not None and not active_filenames:
+            logger.info("RAG refusal: no active documents are available")
+            return NO_ACTIVE_DOCUMENTS_MESSAGE, [], 0.0
+
+        search_kwargs = {"k": TOP_K}
+        if document_filename:
+            search_kwargs["filter"] = {"filename": document_filename}
+        elif active_filenames is not None:
+            search_kwargs["filter"] = {"filename": {"$in": list(active_filenames)}}
         retriever_with_score = self._vector_store.similarity_search_with_relevance_scores(
-            question, k=TOP_K
+            retrieval_query, **search_kwargs
         )
 
         if not retriever_with_score:
@@ -334,13 +438,30 @@ class RAGChain:
         docs = [doc for doc, _ in retriever_with_score]
         scores = [score for _, score in retriever_with_score]
         avg_score = sum(scores) / len(scores) if scores else 0.0
+        best_score = max(scores) if scores else 0.0
+
+        # A non-empty vector search does not imply a relevant answer. Refuse
+        # before invoking the LLM when every retrieved chunk is too weak.
+        if best_score < MIN_RELEVANCE_SCORE:
+            logger.info(
+                f"RAG refusal: best_score={best_score:.3f} below "
+                f"threshold={MIN_RELEVANCE_SCORE:.3f} for '{question[:50]}...'"
+            )
+            return (
+                "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. "
+                "Vui lòng diễn đạt cụ thể hơn hoặc liên hệ trực tiếp với Khoa để được hỗ trợ.",
+                [],
+                best_score,
+            )
 
         # Format context
         context = format_docs(docs, source_labels)
 
         # Gọi LLM
         prompt_messages = RAG_PROMPT.format_messages(
-            context=context, question=question
+            context=context,
+            conversation_history=format_conversation_history(conversation_history),
+            question=question,
         )
         response = await self._llm.ainvoke(prompt_messages)
         answer = response.content if hasattr(response, "content") else str(response)
@@ -361,6 +482,20 @@ class RAGChain:
         self._vector_store = get_vector_store(self._embedding_model)
         count = self._vector_store._collection.count()
         logger.info(f"Vector store reloaded: {count} documents")
+
+    def activate_collection(self, collection_name: str) -> str:
+        """Switch queries to a fully built staging collection and persist it."""
+        if self._embedding_model is None:
+            raise RuntimeError("Embedding model chưa sẵn sàng")
+        next_store = get_vector_store(self._embedding_model, collection_name)
+        if next_store._collection.count() == 0:
+            raise ValueError("Index mới không có chunk nào nên không thể kích hoạt")
+
+        previous_collection = self._vector_store._collection.name if self._vector_store else COLLECTION_NAME
+        set_active_collection_name(collection_name)
+        self._vector_store = next_store
+        logger.info(f"Activated Chroma collection '{collection_name}' (previous: '{previous_collection}')")
+        return previous_collection
 
     @property
     def vector_store(self) -> Optional[Chroma]:

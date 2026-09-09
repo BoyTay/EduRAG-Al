@@ -241,16 +241,22 @@ def get_db():
 
 def create_default_admin(db: Session) -> None:
     """
-    Tạo tài khoản admin mặc định nếu chưa có admin nào trong DB.
-    Username/password lấy từ biến môi trường hoặc mặc định admin/admin123.
+    Tạo admin đầu tiên từ biến môi trường nếu database chưa có admin nào.
+    Không bao giờ dùng thông tin đăng nhập hard-code.
     """
     existing = db.query(AdminUser).first()
     if existing:
         logger.info(f"Admin user already exists: {existing.username}")
         return
 
-    default_username = os.getenv("ADMIN_USERNAME", "admin")
-    default_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    default_username = (os.getenv("ADMIN_USERNAME") or "").strip()
+    default_password = os.getenv("ADMIN_PASSWORD") or ""
+    if not default_username or not default_password:
+        raise RuntimeError(
+            "Database chưa có admin. Hãy đặt ADMIN_USERNAME và ADMIN_PASSWORD trong file .env trước khi khởi động."
+        )
+    if len(default_password) < 12:
+        raise RuntimeError("ADMIN_PASSWORD phải có ít nhất 12 ký tự")
 
     admin = AdminUser(
         username=default_username,
@@ -259,7 +265,7 @@ def create_default_admin(db: Session) -> None:
     )
     db.add(admin)
     db.commit()
-    logger.info(f"Default admin created: username='{default_username}'")
+    logger.info(f"Initial admin created: username='{default_username}'")
 
 
 def verify_admin(db: Session, username: str, password: str) -> Optional[AdminUser]:
@@ -489,6 +495,23 @@ def get_chat_history(db: Session, session_id: str, limit: int = 50, user_id: Opt
     return query.order_by(ChatHistory.timestamp.asc()).limit(limit).all()
 
 
+def get_recent_chat_history(
+    db: Session,
+    session_id: str,
+    limit: int = 4,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
+) -> list[ChatHistory]:
+    """Return the newest conversation turns in chronological order for RAG context."""
+    query = db.query(ChatHistory).filter(ChatHistory.session_id == session_id)
+    if user_id is not None:
+        query = query.filter(ChatHistory.user_id == user_id)
+    if user_role is not None:
+        query = query.filter(ChatHistory.user_role == user_role)
+    newest_first = query.order_by(ChatHistory.timestamp.desc(), ChatHistory.id.desc()).limit(limit).all()
+    return list(reversed(newest_first))
+
+
 def get_all_sessions(db: Session) -> list[str]:
     """Lấy danh sách tất cả session_id."""
     result = db.query(ChatHistory.session_id).distinct().all()
@@ -618,6 +641,16 @@ def update_document_metadata(db: Session, filename: str, **values) -> Optional[D
 def list_documents(db: Session) -> list[DocumentMetadata]:
     """Liệt kê tất cả tài liệu đã nạp."""
     return db.query(DocumentMetadata).order_by(DocumentMetadata.uploaded_at.desc()).all()
+
+
+def get_retrievable_document_filenames(db: Session) -> list[str]:
+    """Return only documents that are currently allowed to answer RAG queries."""
+    rows = (
+        db.query(DocumentMetadata.filename)
+        .filter((DocumentMetadata.status == "active") | DocumentMetadata.status.is_(None))
+        .all()
+    )
+    return [row[0] for row in rows]
 
 
 # ─── System Stats ─────────────────────────────────────────────────────────────

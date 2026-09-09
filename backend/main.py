@@ -24,15 +24,26 @@ from loguru import logger
 
 from db import (
     get_db, init_db, save_chat, get_chat_history, get_all_sessions,
-    get_all_sessions_with_info, create_default_admin, verify_admin,
+    get_all_sessions_with_info, get_recent_chat_history, create_default_admin, verify_admin,
     save_feedback, get_system_stats, create_student, get_student_by_email,
     verify_student, DocumentMetadata, get_account_user,
     update_account_display_name, change_account_password, create_auth_session,
     get_auth_session, revoke_auth_session, create_password_reset_token,
-    consume_password_reset_token, get_recent_activities, log_activity, as_utc_iso,
+    consume_password_reset_token, get_recent_activities, get_retrievable_document_filenames, log_activity, as_utc_iso,
 )
 from rag_chain import rag_chain_instance
 from admin import DATA_PATH, router as admin_router, set_rag_chain
+
+
+def get_cors_origins() -> list[str]:
+    """Parse an explicit CORS allowlist; wildcard origins are never accepted."""
+    raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+    origins = [origin.strip().rstrip("/") for origin in raw_origins.split(",") if origin.strip()]
+    if not origins:
+        raise RuntimeError("CORS_ORIGINS phải chứa ít nhất một origin hợp lệ")
+    if "*" in origins:
+        raise RuntimeError("CORS_ORIGINS không được dùng '*'; hãy khai báo domain frontend cụ thể")
+    return origins
 
 
 # ─── Pydantic Schemas ─────────────────────────────────────────────────────────
@@ -40,7 +51,8 @@ from admin import DATA_PATH, router as admin_router, set_rag_chain
 class ChatRequest(BaseModel):
     """Request body cho endpoint /chat."""
     question: str = Field(..., min_length=1, max_length=2000, description="Câu hỏi của người dùng")
-    session_id: Optional[str] = Field(None, description="Session ID (tạo mới nếu không cung cấp)")
+    session_id: Optional[str] = Field(None, max_length=64, description="Session ID (tạo mới nếu không cung cấp)")
+    document_filename: Optional[str] = Field(None, max_length=255, description="Chỉ tìm trong tài liệu này")
 
 
 class SourceInfo(BaseModel):
@@ -261,10 +273,10 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS - cho phép Streamlit frontend gọi API
+# CORS - chỉ cho phép các origin frontend đã khai báo.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Trong production, thay bằng URL cụ thể
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -527,14 +539,45 @@ async def chat(
     """
     # Tạo session_id nếu chưa có
     session_id = request.session_id or str(uuid.uuid4())
+    document_filename = request.document_filename.strip() if request.document_filename else None
+    if document_filename:
+        # A document-scoped query must point to a real library item. This also
+        # prevents arbitrary metadata values being sent to the vector filter.
+        if "/" in document_filename or "\\" in document_filename or document_filename in {".", ".."}:
+            raise HTTPException(status_code=400, detail="Tên tài liệu không hợp lệ")
+        document = db.query(DocumentMetadata).filter(DocumentMetadata.filename == document_filename).first()
+        if not document:
+            raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu được chọn")
+        if document.status not in (None, "active"):
+            raise HTTPException(
+                status_code=409,
+                detail="Tài liệu được chọn hiện không còn hiệu lực để trả lời AI",
+            )
 
-    logger.info(f"Chat request: session={session_id}, question='{request.question[:80]}'")
+    active_filenames = get_retrievable_document_filenames(db)
+
+    logger.info(
+        f"Chat request: session={session_id}, question='{request.question[:80]}', "
+        f"document={document_filename or 'all'}"
+    )
 
     try:
+        # Only the latest turns from this user's own session are used to
+        # resolve follow-up references such as "điều kiện đó".
+        previous_turns = get_recent_chat_history(
+            db, session_id, limit=4,
+            user_id=current_user["user_id"], user_role=current_user["role"],
+        )
+        conversation_history = [
+            {"question": turn.user_message, "answer": turn.bot_response}
+            for turn in previous_turns
+        ]
+
         # Thực hiện RAG
         citation_labels = build_citation_labels(db)
         answer, sources, avg_score = await rag_chain_instance.achat(
-            request.question, citation_labels
+            request.question, citation_labels, conversation_history,
+            document_filename, active_filenames,
         )
         answer = replace_technical_citations(answer, citation_labels)
 
@@ -640,4 +683,3 @@ def delete_session(session_id: str, db: Session = Depends(get_db), current_user:
     count = query.delete(synchronize_session=False)
     db.commit()
     return {"status": "deleted", "session_id": session_id, "count": count}
-
