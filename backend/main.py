@@ -26,7 +26,7 @@ from db import (
     get_db, init_db, save_chat, get_chat_history, get_all_sessions,
     get_all_sessions_with_info, get_recent_chat_history, create_default_admin, verify_admin,
     save_feedback, get_system_stats, create_student, get_student_by_email,
-    verify_student, DocumentMetadata, get_account_user,
+    verify_student, DocumentMetadata, ChatHistory, get_account_user,
     update_account_display_name, change_account_password, create_auth_session,
     get_auth_session, revoke_auth_session, create_password_reset_token,
     consume_password_reset_token, get_recent_activities, get_retrievable_document_filenames, log_activity, as_utc_iso,

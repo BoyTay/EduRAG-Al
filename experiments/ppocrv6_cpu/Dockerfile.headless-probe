@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+ARG PADDLE_INDEX_URL=https://www.paddlepaddle.org.cn/packages/stable/cpu/
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir \
+      --index-url "${PADDLE_INDEX_URL}" paddlepaddle==3.3.0 \
+    && python -m pip install --no-cache-dir paddleocr==3.7.0 \
+    && python -m pip uninstall -y opencv-contrib-python \
+    && python -m pip install --no-cache-dir opencv-contrib-python-headless==4.10.0.84 \
+    && python -m pip check
+
+CMD ["python", "-c", "import cv2; from paddleocr import PaddleOCR; print(cv2.__version__, PaddleOCR)"]
+

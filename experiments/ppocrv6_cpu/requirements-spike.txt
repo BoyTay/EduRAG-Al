@@ -1,0 +1,3 @@
+# Isolated PP-OCRv6 CPU spike. Do not include this file from production.
+paddleocr==3.7.0
+

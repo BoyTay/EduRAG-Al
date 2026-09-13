@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+
+ARG PADDLE_INDEX_URL=https://www.paddlepaddle.org.cn/packages/stable/cpu/
+
+RUN python -m pip install --no-cache-dir \
+      --index-url "${PADDLE_INDEX_URL}" paddlepaddle==3.3.0 \
+    && python -m pip install --no-cache-dir paddleocr==3.7.0 \
+    && python -m pip check
+
+CMD ["python", "-c", "import paddle, cv2; from paddleocr import PaddleOCR; print(paddle.__version__, cv2.__version__, PaddleOCR)"]
+

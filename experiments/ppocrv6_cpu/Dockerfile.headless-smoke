@@ -1,0 +1,18 @@
+FROM edurag-ppocrv6-headless-probe
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=1 \
+    PADDLE_PDX_CACHE_HOME=/opt/ppocr-cache
+
+WORKDIR /spike
+
+# Fixture-only font; OCR runtime itself does not require this package.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY experiments/ppocrv6_cpu/smoke_test.py /spike/smoke_test.py
+
+CMD ["python", "/spike/smoke_test.py"]
+
