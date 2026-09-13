@@ -1,0 +1,9 @@
+# Versions verified together in docs/spike_ppocrv6_cpu.md.
+numpy==2.3.5
+PyYAML==6.0.2
+kubernetes==35.0.0
+paddlex==3.7.2
+opencv-contrib-python==4.10.0.84
+# Keep the backend on the version used by the compatibility spike. A separate
+# CPU-wheel migration is required before changing this pin.
+torch==2.13.0

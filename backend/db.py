@@ -421,13 +421,17 @@ def consume_password_reset_token(db: Session, token: str, new_password: str) -> 
 def log_activity(
     db: Session, action: str, entity_type: str, entity_name: Optional[str],
     actor_name: str, actor_role: str,
+    commit: bool = True,
 ) -> ActivityLog:
     record = ActivityLog(
         action=action, entity_type=entity_type, entity_name=entity_name,
         actor_name=actor_name, actor_role=actor_role,
     )
     db.add(record)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     db.refresh(record)
     return record
 
@@ -570,6 +574,7 @@ def add_document_metadata(
     document_year: Optional[int] = None,
     summary: Optional[str] = None,
     status: Optional[str] = "active",
+    commit: bool = True,
 ) -> DocumentMetadata:
     """Thêm hoặc cập nhật metadata tài liệu."""
     existing = db.query(DocumentMetadata).filter_by(filename=filename).first()
@@ -587,7 +592,10 @@ def add_document_metadata(
         existing.document_year = document_year or existing.document_year
         existing.summary = summary or existing.summary
         existing.status = status or existing.status
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         db.refresh(existing)
         logger.info(f"Document metadata updated: {filename}")
         return existing
@@ -607,18 +615,24 @@ def add_document_metadata(
             status=status,
         )
         db.add(doc)
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         db.refresh(doc)
         logger.info(f"Document metadata added: {filename}")
         return doc
 
 
-def remove_document_metadata(db: Session, filename: str) -> bool:
+def remove_document_metadata(db: Session, filename: str, commit: bool = True) -> bool:
     """Xóa metadata tài liệu. Trả về True nếu xóa thành công."""
     doc = db.query(DocumentMetadata).filter_by(filename=filename).first()
     if doc:
         db.delete(doc)
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         logger.info(f"Document metadata removed: {filename}")
         return True
     return False

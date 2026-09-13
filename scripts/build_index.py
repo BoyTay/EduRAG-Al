@@ -3,14 +3,16 @@ build_index.py - Script tạo/cập nhật vector store từ thư mục data/
 
 Cách dùng:
     python scripts/build_index.py           # Tạo index (skip file đã có)
-    python scripts/build_index.py --reset   # Xóa và tạo lại toàn bộ index
     python scripts/build_index.py --file "ten_file.pdf"  # Chỉ xử lý 1 file
+
+CHỈ DÙNG CHO PHÁT TRIỂN. Production phải gọi POST /admin/rebuild-index để dùng
+đúng cơ chế staging/active collection. Tùy chọn --reset được giữ để báo lỗi rõ,
+không còn xóa ChromaDB.
 """
 
 import argparse
 import os
 import sys
-import shutil
 from pathlib import Path
 
 # Thêm thư mục backend vào PYTHONPATH
@@ -151,7 +153,7 @@ def main():
     parser.add_argument(
         "--reset",
         action="store_true",
-        help="Xóa và tạo lại toàn bộ vector store",
+        help="Đã vô hiệu hóa; production dùng POST /admin/rebuild-index",
     )
     parser.add_argument(
         "--file",
@@ -164,6 +166,17 @@ def main():
     logger.info("=" * 60)
     logger.info("🎓 EduRAG — Build Index Script")
     logger.info("=" * 60)
+    logger.warning(
+        "DEPRECATED FOR PRODUCTION: script không quản lý active/staging collection; "
+        "hãy dùng POST /admin/rebuild-index với Bearer token admin."
+    )
+
+    if args.reset:
+        logger.error(
+            "--reset đã bị vô hiệu hóa để tránh xóa collection trái với marker "
+            ".active_collection. Dùng POST /admin/rebuild-index."
+        )
+        sys.exit(2)
 
     # Kiểm tra thư mục data
     if not DATA_PATH.exists():
@@ -194,12 +207,6 @@ def main():
     logger.info(f"📊 Files to process: {len(files_to_process)}")
     for f in files_to_process:
         logger.info(f"   - {f.name} ({f.stat().st_size / 1024:.1f} KB)")
-
-    # Reset nếu cần
-    if args.reset and CHROMA_PATH.exists():
-        logger.warning("🗑️  Deleting existing vector store...")
-        shutil.rmtree(CHROMA_PATH)
-        logger.info("Vector store deleted.")
 
     # Tạo thư mục chroma_db
     CHROMA_PATH.mkdir(parents=True, exist_ok=True)

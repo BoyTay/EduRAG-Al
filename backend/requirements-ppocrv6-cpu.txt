@@ -1,0 +1,2 @@
+# Installed from the official PaddlePaddle CPU index in Dockerfile.backend.
+paddlepaddle==3.3.0

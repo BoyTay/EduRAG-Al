@@ -1,0 +1,2 @@
+# Installed from the official PyTorch CPU index in Dockerfile.backend.
+torch==2.13.0

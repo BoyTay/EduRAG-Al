@@ -13,6 +13,8 @@ React frontend (:3000) → FastAPI (:8000) → RAG / ChromaDB / Ollama (:11434)
 
 ```
 backend/             FastAPI, RAG pipeline và API quản trị
+backend/ocr_service.py       Lazy-load PP-OCRv6 Small trên CPU
+backend/document_ingestion.py Đọc PDF/DOCX và OCR fallback theo trang
 frontend/            React + TypeScript + Vite frontend
 data/                Tài liệu nguồn PDF/DOCX
 chroma_db/           Vector store được tạo từ tài liệu
@@ -38,6 +40,33 @@ Xem trạng thái:
 docker compose ps
 ```
 
+PDF có native text đủ dài được đọc trực tiếp. Chỉ trang PDF thiếu text mới được
+render trong bộ nhớ và gửi qua PP-OCRv6 Small. Model được lazy-load ở lần OCR
+đầu tiên, vì vậy lần đầu cần mạng; các lần sau dùng volume `edurag_ppocr_cache`.
+Kết quả OCR dạng text/JSON nằm trong volume riêng `edurag_ocr_result_cache`,
+không được phục vụ công khai.
+
+Các biến chính trong `.env.example`:
+
+- `OCR_ENABLED`: bật/tắt OCR mà không tải model khi tắt;
+- `OCR_DEVICE=cpu`: Docker CPU là cấu hình mặc định;
+- `OCR_DPI`, `OCR_NATIVE_TEXT_THRESHOLD` và các ngưỡng trang trắng: cấu hình
+  ban đầu, cần benchmark trên tài liệu thật;
+- `OCR_DETECTION_MODEL` và `OCR_RECOGNITION_MODEL`: hiện dùng PP-OCRv6 Small.
+
+Small chưa phải model cuối. Việc so sánh Small/Medium chỉ thực hiện sau trên
+cùng bộ ground truth tiếng Việt.
+
+RAG lấy 30 candidate mặc định, quy đổi squared-L2 của embedding đã normalize
+về cosine score, rerank rồi chỉ gửi tối đa 8 chunk vào prompt. Câu hỏi yêu cầu
+liệt kê nội dung được mở rộng theo tiêu đề mục và gom các chunk cùng trang;
+câu hỏi chứa ngày tháng/số văn bản có thêm tín hiệu rerank. Có thể điều chỉnh
+`RETRIEVAL_CANDIDATE_K`, `TOP_K` và `MIN_RELEVANCE_SCORE` trong `.env`; cần
+benchmark trước khi thay đổi ngưỡng từ chối.
+
+Torch và PaddlePaddle được cài từ các CPU index riêng; không đổi các lệnh này
+thành một lần resolve chung trên PyPI vì có thể kéo theo wheel CUDA dung lượng lớn.
+
 ## Chạy để phát triển frontend
 
 ```powershell
@@ -51,8 +80,12 @@ Frontend gọi API tại `http://localhost:8000` theo mặc định.
 
 ## Tạo lại chỉ mục RAG
 
-Đặt tài liệu vào `data/`, sau đó:
+Luồng production duy nhất là API quản trị có Bearer token:
 
 ```powershell
-docker compose exec backend python /app/scripts/build_index.py
+curl.exe -X POST http://localhost:8000/admin/rebuild-index -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
+
+`scripts/build_index.py` chỉ dành cho phát triển và không quản lý collection
+active/staging. Tùy chọn `--reset` đã bị chặn; không dùng script để rebuild
+production.

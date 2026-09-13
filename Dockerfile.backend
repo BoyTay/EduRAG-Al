@@ -5,21 +5,37 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # System dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    libgomp1 \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (cache optimization)
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements-ppocrv6-cpu.txt ./requirements-ppocrv6-cpu.txt
+COPY backend/requirements-torch-cpu.txt ./requirements-torch-cpu.txt
+COPY backend/constraints-ppocrv6.txt ./constraints-ppocrv6.txt
+RUN pip install --no-cache-dir \
+      --index-url https://www.paddlepaddle.org.cn/packages/stable/cpu/ \
+      -r requirements-ppocrv6-cpu.txt
+RUN pip install --no-cache-dir --no-deps \
+      --index-url https://download.pytorch.org/whl/cpu \
+      -r requirements-torch-cpu.txt
+RUN pip install --no-cache-dir \
+      -c constraints-ppocrv6.txt \
+      -r requirements.txt \
+    && pip check
 
 # Copy source code
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
 
 # Create necessary directories
-RUN mkdir -p /app/data /app/chroma_db
+RUN mkdir -p /app/data /app/chroma_db /app/ocr_cache /opt/ppocr-cache \
+    && chmod 700 /app/ocr_cache /opt/ppocr-cache
 
 # Set PYTHONPATH
 ENV PYTHONPATH=/app/backend
@@ -27,9 +43,17 @@ ENV PYTHONPATH=/app/backend
 # Environment variables (override via docker-compose or .env)
 ENV OLLAMA_BASE_URL=http://host.docker.internal:11434
 ENV LLM_MODEL=qwen2.5:7b
-ENV EMBEDDING_MODEL=BAAI/bge-small-vi
+# Keep the image default aligned with docker-compose; the former repository ID
+# is unavailable and made a direct container start fail before health-check.
+ENV EMBEDDING_MODEL=AITeamVN/Vietnamese_Embedding
 ENV CHROMA_PATH=/app/chroma_db
 ENV DATA_PATH=/app/data
+ENV PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=1
+ENV PADDLE_PDX_CACHE_HOME=/opt/ppocr-cache
+ENV OCR_RESULT_CACHE_PATH=/app/ocr_cache
+ENV OCR_ENABLED=true
+ENV OCR_DEVICE=cpu
+ENV OCR_ENABLE_MKLDNN=false
 
 # Expose port
 EXPOSE 8000

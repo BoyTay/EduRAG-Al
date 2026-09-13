@@ -19,6 +19,9 @@ services:
       - ./chat_history.db:/app/chat_history.db
       # Cache embedding model để không phải tải lại mỗi lần khởi động
       - hf_cache:/root/.cache/huggingface
+      # Cache model Paddle và kết quả OCR plaintext là hai volume tách biệt.
+      - ppocr_cache:/opt/ppocr-cache
+      - ocr_result_cache:/app/ocr_cache
     environment:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - LLM_MODEL=qwen2.5:7b
@@ -27,8 +30,22 @@ services:
       - DATA_PATH=/app/data
       - CHUNK_SIZE=700
       - CHUNK_OVERLAP=150
-      - TOP_K=5
-      - MIN_RELEVANCE_SCORE=${MIN_RELEVANCE_SCORE:-0.42}
+      - RETRIEVAL_CANDIDATE_K=${RETRIEVAL_CANDIDATE_K:-30}
+      - TOP_K=${TOP_K:-8}
+      - MIN_RELEVANCE_SCORE=${MIN_RELEVANCE_SCORE:-0.30}
+      - OCR_ENABLED=${OCR_ENABLED:-true}
+      - OCR_DEVICE=${OCR_DEVICE:-cpu}
+      - OCR_ENABLE_MKLDNN=false
+      - OCR_DETECTION_MODEL=${OCR_DETECTION_MODEL:-PP-OCRv6_small_det}
+      - OCR_RECOGNITION_MODEL=${OCR_RECOGNITION_MODEL:-PP-OCRv6_small_rec}
+      - OCR_DPI=${OCR_DPI:-200}
+      - OCR_NATIVE_TEXT_THRESHOLD=${OCR_NATIVE_TEXT_THRESHOLD:-50}
+      - OCR_SANITY_MIN_CHARS=${OCR_SANITY_MIN_CHARS:-3}
+      - OCR_BLANK_PIXEL_THRESHOLD=${OCR_BLANK_PIXEL_THRESHOLD:-245}
+      - OCR_BLANK_DARK_RATIO=${OCR_BLANK_DARK_RATIO:-0.0005}
+      - OCR_BLANK_STDDEV=${OCR_BLANK_STDDEV:-2.0}
+      - OCR_RESULT_CACHE_PATH=/app/ocr_cache
+      - PADDLE_PDX_CACHE_HOME=/opt/ppocr-cache
       # Đặt trong file .env, không commit mật khẩu hoặc Client Secret.
       # Chỉ cần cho lần tạo admin đầu tiên; không ghi đè admin đã có trong SQLite.
       - ADMIN_USERNAME=${ADMIN_USERNAME:-}
@@ -72,6 +89,10 @@ services:
 volumes:
   hf_cache:
     name: edurag_hf_cache
+  ppocr_cache:
+    name: edurag_ppocr_cache
+  ocr_result_cache:
+    name: edurag_ocr_result_cache
 
 networks:
   default:

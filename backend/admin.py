@@ -8,20 +8,28 @@ import shutil
 import threading
 import uuid
 import zipfile
+from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from loguru import logger
+from starlette.concurrency import run_in_threadpool
 
 from db import DocumentMetadata, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, get_auth_session, log_activity
+from document_ingestion import (
+    DocumentIngestionError,
+    DocumentIngestionResult,
+    cleanup_document_cache,
+    cleanup_new_cache_entries,
+    load_and_chunk_document,
+)
 
 # ─── Cấu hình ─────────────────────────────────────────────────────────────────
 DATA_PATH = Path(os.getenv("DATA_PATH", str(Path(__file__).parent.parent / "data")))
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "700"))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "150"))
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))
 MAX_BATCH_UPLOAD_BYTES = int(os.getenv("MAX_BATCH_UPLOAD_BYTES", str(100 * 1024 * 1024)))
@@ -127,75 +135,26 @@ async def save_upload_file(upload: UploadFile, destination: Path, byte_limit: in
         raise
 
 
-# ─── Helper: Load & Chunk document ───────────────────────────────────────────
+# ─── Helper: Vector write & document transaction ─────────────────────────────
 
-def load_and_chunk_document(file_path: Path) -> list:
-    """
-    Đọc file PDF hoặc DOCX, làm sạch text, phân đoạn thành chunks.
-    Trả về list các LangChain Document objects.
-    """
-    from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-    ext = file_path.suffix.lower()
-
-    # Load document
-    if ext == ".pdf":
-        loader = PyMuPDFLoader(str(file_path))
-    elif ext == ".docx":
-        loader = Docx2txtLoader(str(file_path))
-    else:
-        raise ValueError(f"Unsupported file type: {ext}")
-
-    docs = loader.load()
-    logger.info(f"Loaded {len(docs)} pages from {file_path.name}")
-    if not docs:
-        raise ValueError(
-            f"Không trích xuất được văn bản từ '{file_path.name}'. "
-            "File có thể là PDF scan/ảnh hoặc không chứa text đọc được."
-        )
-
-    # Làm sạch text
-    for doc in docs:
-        # Chuẩn hóa khoảng trắng và ký tự đặc biệt
-        text = doc.page_content
-        text = " ".join(text.split())          # Normalize whitespace
-        text = text.replace("\x00", "")        # Loại null bytes
-        doc.page_content = text
-        # Thêm filename vào metadata
-        doc.metadata["source"] = str(file_path)
-        doc.metadata["filename"] = file_path.name
-
-    # Lọc bỏ các trang rỗng
-    docs = [d for d in docs if len(d.page_content.strip()) > 50]
-    if not docs:
-        raise ValueError(
-            f"Không có trang nào chứa đủ văn bản hợp lệ trong '{file_path.name}'. "
-            "Nếu đây là PDF scan, cần OCR trước khi upload."
-        )
-
-    # Phân đoạn (chunking)
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        length_function=len,
-        separators=["\n\n", "\n", ".", ";", ":", " ", ""],
-    )
-    chunks = text_splitter.split_documents(docs)
-    logger.info(
-        f"Chunked {file_path.name}: {len(docs)} pages → {len(chunks)} chunks "
-        f"(size={CHUNK_SIZE}, overlap={CHUNK_OVERLAP})"
-    )
-    if not chunks:
-        raise ValueError(
-            f"Không tạo được chunk nào từ '{file_path.name}'. "
-            "Vui lòng thử file khác hoặc giảm mức làm sạch văn bản."
-        )
-    return chunks
+@dataclass
+class VectorWriteResult:
+    vector_store: Any
+    filename: str
+    new_ids: list[str]
+    old_ids: list[str]
+    count: int
 
 
-def add_to_vector_store(chunks: list, filename: str, vector_store=None) -> int:
-    """Thêm chunks vào vector store được chỉ định và trả về số chunk đã nạp."""
+@dataclass
+class ProcessedDocument:
+    ingestion: DocumentIngestionResult
+    vector_write: VectorWriteResult
+    document: DocumentMetadata
+
+
+def add_to_vector_store(chunks: list, filename: str, vector_store=None) -> VectorWriteResult:
+    """Upsert a versioned vector set and return exact IDs for commit/rollback."""
     if _rag_chain is None:
         raise RuntimeError("RAG chain chưa được khởi tạo")
 
@@ -245,25 +204,110 @@ def add_to_vector_store(chunks: list, filename: str, vector_store=None) -> int:
     for metadata in metadatas:
         metadata["ingestion_id"] = ingestion_id
     new_ids = [f"{filename}_{ingestion_id}_chunk_{i}" for i in range(len(texts))]
-    vs._collection.upsert(
-        ids=new_ids,
-        embeddings=embeddings,
-        documents=texts,
-        metadatas=metadatas,
-    )
     try:
-        if old_ids:
-            vs._collection.delete(ids=old_ids)
+        vs._collection.upsert(
+            ids=new_ids,
+            embeddings=embeddings,
+            documents=texts,
+            metadatas=metadatas,
+        )
     except Exception:
-        # Do not leave a new version visible when retiring the old version
-        # failed. Best-effort rollback retains the previous searchable data.
+        # Chroma may have accepted part of a request before surfacing an error.
         try:
             vs._collection.delete(ids=new_ids)
         except Exception as rollback_error:
             logger.error(f"Could not roll back new chunks for '{filename}': {rollback_error}")
         raise
     logger.info(f"Added {len(texts)} chunks to vector store for '{filename}'")
-    return len(texts)
+    return VectorWriteResult(
+        vector_store=vs,
+        filename=filename,
+        new_ids=new_ids,
+        old_ids=old_ids,
+        count=len(texts),
+    )
+
+
+def rollback_vector_write(write: VectorWriteResult) -> None:
+    """Delete only vectors created by one ingestion attempt."""
+    if write.new_ids:
+        write.vector_store._collection.delete(ids=write.new_ids)
+
+
+def finalize_vector_write(write: VectorWriteResult) -> None:
+    """Retire an older version only after SQLite/activity have committed."""
+    if write.old_ids:
+        write.vector_store._collection.delete(ids=write.old_ids)
+
+
+def process_saved_document(
+    file_path: Path,
+    file_size_kb: float,
+    db: Session,
+    current_user: dict,
+    metadata_values: dict[str, Any] | None = None,
+) -> ProcessedDocument:
+    """Run CPU ingestion and commit SQLite/activity as one compensating unit."""
+    metadata_values = metadata_values or {}
+    ingestion: DocumentIngestionResult | None = None
+    vector_write: VectorWriteResult | None = None
+    try:
+        ingestion = load_and_chunk_document(file_path)
+        vector_write = add_to_vector_store(ingestion.chunks, file_path.name)
+        document = add_document_metadata(
+            db=db,
+            filename=file_path.name,
+            file_path=str(file_path),
+            file_type=file_path.suffix.lstrip("."),
+            chunk_count=vector_write.count,
+            file_size_kb=file_size_kb,
+            commit=False,
+            **metadata_values,
+        )
+        log_activity(
+            db,
+            "document_uploaded",
+            "document",
+            document.display_name or document.filename,
+            current_user["name"],
+            current_user["role"],
+            commit=False,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        if vector_write is not None:
+            try:
+                rollback_vector_write(vector_write)
+            except Exception as rollback_error:
+                logger.error(
+                    "Không thể rollback vector mới của '{}': {}",
+                    file_path.name,
+                    rollback_error,
+                )
+        cache_files = (
+            ingestion.created_cache_files
+            if ingestion is not None
+            else list(getattr(exc, "created_cache_files", []))
+        )
+        cleanup_new_cache_entries(cache_files)
+        # This worker is only used for a newly-saved upload. Removing the file
+        # here makes the compensation complete even if a caller forgets its
+        # own idempotent cleanup.
+        safe_delete_file(file_path)
+        raise
+
+    try:
+        finalize_vector_write(vector_write)
+    except Exception as exc:
+        # Upload trùng filename bị chặn 409, nên nhánh này chỉ là phòng vệ.
+        # Giữ cả hai version an toàn hơn việc xóa version mới đã có metadata.
+        logger.warning("Không thể dọn vector cũ của '{}': {}", file_path.name, exc)
+    return ProcessedDocument(
+        ingestion=ingestion,
+        vector_write=vector_write,
+        document=document,
+    )
 
 
 def remove_from_vector_store(filename: str) -> int:
@@ -384,38 +428,40 @@ async def upload_document(
         await file.close()
         raise HTTPException(status_code=500, detail=f"Lỗi lưu file: {str(e)}")
 
-    # Xử lý document
+    # Xử lý CPU-bound trong worker thread; event loop chỉ điều phối request.
     try:
-        chunks = load_and_chunk_document(file_path)
-        add_to_vector_store(chunks, safe_filename)
-
-        # Cập nhật metadata trong SQLite
-        document = add_document_metadata(
-            db=db,
-            filename=safe_filename,
-            file_path=str(file_path),
-            file_type=file_ext.lstrip("."),
-            chunk_count=len(chunks),
-            file_size_kb=file_size_kb,
-            description=description,
-            display_name=display_name,
-            category=category,
-            issuing_unit=issuing_unit,
-            document_year=document_year,
-            summary=summary,
-            status=status,
+        processed = await run_in_threadpool(
+            partial(
+                process_saved_document,
+                file_path=file_path,
+                file_size_kb=file_size_kb,
+                db=db,
+                current_user=current_user,
+                metadata_values={
+                    "description": description,
+                    "display_name": display_name,
+                    "category": category,
+                    "issuing_unit": issuing_unit,
+                    "document_year": document_year,
+                    "summary": summary,
+                    "status": status,
+                },
+            )
         )
-        log_activity(db, "document_uploaded", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
 
         return {
             "success": True,
             "message": f"Đã nạp thành công '{safe_filename}'",
             "filename": safe_filename,
-            "chunk_count": len(chunks),
+            "chunk_count": processed.vector_write.count,
             "file_size_kb": round(file_size_kb, 2),
+            "warnings": processed.ingestion.warnings,
         }
+    except DocumentIngestionError as exc:
+        safe_delete_file(file_path)
+        logger.warning("Document ingestion rejected {}: {}", safe_filename, exc)
+        raise HTTPException(status_code=422, detail=str(exc))
     except Exception as e:
-        # Rollback: xóa file nếu xử lý lỗi
         safe_delete_file(file_path)
         logger.error(f"Error processing {safe_filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý tài liệu: {str(e)}")
@@ -499,26 +545,22 @@ async def upload_multiple_documents(
             batch_bytes += uploaded_bytes
             file_size_kb = uploaded_bytes / 1024
 
-            # Xử lý
-            chunks = load_and_chunk_document(file_path)
-            add_to_vector_store(chunks, safe_filename)
-
-            # Metadata
-            document = add_document_metadata(
-                db=db,
-                filename=safe_filename,
-                file_path=str(file_path),
-                file_type=file_ext.lstrip("."),
-                chunk_count=len(chunks),
-                file_size_kb=file_size_kb,
+            processed = await run_in_threadpool(
+                partial(
+                    process_saved_document,
+                    file_path=file_path,
+                    file_size_kb=file_size_kb,
+                    db=db,
+                    current_user=current_user,
+                )
             )
-            log_activity(db, "document_uploaded", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
 
             results.append({
                 "filename": safe_filename,
                 "success": True,
-                "chunk_count": len(chunks),
+                "chunk_count": processed.vector_write.count,
                 "file_size_kb": round(file_size_kb, 2),
+                "warnings": processed.ingestion.warnings,
             })
             total_success += 1
 
@@ -568,11 +610,15 @@ def delete_document(
         # 1. Xóa khỏi vector store
         deleted_chunks = remove_from_vector_store(safe_filename)
 
-        # 2. Xóa file
+        # 2. Dọn plaintext OCR cache theo SHA-256 trước khi file bị xóa.
+        # Cleanup là best-effort và không được làm tài liệu sống lại.
+        cleanup_document_cache(file_path)
+
+        # 3. Xóa file
         file_path.unlink()
         logger.info(f"File deleted: {file_path}")
 
-        # 3. Xóa metadata SQLite
+        # 4. Xóa metadata SQLite
         document = db.query(DocumentMetadata).filter_by(filename=safe_filename).first()
         display_name = (document.display_name or document.filename) if document else safe_filename
         remove_document_metadata(db, safe_filename)
@@ -605,6 +651,9 @@ def rebuild_index(
 
     staging_collection = f"edurag_rebuild_{uuid.uuid4().hex}"
     activated = False
+    previous_collection: str | None = None
+    keep_staging_for_safety = False
+    new_cache_files: list[Path] = []
     try:
         # Build entirely in an isolated collection. The live collection remains
         # queryable until the staging collection has passed validation.
@@ -623,12 +672,16 @@ def rebuild_index(
 
         for file_path in all_files:
             try:
-                chunks = load_and_chunk_document(file_path)
-                indexed_chunks = add_to_vector_store(chunks, file_path.name, staging_store)
-                total_chunks += indexed_chunks
+                ingestion = load_and_chunk_document(file_path)
+                new_cache_files.extend(ingestion.created_cache_files)
+                vector_write = add_to_vector_store(
+                    ingestion.chunks, file_path.name, staging_store
+                )
+                total_chunks += vector_write.count
                 processed_files.append(file_path.name)
-                chunk_counts[file_path.name] = indexed_chunks
+                chunk_counts[file_path.name] = vector_write.count
             except Exception as e:
+                new_cache_files.extend(getattr(e, "created_cache_files", []))
                 logger.error(f"Error rebuilding {file_path.name}: {e}")
                 failures.append({"filename": file_path.name, "error": str(e)})
 
@@ -640,10 +693,8 @@ def rebuild_index(
         if total_chunks == 0 or staging_store._collection.count() != total_chunks:
             raise RuntimeError("Index tạm không đầy đủ; index hiện tại vẫn được giữ nguyên")
 
-        previous_collection = _rag_chain.activate_collection(staging_collection)
-        activated = True
-
-        # Metadata is updated only after the new index is ready for queries.
+        # Stage SQLite metadata and activity in one transaction. They remain
+        # uncommitted while the active collection marker is switched.
         for file_path in all_files:
             file_size_kb = file_path.stat().st_size / 1024
             add_document_metadata(
@@ -653,12 +704,18 @@ def rebuild_index(
                 file_type=file_path.suffix.lstrip("."),
                 chunk_count=chunk_counts[file_path.name],
                 file_size_kb=file_size_kb,
+                commit=False,
             )
 
         log_activity(
             db, "index_rebuilt", "search_index", f"{len(processed_files)} tài liệu",
             current_user["name"], current_user["role"],
+            commit=False,
         )
+
+        previous_collection = _rag_chain.activate_collection(staging_collection)
+        activated = True
+        db.commit()
 
         return {
             "success": True,
@@ -668,12 +725,25 @@ def rebuild_index(
             "previous_collection": previous_collection,
         }
     except Exception as e:
+        db.rollback()
+        if activated and previous_collection:
+            try:
+                _rag_chain.activate_collection(previous_collection)
+                activated = False
+            except Exception as rollback_error:
+                keep_staging_for_safety = True
+                logger.critical(
+                    "Không thể khôi phục collection '{}' sau lỗi rebuild: {}",
+                    previous_collection,
+                    rollback_error,
+                )
+        cleanup_new_cache_entries(new_cache_files)
         logger.error(f"Error rebuilding index: {e}")
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail="Không thể rebuild index; index hiện tại vẫn được giữ nguyên")
     finally:
-        if not activated:
+        if not activated and not keep_staging_for_safety:
             try:
                 _rag_chain.vector_store._client.delete_collection(staging_collection)
             except Exception:
