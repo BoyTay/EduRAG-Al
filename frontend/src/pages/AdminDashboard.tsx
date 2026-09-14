@@ -1,4 +1,5 @@
 import {
+  ArrowsClockwise,
   ChatCircleText,
   ChartPieSlice,
   FileText,
@@ -11,11 +12,13 @@ import { DeleteConfirmModal } from "../components/admin/DeleteConfirmModal";
 import { DocumentModal } from "../components/admin/DocumentModal";
 import { DocumentTable } from "../components/admin/DocumentTable";
 import { RecentActivities } from "../components/admin/RecentActivities";
+import { RagRefusalPanel } from "../components/admin/RagRefusalPanel";
 import {
   deleteDocument,
   getActivities,
   getDocuments,
   getStats,
+  rebuildIndex,
   updateDocumentMetadata,
   uploadDocument,
 } from "../services/api";
@@ -43,6 +46,8 @@ export function AdminDashboard() {
   const [modalMode, setModalMode] = useState<"upload" | "edit" | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [deletingDoc, setDeletingDoc] = useState<Document | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildNotice, setRebuildNotice] = useState<{ text: string; error: boolean } | null>(null);
 
   // Stats calculation
   const totalFeedback = (stats?.total_feedback_up || 0) + (stats?.total_feedback_down || 0);
@@ -71,6 +76,26 @@ export function AdminDashboard() {
     await refreshData();
   };
 
+  const handleRebuildIndex = async () => {
+    setRebuilding(true);
+    setRebuildNotice(null);
+    try {
+      const result = await rebuildIndex();
+      await refreshData();
+      setRebuildNotice({
+        text: `${result.message}: ${result.processed_files.length} tài liệu, ${result.total_chunks} đoạn vector.`,
+        error: false,
+      });
+    } catch {
+      setRebuildNotice({
+        text: "Không thể rebuild chỉ mục. Index đang hoạt động vẫn được giữ nguyên.",
+        error: true,
+      });
+    } finally {
+      setRebuilding(false);
+    }
+  };
+
   return (
     <section className="h-full min-h-0 overflow-y-auto bg-[#f8fafc] px-4 py-6 sm:px-6 md:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -88,19 +113,38 @@ export function AdminDashboard() {
             </p>
           </div>
 
-          {/* + Tải tài liệu mới Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedDoc(null);
-              setModalMode("upload");
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-950/20 hover:bg-emerald-700 active:scale-[0.98] transition self-start sm:self-auto"
-          >
-            <Plus size={16} weight="bold" />
-            <span>Tải tài liệu mới</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={handleRebuildIndex}
+              disabled={rebuilding}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-50 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+            >
+              <ArrowsClockwise size={16} weight="bold" className={rebuilding ? "animate-spin" : ""} />
+              <span>{rebuilding ? "Đang rebuild..." : "Rebuild chỉ mục"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDoc(null);
+                setModalMode("upload");
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-950/20 hover:bg-emerald-700 active:scale-[0.98] transition"
+            >
+              <Plus size={16} weight="bold" />
+              <span>Tải tài liệu mới</span>
+            </button>
+          </div>
         </div>
+
+        {rebuildNotice && (
+          <p
+            role="status"
+            className={`rounded-xl border px-4 py-3 text-sm ${rebuildNotice.error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}
+          >
+            {rebuildNotice.text}
+          </p>
+        )}
 
         {/* 3 Metric Summary Cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -192,6 +236,9 @@ export function AdminDashboard() {
           {/* Right: Phân bố danh mục tài liệu */}
           <CategoryChart documents={docs} />
         </div>
+
+        {/* RAG Refusal Log */}
+        <RagRefusalPanel />
       </div>
 
       {/* Document Upload / Edit Modal */}

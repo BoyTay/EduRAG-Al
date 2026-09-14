@@ -4,9 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
-env/
-.venv/
 build/
 dist/
 *.egg-info/
@@ -27,17 +24,19 @@ env/
 data/
 chroma_db/
 chat_history.db
+*.db
 
 # Environment variables
 .env
 .env.local
 .env.*.local
+frontend/.env
 
 # Logs
 logs/
 *.log
 
-# Models cache (HuggingFace)
+# Models cache (HuggingFace, OCR)
 .cache/
 models/
 ocr_cache/
@@ -56,8 +55,7 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Frontend
 frontend/node_modules/
 frontend/dist/
-frontend/.env
-__pycache__/
-*.py[cod]

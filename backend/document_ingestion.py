@@ -19,7 +19,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from loguru import logger
 
-from ocr_service import OCRPageResult, OCRServiceProtocol, get_default_ocr_service
+from ocr_service import OCRConfigurationError, OCRPageResult, OCRServiceProtocol, get_default_ocr_service
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -48,7 +48,7 @@ def _env_float(name: str, default: float, minimum: float, maximum: float) -> flo
 @dataclass(frozen=True)
 class IngestionSettings:
     ocr_enabled: bool = True
-    dpi: int = 200
+    dpi: int = 300
     native_text_threshold: int = 50
     sanity_min_chars: int = 3
     blank_pixel_threshold: int = 245
@@ -62,7 +62,7 @@ class IngestionSettings:
     def from_env(cls) -> "IngestionSettings":
         return cls(
             ocr_enabled=_env_bool("OCR_ENABLED", True),
-            dpi=_env_int("OCR_DPI", 200, 72),
+            dpi=_env_int("OCR_DPI", 300, 72),
             native_text_threshold=_env_int("OCR_NATIVE_TEXT_THRESHOLD", 50),
             sanity_min_chars=_env_int("OCR_SANITY_MIN_CHARS", 3),
             blank_pixel_threshold=_env_int("OCR_BLANK_PIXEL_THRESHOLD", 245, 1),
@@ -381,6 +381,15 @@ def _load_pdf_pages(
                 if ocr_result is None:
                     try:
                         ocr_result = service.recognize_page(image)
+                    except OCRConfigurationError as exc:
+                        if native_is_sane:
+                            pages.append(_page_document(file_path, page_index, native_text, "native_low_text"))
+                            warnings.append(f"Giữ native text trang {page_index + 1}: {exc}")
+                            continue
+                        raise DocumentIngestionError(
+                            str(exc), failed_pages=[page_index + 1],
+                            created_cache_files=created_cache_files,
+                        ) from exc
                     except Exception as exc:
                         logger.warning(
                             "OCR thất bại ở trang {} của {}: {}",
@@ -417,7 +426,11 @@ def _load_pdf_pages(
 
                 if has_sane_text(ocr_result.text, settings.sanity_min_chars):
                     pages.append(
-                        _page_document(file_path, page_index, ocr_result.text, "ppocrv6", ocr_result)
+                        _page_document(
+                            file_path, page_index, ocr_result.text,
+                            "tesseract" if fingerprint.get("provider") == "tesseract" else "ppocrv6",
+                            ocr_result,
+                        )
                     )
                 elif native_is_sane:
                     pages.append(

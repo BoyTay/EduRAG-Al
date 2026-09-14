@@ -17,7 +17,7 @@ from document_ingestion import (
     load_and_chunk_document,
 )
 from langchain_core.documents import Document
-from ocr_service import OCRLine, OCRPageResult
+from ocr_service import OCRConfigurationError, OCRLine, OCRPageResult
 
 
 class FakeOCR:
@@ -39,6 +39,26 @@ class FakeOCR:
 
 
 class DocumentIngestionTests(unittest.TestCase):
+    def test_invalid_ocr_alphabet_rejects_scan_with_page_number(self):
+        class InvalidOCR(FakeOCR):
+            def recognize_page(self, _image):
+                raise OCRConfigurationError("Model thiếu ký tự tiếng Việt")
+
+        path = self._pdf("unsupported.pdf", ["native", "scan"])
+        with self.assertRaises(DocumentIngestionError) as caught:
+            load_and_chunk_document(path, InvalidOCR(), self.settings, self.cache)
+        self.assertEqual(caught.exception.failed_pages, [2])
+        self.assertIn("thiếu ký tự tiếng Việt", str(caught.exception))
+
+    def test_invalid_ocr_alphabet_preserves_short_native_text(self):
+        class InvalidOCR(FakeOCR):
+            def recognize_page(self, _image):
+                raise OCRConfigurationError("Model thiếu ký tự tiếng Việt")
+
+        path = self._pdf("short-supported.pdf", ["short"])
+        result = load_and_chunk_document(path, InvalidOCR(), self.settings, self.cache)
+        self.assertIn("Dieu 1", result.chunks[0].page_content)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)

@@ -4,7 +4,8 @@ import unittest
 import subprocess
 import sys
 
-from ocr_service import PaddleOCRService
+from ocr_service import OCRConfigurationError, PaddleOCRService, validate_vietnamese_charset
+import unicodedata
 
 
 class FakePaddleModel:
@@ -32,6 +33,17 @@ class FakePaddleModel:
 
 
 class OCRServiceTests(unittest.TestCase):
+    def test_rejects_alphabet_missing_vietnamese_diacritics(self):
+        with self.assertRaisesRegex(OCRConfigurationError, "thiếu"):
+            validate_vietnamese_charset(list("abcdefghijklmnopqrstuvwxyzđăâêôơư"))
+
+    def test_accepts_complete_vietnamese_alphabet(self):
+        alphabet = list("đĐ")
+        for vowel in "aăâeêioôơuưyAĂÂEÊIOÔƠUƯY":
+            for tone in ("", "\u0300", "\u0301", "\u0309", "\u0303", "\u0323"):
+                alphabet.append(unicodedata.normalize("NFC", vowel + tone))
+        validate_vietnamese_charset(alphabet)
+
     def test_import_is_lazy_and_does_not_import_paddleocr(self):
         completed = subprocess.run(
             [

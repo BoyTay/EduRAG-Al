@@ -6,10 +6,36 @@ import importlib.metadata
 import json
 import os
 import threading
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Callable, Protocol, runtime_checkable
 
 from loguru import logger
+
+
+class OCRConfigurationError(RuntimeError):
+    """The recognition model cannot represent the required language."""
+
+
+def validate_vietnamese_charset(characters: list[str] | None) -> None:
+    if not characters:
+        raise OCRConfigurationError("Không xác minh được bảng ký tự của model OCR tiếng Việt.")
+    alphabet = set(characters)
+    required = {"đ", "Đ"}
+    for vowel in "aăâeêioôơuưyAĂÂEÊIOÔƠUƯY":
+        for tone in ("", "\u0300", "\u0301", "\u0309", "\u0303", "\u0323"):
+            required.add(unicodedata.normalize("NFC", vowel + tone))
+    missing = sorted(
+        char for char in required
+        if char not in alphabet
+        and unicodedata.normalize("NFD", char) not in alphabet
+        and not all(part in alphabet for part in unicodedata.normalize("NFD", char))
+    )
+    if missing:
+        raise OCRConfigurationError(
+            f"Model OCR thiếu {len(missing)} ký tự tiếng Việt (ví dụ: {', '.join(missing[:12])}). "
+            "Dừng nạp tài liệu để tránh mất dấu; cần model nhận dạng hỗ trợ đầy đủ tiếng Việt."
+        )
 
 
 def _as_bool(value: str | None, default: bool) -> bool:
@@ -175,6 +201,7 @@ class PaddleOCRService:
             paddlepaddle_version = "not-installed"
         return {
             "provider": "paddleocr",
+            "language_validation_revision": 1,
             "version": paddleocr_version,
             "runtime_version": paddlepaddle_version,
             "ocr_version": "PP-OCRv6",
@@ -197,7 +224,15 @@ class PaddleOCRService:
         # not import PaddleOCR or download a model during backend startup.
         from paddleocr import PaddleOCR
 
-        return PaddleOCR(**config)
+        model = PaddleOCR(**config)
+        # PaddleX 3.7 CPU wraps the actual OCR pipeline. Inspect the decoder's
+        # real alphabet, not merely the requested lang or advertised model name.
+        wrapper = model.paddlex_pipeline
+        pipeline = getattr(wrapper, "_pipeline", wrapper)
+        recognizer = getattr(pipeline, "text_rec_model", None)
+        post_op = getattr(recognizer, "post_op", None)
+        validate_vietnamese_charset(getattr(post_op, "character", None))
+        return model
 
     def _get_model(self) -> Any:
         if self._model is not None:
@@ -205,7 +240,9 @@ class PaddleOCRService:
         with self._load_lock:
             if self._model is None:
                 logger.info(
-                    "Khởi tạo PP-OCRv6 Small trên thiết bị {} (lazy-load)",
+                    "Khởi tạo OCR {}/{} trên thiết bị {} (lazy-load)",
+                    self.detection_model,
+                    self.recognition_model,
                     self.device,
                 )
                 config = {
@@ -237,14 +274,21 @@ class PaddleOCRService:
         )
 
 
-_default_service: PaddleOCRService | None = None
+_default_service: OCRServiceProtocol | None = None
 _default_service_lock = threading.Lock()
 
 
-def get_default_ocr_service() -> PaddleOCRService:
+def get_default_ocr_service() -> OCRServiceProtocol:
     global _default_service
     if _default_service is None:
         with _default_service_lock:
             if _default_service is None:
-                _default_service = PaddleOCRService(concurrency=1)
+                provider = os.getenv("OCR_PROVIDER", "tesseract").strip().lower()
+                if provider == "tesseract":
+                    from tesseract_service import TesseractOCRService
+                    _default_service = TesseractOCRService()
+                elif provider == "paddleocr":
+                    _default_service = PaddleOCRService(concurrency=1)
+                else:
+                    raise OCRConfigurationError(f"OCR_PROVIDER không được hỗ trợ: {provider}")
     return _default_service

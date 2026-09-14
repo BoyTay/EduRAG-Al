@@ -29,6 +29,11 @@ RUN pip install --no-cache-dir \
       -r requirements.txt \
     && pip check
 
+# Vietnamese OCR; separate layer preserves the existing Python dependency cache.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr tesseract-ocr-vie \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy source code
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/

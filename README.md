@@ -13,7 +13,8 @@ React frontend (:3000) → FastAPI (:8000) → RAG / ChromaDB / Ollama (:11434)
 
 ```
 backend/             FastAPI, RAG pipeline và API quản trị
-backend/ocr_service.py       Lazy-load PP-OCRv6 Small trên CPU
+backend/ocr_service.py       Chọn OCR provider, kiểm tra bảng ký tự Paddle
+backend/tesseract_service.py OCR CPU tiếng Việt qua Tesseract vie
 backend/document_ingestion.py Đọc PDF/DOCX và OCR fallback theo trang
 frontend/            React + TypeScript + Vite frontend
 data/                Tài liệu nguồn PDF/DOCX
@@ -41,8 +42,8 @@ docker compose ps
 ```
 
 PDF có native text đủ dài được đọc trực tiếp. Chỉ trang PDF thiếu text mới được
-render trong bộ nhớ và gửi qua PP-OCRv6 Small. Model được lazy-load ở lần OCR
-đầu tiên, vì vậy lần đầu cần mạng; các lần sau dùng volume `edurag_ppocr_cache`.
+render trong bộ nhớ ở 300 DPI và gửi qua Tesseract với ngôn ngữ `vie`.
+Model tiếng Việt được cài sẵn trong image; không cần tải ở lần upload đầu.
 Kết quả OCR dạng text/JSON nằm trong volume riêng `edurag_ocr_result_cache`,
 không được phục vụ công khai.
 
@@ -52,10 +53,17 @@ Các biến chính trong `.env.example`:
 - `OCR_DEVICE=cpu`: Docker CPU là cấu hình mặc định;
 - `OCR_DPI`, `OCR_NATIVE_TEXT_THRESHOLD` và các ngưỡng trang trắng: cấu hình
   ban đầu, cần benchmark trên tài liệu thật;
-- `OCR_DETECTION_MODEL` và `OCR_RECOGNITION_MODEL`: hiện dùng PP-OCRv6 Small.
+- `OCR_PROVIDER=tesseract`: cấu hình mặc định cho PDF scan tiếng Việt. Mặc định
+  dùng `OCR_TESSERACT_PSM=6` để giữ đủ các dòng trong văn bản một cột và làm
+  nhạt con dấu/chú thích màu bằng `OCR_TESSERACT_REMOVE_COLORED_OVERLAYS=true`.
+- `OCR_DETECTION_MODEL` và `OCR_RECOGNITION_MODEL`: chỉ áp dụng khi chọn
+  `OCR_PROVIDER=paddleocr`; model thiếu bảng ký tự tiếng Việt sẽ bị chặn.
 
-Small chưa phải model cuối. Việc so sánh Small/Medium chỉ thực hiện sau trên
-cùng bộ ground truth tiếng Việt.
+Small/Medium đã thử mất dấu do thiếu ký tự trong artifact đã tải. Tesseract `vie`
+đã đọc đúng hai dòng kinh phí trên trang 3; chưa có benchmark toàn corpus.
+Cache dùng provider, phiên bản engine, SHA-256 model, DPI và cấu hình; đổi provider
+không tái sử dụng cache Paddle. Rebuild qua API admin để thay chunk cũ.
+Nếu `.env` cũ đặt `OCR_DPI=200`, đổi thành `300` khi chuyển sang Tesseract.
 
 RAG lấy 30 candidate mặc định, quy đổi squared-L2 của embedding đã normalize
 về cosine score, rerank rồi chỉ gửi tối đa 8 chunk vào prompt. Câu hỏi yêu cầu

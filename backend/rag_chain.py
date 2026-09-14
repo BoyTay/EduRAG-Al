@@ -166,11 +166,13 @@ Quy tắc bắt buộc:
 5. Ưu tiên đoạn/điều khoản trả lời trực tiếp câu hỏi; bỏ qua các đoạn chỉ liên quan lỏng lẻo.
 6. Giữ nguyên mức độ bắt buộc của văn bản: nếu nguồn ghi "phải" hoặc "bắt buộc", câu trả lời phải giữ nghĩa bắt buộc. TUYỆT ĐỐI không thêm điều kiện, ngoại lệ hoặc cụm như "khi được yêu cầu" nếu nguồn không nêu.
 7. Mở đầu bằng đúng một câu trả lời trực tiếp cho câu hỏi. Nếu chỉ có một ý, không dùng bullet.
-8. Nếu có từ hai ý độc lập, dùng bullet; mỗi ý không quá 10 từ, trừ trường hợp liệt kê toàn diện ở quy tắc 11.
-9. Toàn bộ câu trả lời tối đa 100 từ, không dùng dấu ngoặc kép.
+8. Nếu có từ hai ý độc lập, dùng bullet và diễn giải mỗi ý thành một câu ngắn, đầy đủ nghĩa.
+9. Câu trả lời thông thường tối đa 150 từ. Riêng câu hỏi yêu cầu liệt kê toàn bộ nội dung có thể dùng tối đa 280 từ, hoặc 320 từ khi người dùng yêu cầu đầy đủ/chi tiết. Không dùng dấu ngoặc kép hoặc ký hiệu Markdown để in đậm.
 10. Không viết "Trích dẫn từ", "Theo Điều...", tên tệp, đường dẫn, đuôi .pdf/.docx hoặc tên có dấu gạch dưới. Nguồn đã được hiển thị riêng bên dưới câu trả lời.
-11. Khi câu hỏi hỏi nội dung Tuần định hướng cho tân sinh viên, ưu tiên mục có tiêu đề "NỘI DUNG" và tổng hợp toàn bộ từ đầu đến cuối thành đúng 10 bullet, mỗi bullet tối đa 9 từ; không dùng phần "Trách nhiệm" hoặc "Tổ chức thực hiện" để thay thế.
-12. Với số tiền, giữ nguyên giá trị số và đối tượng/điều kiện áp dụng trong nguồn. Phần trong ngoặc viết số tiền bằng chữ chỉ diễn giải cùng một số tiền; "đồng chẵn" không phải đơn vị tính hoặc mẫu số. Có thể bỏ phần viết bằng chữ khi đã nêu số tiền bằng số. Nếu OCR làm sai dấu ở phần viết bằng chữ, không sao chép lỗi đó thành đơn vị như "đồng/chãn", "đồng/chăn" hay "đồng/chẵn". Không tự thêm đơn vị theo người, tháng hoặc năm nếu nguồn không nêu; nếu số tiền bằng số và bằng chữ mâu thuẫn hoặc không đọc rõ thì nói rõ chưa xác định được, không tự sửa con số."""
+11. Với câu hỏi liệt kê hoặc tổng hợp, phải đọc hết mục trực tiếp trả lời câu hỏi và giữ mọi ý độc lập trong mục đó. Không dừng ở một số lượng bullet tùy ý. Khi nguồn có từ năm ý trở lên, có thể nhóm thành 3–5 chủ đề để dễ đọc nhưng từng chi tiết độc lập vẫn phải xuất hiện. Không trộn nội dung của mục hoặc đối tượng khác chỉ vì có từ khóa gần giống.
+12. Chỉ thêm câu kết về nghĩa vụ, tính bắt buộc hoặc yêu cầu tham gia khi chính phần nguồn dùng để trả lời nêu rõ điều đó. Không biến lời khuyên thành quy định.
+13. Với số tiền, giữ nguyên giá trị số và đối tượng/điều kiện áp dụng trong nguồn. Phần trong ngoặc viết số tiền bằng chữ chỉ diễn giải cùng một số tiền; "đồng chẵn" không phải đơn vị tính hoặc mẫu số. Có thể bỏ phần viết bằng chữ khi đã nêu số tiền bằng số. Nếu OCR làm sai dấu ở phần viết bằng chữ, không sao chép lỗi đó thành đơn vị như "đồng/chãn", "đồng/chăn" hay "đồng/chẵn". Không tự thêm đơn vị theo người, tháng hoặc năm nếu nguồn không nêu; nếu số tiền bằng số và bằng chữ mâu thuẫn hoặc không đọc rõ thì nói rõ chưa xác định được, không tự sửa con số.
+14. TUYỆT ĐỐI không thêm câu kết mang tính tổng hợp, nhắc nhở, hoặc kêu gọi tuân thủ nếu phần nguồn dùng để trả lời không nêu rõ điều đó. Ví dụ: không được tự thêm 'Sinh viên cần tuân thủ đầy đủ các quy định trên' hay 'Đây là điều bắt buộc với mọi sinh viên.'"""
 
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 {context}
@@ -191,33 +193,22 @@ RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("human", USER_PROMPT_TEMPLATE),
 ])
 
-CONTENT_TAIL_PROMPT = ChatPromptTemplate.from_messages([
+ENUMERATION_REPAIR_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "Bạn bổ sung các ý còn thiếu cho câu trả lời RAG. Chỉ dùng nguồn được cung cấp, "
-        "không nhắc tên tệp hoặc trang, không lặp lại các ý đã có.",
+        "Bạn là bộ kiểm tra độ bao phủ cho câu trả lời RAG. Chỉ dùng nguồn được cung cấp, "
+        "không nhắc tên tệp hoặc trang và không thêm kiến thức ngoài nguồn.",
     ),
     (
         "human",
-        "[Toàn bộ mục NỘI DUNG]\n{context}\n\n"
-        "[Các ý đã có]\n{existing_answer}\n\n"
-        "Bổ sung đúng {missing_count} ý chưa xuất hiện. Mỗi dòng bắt đầu bằng '- ' "
-        "và tối đa 9 từ. Không lặp hoặc diễn đạt lại các ý đã có.",
-    ),
-])
-
-CONTENT_REPAIR_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "Bạn sửa câu trả lời RAG bị thiếu ý. Chỉ dùng nguồn được cung cấp, "
-        "không nhắc tên tệp hoặc trang.",
-    ),
-    (
-        "human",
-        "[Mục NỘI DUNG]\n{context}\n\n[Câu trả lời cần sửa]\n{existing_answer}\n\n"
-        "Các ý đang thiếu hoặc chưa rõ: {missing_topics}. Viết lại đúng 10 dòng "
-        "bắt đầu bằng '- ', theo thứ tự yêu cầu ban đầu, mỗi dòng thật ngắn. "
-        "Dòng cuối bắt buộc là giải đáp thắc mắc.",
+        "[Câu hỏi]\n{question}\n\n[Nguồn]\n{context}\n\n"
+        "[Câu trả lời ban đầu]\n{existing_answer}\n\n"
+        "Hãy đối chiếu nội bộ câu trả lời với đúng mục và đúng đối tượng trong nguồn, rồi bổ sung mọi ý độc lập còn thiếu. "
+        "Tuyệt đối không mô tả quá trình đối chiếu, không viết các nhãn như bước kiểm tra, tách ý, so sánh hay nhận xét. "
+        "Phản hồi duy nhất bằng cách đặt toàn bộ nội dung câu trả lời đầy đủ bên trong cặp thẻ <FINAL> và </FINAL>. "
+        "Bên trong thẻ <FINAL>, mở đầu bằng một câu trực tiếp rồi dùng bullet. "
+        "Nếu có từ năm ý trở lên, được nhóm thành 3–5 chủ đề nhưng không được làm mất chi tiết. "
+        "Không lấy nhiệm vụ, quyền hoặc nội dung của đối tượng khác để điền vào câu trả lời.",
     ),
 ])
 
@@ -250,13 +241,20 @@ def format_conversation_history(conversation_history: Optional[Sequence[Mapping[
 
 
 def build_retrieval_query(question: str, conversation_history: Optional[Sequence[Mapping[str, str]]]) -> str:
-    """Use the preceding user question to make a short follow-up searchable."""
+    """Use the preceding user question to make a short follow-up searchable.
+
+    When the follow-up is very short (e.g. "Còn nữa không?"), the previous
+    question is prepended in full so the embedding captures enough context.
+    """
     if not conversation_history:
         return question
     previous_questions = [str(turn.get("question", "")).strip() for turn in conversation_history]
     previous_question = next((item for item in reversed(previous_questions) if item), "")
     if not previous_question:
         return question
+    # Câu hỏi tiếp nối rất ngắn: nối đủ câu trước để retrieval có context
+    if len(question.strip()) < 20:
+        return f"{previous_question} {question}"
     return f"Chủ đề ở lượt trước: {previous_question[:900]}\nCâu hỏi tiếp theo: {question}"
 
 
@@ -278,60 +276,42 @@ def _search_normalize(value: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", without_marks))
 
 
-def _asks_for_content_list(question: str) -> bool:
+def _enumeration_answer_word_limit(question: str) -> int:
+    """Allow broad list questions enough space without lengthening normal replies."""
     normalized = _search_normalize(question)
-    asks_for_list = any(
-        marker in normalized
-        for marker in (
-            "nhung noi dung gi",
-            "noi dung gi",
-            "cac noi dung",
-            "bao gom nhung gi",
-            "gom nhung gi",
-            "duoc huong dan",
-        )
-    )
-    is_orientation_topic = "tan sinh vien" in normalized and any(
-        marker in normalized for marker in ("tuan dinh huong", "duoc huong dan")
-    )
-    return asks_for_list and is_orientation_topic
+    exhaustive_markers = ("day du", "toan bo", "tat ca", "chi tiet", "khong bo sot")
+    return 320 if any(marker in normalized for marker in exhaustive_markers) else 280
 
 
-def expand_retrieval_query(question: str, retrieval_query: str) -> str:
-    """Add a document-heading hint for exhaustive content-list questions."""
-    if _asks_for_content_list(question):
-        return (
-            f"{retrieval_query}\n"
-            "Tiêu đề mục cần tìm: III. NỘI DUNG. "
-            "Các nội dung hướng dẫn dành cho tân sinh viên."
+def asks_for_enumeration(question: str) -> bool:
+    """Detect list/coverage intent without tying it to one document or sentence."""
+    normalized = _search_normalize(question)
+    explicit_markers = (
+        "bao gom", "gom nhung", "liet ke", "day du", "toan bo", "tat ca",
+        "khong bo sot", "duoc huong dan", "can lam gi", "co trach nhiem gi",
+        "co nhung quyen", "co nhung nghia vu",
+    )
+    if any(marker in normalized for marker in explicit_markers):
+        return True
+    return bool(
+        re.search(r"\b(?:nhung|cac)\b.{0,70}\b(?:gi|nao)\b", normalized)
+        or re.search(
+            r"\b(?:noi dung|ky nang|dieu kien|yeu cau|trach nhiem|nghia vu|quyen loi|thu tuc|truong hop)\b.{0,45}\b(?:gi|nao)\b",
+            normalized,
         )
-    return retrieval_query
+    )
 
 
 def build_answer_guidance(question: str) -> str:
-    if _asks_for_content_list(question):
+    if asks_for_enumeration(question):
         return (
-            "Đọc toàn bộ các đoạn của mục NỘI DUNG, kể cả đoạn cuối. "
-            "Viết đúng 10 bullet tương ứng 10 nội dung chính theo thứ tự nguồn; "
-            "mỗi bullet tối đa 9 từ, không gộp mất ý. Thứ tự 10 dòng: "
-            "tổng quan Khoa/ngành; CNTT-truyền thông-thư viện-an toàn; "
-            "lịch-đăng ký-thủ tục; chương trình-quy chế; kỹ năng; văn hóa; "
-            "ngoại khóa-Đoàn Hội-học bổng-nghề nghiệp; mục tiêu-kế hoạch; "
-            "giao lưu; giải đáp thắc mắc. Chỉ ghi điều có trong nguồn."
+            "Đây là câu hỏi liệt kê/tổng hợp. Xác định đúng mục và đúng đối tượng được hỏi, "
+            "đọc hết các đoạn liên tiếp của mục rồi nêu mọi ý độc lập có trong nguồn; không "
+            "dừng sau một số bullet tùy ý. Mở đầu bằng một câu trực tiếp và dùng bullet. "
+            "Nếu có từ năm ý trở lên, nhóm thành 3–5 chủ đề để dễ đọc nhưng vẫn giữ đủ chi tiết. "
+            "Không lấy nội dung của mục hoặc đối tượng khác có từ khóa gần giống."
         )
     return "Trả lời trực tiếp, ngắn gọn theo các quy tắc hệ thống."
-
-
-def build_content_retry_guidance() -> str:
-    return (
-        "Phản hồi trước bị thiếu nội dung. Không viết câu dẫn. "
-        "BẮT BUỘC viết đúng 10 dòng bắt đầu bằng '- '. Mỗi dòng tối đa 9 từ. "
-        "Theo đúng thứ tự: (1) tổng quan Khoa, ngành; (2) CNTT, truyền thông, "
-        "thư viện, an toàn mạng; (3) lịch, đăng ký, thủ tục; (4) chương trình, "
-        "quy chế; (5) kỹ năng; (6) văn hóa ứng xử; (7) ngoại khóa, Đoàn-Hội, "
-        "học bổng, nghề nghiệp; (8) mục tiêu, kế hoạch; (9) giao lưu; "
-        "(10) giải đáp thắc mắc. Chỉ giữ chi tiết có trong nguồn."
-    )
 
 
 def infer_document_filename(
@@ -387,12 +367,19 @@ def infer_document_filename(
     return None
 
 
-def _is_content_section(document: Document) -> bool:
-    section_title = _search_normalize(str(document.metadata.get("section_title", "")))
-    if "noi dung" in section_title:
-        return True
-    normalized = _search_normalize(document.page_content[:500])
-    return bool(re.search(r"\b(?:[ivxlcdm]+|\d+(?:\s+\d+)*)\s+noi dung\b", normalized))
+def _is_major_section_start(document: Document) -> bool:
+    """Detect a top-level heading so section expansion stops at its boundary."""
+    normalized = _search_normalize(document.page_content[:240])
+    heading_names = (
+        "muc dich", "yeu cau", "doi tuong", "thoi gian", "dia diem",
+        "noi dung", "kinh phi", "to chuc thuc hien", "phan cong",
+    )
+    return bool(
+        re.match(
+            rf"^(?:[ivxlcdm]+|\d+)\s+(?:{'|'.join(heading_names)})\b",
+            normalized,
+        )
+    )
 
 
 def _retrieval_intent_bonus(question: str, document: Document) -> float:
@@ -424,12 +411,49 @@ def _retrieval_intent_bonus(question: str, document: Document) -> float:
     if identifying_numbers & filename_numbers:
         bonus += 0.12
 
-    if _asks_for_content_list(question):
-        if _is_content_section(document):
-            bonus += 0.30
+    if asks_for_enumeration(question):
         section_title = _search_normalize(str(document.metadata.get("section_title", "")))
-        if any(marker in section_title for marker in ("trach nhiem", "to chuc thuc hien")):
-            bonus -= 0.08
+        section_tokens = {
+            token for token in section_title.split() if len(token) >= 3
+        }
+        focus_stopwords = {
+            "bao", "cac", "cho", "co", "cua", "duoc", "gi", "khi", "la",
+            "nao", "nhung", "phai", "the", "tham", "theo", "trong", "ve",
+            "truong", "dai", "hoc", "sinh", "vien", "hom", "nay", "hay",
+            "biet", "cho", "voi", "mot", "nhieu", "it",
+        }
+        focus_tokens = {
+            token for token in query_tokens if token not in focus_stopwords
+        }
+        heading_overlap = len(section_tokens & focus_tokens)
+        if section_title and section_title in query:
+            bonus += 0.30
+        else:
+            bonus += min(0.24, heading_overlap * 0.12)
+
+        # Generic heading fallback: only reward prefix overlap if at least 2 distinct
+        # non-stopword tokens match, avoiding false boosts from institutional headers.
+        prefix_tokens = set(normalized_document[:220].split())
+        prefix_overlap = len(focus_tokens & prefix_tokens)
+        if prefix_overlap >= 2:
+            bonus += min(0.12, (prefix_overlap - 1) * 0.04)
+
+        duty_intent = any(
+            marker in query
+            for marker in (
+                "trach nhiem", "nghia vu", "can lam", "can thuc hien",
+                "phai lam", "phai thuc hien",
+            )
+        )
+        responsibility_heading = re.search(
+            r"\btrach nhiem cua\b.{0,80}", normalized_document[:220]
+        )
+        if duty_intent and responsibility_heading:
+            heading_actor_tokens = set(responsibility_heading.group(0).split())
+            actor_overlap = len(focus_tokens & heading_actor_tokens)
+            bonus += 0.20
+            if actor_overlap:
+                bonus += 0.15
 
     issue_intent = any(marker in query for marker in ("ban hanh", "ky ngay", "ngay ky"))
     range_intent = not issue_intent and any(
@@ -459,6 +483,20 @@ def _retrieval_intent_bonus(question: str, document: Document) -> float:
             bonus += 0.18
         if "thoi gian" in normalized_document or "thi gian" in normalized_document:
             bonus += 0.08
+
+    finance_intent = any(
+        marker in query
+        for marker in ("kinh phi", "hoc phi", "muc chi", "muc ho tro", "so tien", "chi phi")
+    )
+    if finance_intent:
+        money_matches = re.findall(
+            r"\b\d{1,3}(?:\.\d{3})+\b|\b\d+\s*(?:trieu|nghin|dong)\b",
+            normalized_document,
+        )
+        if money_matches:
+            bonus += min(0.25, len(money_matches) * 0.12)
+        if "kinh phi" in normalized_document[:220] or "hoc phi" in normalized_document[:220]:
+            bonus += 0.15
     return bonus
 
 
@@ -492,38 +530,29 @@ def select_context_results(
     question: str,
     ranked_results: Sequence[tuple[Document, float]],
 ) -> list[tuple[Document, float]]:
-    """Select compact context and expand the winning content page when needed."""
+    """Select compact context or the complete matching section for list questions."""
     if not ranked_results:
         return []
     selected = list(ranked_results[:TOP_K])
-    if not _asks_for_content_list(question):
+    if not asks_for_enumeration(question):
         return selected
 
-    anchor = next((item for item in ranked_results if _is_content_section(item[0])), None)
-    if anchor is None:
-        return selected
-    anchor_document, anchor_score = anchor
+    anchor_document, anchor_score = ranked_results[0]
     filename = str(anchor_document.metadata.get("filename", ""))
-    page = anchor_document.metadata.get("page")
-    if not filename or not isinstance(page, int):
+    if not filename:
         return selected
 
     try:
         records = vector_store._collection.get(
-            where={
-                "$and": [
-                    {"filename": {"$eq": filename}},
-                    {"page": {"$eq": page}},
-                ]
-            },
+            where={"filename": {"$eq": filename}},
             include=["documents", "metadatas"],
         )
     except Exception as exc:
-        logger.warning("Không thể mở rộng chunk cùng trang: {}", exc)
+        logger.warning("Không thể mở rộng các chunk cùng mục: {}", exc)
         return selected
 
     score_by_text = {doc.page_content: score for doc, score in ranked_results}
-    siblings = []
+    file_chunks = []
     for record_id, text, metadata in zip(
         records.get("ids", []),
         records.get("documents", []),
@@ -531,40 +560,65 @@ def select_context_results(
     ):
         if not text or not metadata:
             continue
-        sibling = Document(page_content=text, metadata=dict(metadata))
-        siblings.append(
+        file_chunk = Document(page_content=text, metadata=dict(metadata))
+        file_chunks.append(
             (
                 _chunk_order(record_id, metadata),
-                sibling,
+                file_chunk,
                 score_by_text.get(text, anchor_score),
             )
         )
-    siblings.sort(key=lambda item: item[0])
+    file_chunks.sort(key=lambda item: item[0])
+
+    anchor_order = anchor_document.metadata.get("chunk_index")
+    anchor_index = next((
+        index for index, (order, document, _score) in enumerate(file_chunks)
+        if (isinstance(anchor_order, int) and order == anchor_order)
+        or document.page_content == anchor_document.page_content
+    ), None)
+    if anchor_index is None:
+        return selected
+
+    anchor_section = _search_normalize(
+        str(anchor_document.metadata.get("section_title", ""))
+    )
+    start_index = anchor_index
+    while start_index > 0 and anchor_index - start_index < 4:
+        previous = file_chunks[start_index - 1][1]
+        previous_section = _search_normalize(
+            str(previous.metadata.get("section_title", ""))
+        )
+        if anchor_section and previous_section and previous_section != anchor_section:
+            break
+        if not anchor_section and _is_major_section_start(previous):
+            break
+        start_index -= 1
+
+    section_chunks = []
+    for index in range(start_index, len(file_chunks)):
+        order, document, score = file_chunks[index]
+        section = _search_normalize(str(document.metadata.get("section_title", "")))
+        if index > anchor_index:
+            if anchor_section and section and section != anchor_section:
+                break
+            if _is_major_section_start(document) and (
+                not anchor_section or section != anchor_section
+            ):
+                break
+            if not anchor_section and index > anchor_index + 2:
+                break
+        section_chunks.append((order, document, score))
+        max_section_chunks = int(os.getenv("MAX_SECTION_CHUNKS", "20"))
+        if len(section_chunks) >= max_section_chunks:
+            logger.warning(f"Mục trả lời vượt {max_section_chunks} chunks; giới hạn ngữ cảnh đã được áp dụng")
+            break
 
     expanded: list[tuple[Document, float]] = [
-        (document, score) for _order, document, score in siblings
+        (document, score) for _order, document, score in section_chunks
     ]
     if expanded:
-        # Once a numbered NỘI DUNG section is found, unrelated responsibility
-        # chunks must not leak back into an exhaustive content-list prompt.
-        return expanded[:TOP_K]
-
-    seen = {
-        (doc.metadata.get("filename"), doc.metadata.get("page"), doc.page_content)
-        for doc, _score in expanded
-    }
-    for document, score in ranked_results:
-        key = (
-            document.metadata.get("filename"),
-            document.metadata.get("page"),
-            document.page_content,
-        )
-        if key not in seen:
-            expanded.append((document, score))
-            seen.add(key)
-        if len(expanded) >= TOP_K:
-            break
-    return expanded[:TOP_K]
+        return expanded
+    return selected
 
 
 # ─── Format context từ documents ─────────────────────────────────────────────
@@ -640,13 +694,14 @@ def extract_sources(
 
 def normalize_answer(answer: str, max_words: int = 100) -> str:
     """Dọn output local LLM và chặn câu trả lời dài vượt chuẩn UI."""
-    cleaned = re.sub(r"[ \t]+", " ", answer or "")
-    # A narrowly scoped generation artefact: "chẵn" (including observed OCR
-    # misspellings) is not a denominator. Preserve real units such as đồng/tháng
-    # and leave source/OCR text untouched for auditing.
+    cleaned = re.sub(r"[ \t]+", " ", answer or "").replace("**", "")
+    # Restore the money-spelling suffix, including observed OCR errors,
+    # only after a numeric amount and at a phrase boundary. This must not alter
+    # real units or phrases such as "đồng chăn nuôi". Keep raw OCR unchanged.
     cleaned = re.sub(
-        r"(\d[\d., \t]*[ \t]+đồng)[ \t]*/[ \t]*(?:chẵn|chãn|chăn|chắn)\b",
-        r"\1",
+        r"(\d[\d., \t]*[ \t]+đồng)(?:[ \t]*/[ \t]*|[ \t]+)"
+        r"(?:chẵn|chãn|chăn|chắn|chan)\b(?=[ \t]*(?:$|[.,;:!?\n)]))",
+        r"\1 chẵn",
         cleaned,
         flags=re.IGNORECASE,
     )
@@ -667,74 +722,42 @@ def normalize_answer(answer: str, max_words: int = 100) -> str:
     return shortened[:boundary + 1].strip() if boundary >= max_words // 2 else f"{shortened.rstrip(' ,;:')}…"
 
 
-def count_answer_bullets(answer: str) -> int:
-    return sum(
-        bool(re.match(r"^[-•]\s+", line.strip()))
-        for line in (answer or "").splitlines()
+def extract_final_answer(value: str) -> str:
+    """Keep only the final answer when a coverage pass leaks its audit text."""
+    text = (value or "").strip()
+    tagged = re.search(r"<FINAL>\s*(.*?)\s*</FINAL>", text, flags=re.IGNORECASE | re.DOTALL)
+    if tagged:
+        content = tagged.group(1).strip()
+        if content.lower().rstrip(". ,") not in ("câu trả lời hoàn chỉnh", "final answer", "..."):
+            return content
+    marker = re.search(
+        r"(?:câu trả lời cuối cùng|final answer)\s*:?\s*(.+)$",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
     )
+    if marker:
+        m_content = marker.group(1).strip()
+        if m_content.lower().rstrip(". ,") not in ("câu trả lời hoàn chỉnh", "final answer", "..."):
+            return m_content
+    return text
 
 
-def answer_bullet_lines(answer: str) -> list[str]:
-    return [
-        line.strip()
-        for line in (answer or "").splitlines()
-        if re.match(r"^[-•]\s+", line.strip())
-    ]
-
-
-def content_missing_topics(answer: str) -> list[str]:
-    """Return orientation topics that a generated answer has not covered."""
-    normalized = _search_normalize(answer)
-    topic_checks = (
-        ("tổng quan Khoa/ngành", "tong quan" in normalized),
-        ("CNTT, truyền thông, thư viện, an toàn", any(marker in normalized for marker in ("cntt", "cong nghe", "thu vien"))),
-        ("lịch, đăng ký, thủ tục", "lich" in normalized and any(marker in normalized for marker in ("dang ky", "thu tuc"))),
-        ("chương trình và quy chế", "quy che" in normalized),
-        ("kỹ năng", "ky nang" in normalized),
-        ("văn hóa ứng xử", any(marker in normalized for marker in ("van hoa", "ung xu"))),
-        ("ngoại khóa, Đoàn-Hội, học bổng, nghề nghiệp", any(marker in normalized for marker in ("ngoai khoa", "doan hoi", "hoc bong"))),
-        ("mục tiêu và kế hoạch", any(marker in normalized for marker in ("muc tieu", "ke hoach hoc tap", "ke hoach ren luyen"))),
-        ("giao lưu, chia sẻ", any(marker in normalized for marker in ("giao luu", "chia se kinh nghiem"))),
-        ("giải đáp thắc mắc", any(marker in normalized for marker in ("giai dap", "thac mac", "vuong mac"))),
-    )
-    return [label for label, is_present in topic_checks if not is_present]
-
-
-def content_answer_coverage(answer: str) -> int:
-    """Count the required orientation topics present in a generated answer."""
-    return 10 - len(content_missing_topics(answer))
-
-
-def content_answer_is_complete(answer: str) -> bool:
-    bullets = answer_bullet_lines(answer)
-    return (
-        len(bullets) == 10
-        and content_answer_coverage(answer) == 10
-        and all(len(line.split()) <= 10 for line in bullets)
-    )
-
-
-def compact_content_bullets(answer: str, max_total_words: int = 100) -> str:
-    """Keep ten items within 100 words without cutting every line mechanically."""
-    bullets = [
-        re.sub(r"^[-•]\s+", "", line).strip().split()
-        for line in answer_bullet_lines(answer)[:10]
-    ]
-    if not bullets:
-        return answer
-
-    # Each rendered dash counts as one word in normalize_answer. Trim only the
-    # longest lines when the whole answer exceeds the UI budget; short complete
-    # lines are preserved instead of ending every bullet with an ellipsis.
-    content_budget = max_total_words - len(bullets)
-    while sum(len(words) for words in bullets) > content_budget:
-        longest_index = max(range(len(bullets)), key=lambda index: len(bullets[index]))
-        if len(bullets[longest_index]) <= 4:
-            break
-        bullets[longest_index].pop()
-    return "\n".join(
-        f"- {' '.join(words).rstrip(' ,;:.')}" for words in bullets
-    )
+def deduplicate_answer_lines(value: str) -> str:
+    """Remove repeated list items and any connector left dangling after them."""
+    kept: list[str] = []
+    seen: set[str] = set()
+    for line in (value or "").splitlines():
+        content = re.sub(r"^[-•]\s+", "", line.strip())
+        signature = _search_normalize(content)
+        if len(signature.split()) >= 5 and signature in seen:
+            continue
+        if signature:
+            seen.add(signature)
+        kept.append(line)
+    dangling_connectors = {"ngoai ra", "cu the", "bao gom"}
+    while kept and _search_normalize(kept[-1]) in dangling_connectors:
+        kept.pop()
+    return "\n".join(kept).strip()
 
 
 def remove_embedded_citations(answer: str) -> str:
@@ -795,8 +818,8 @@ class RAGChain:
             model=LLM_MODEL,
             base_url=OLLAMA_BASE_URL,
             temperature=0.1,        # Thấp để câu trả lời ổn định, ít hallucination
-            num_ctx=4096,           # Context window
-            num_predict=420,        # Đủ cho tối đa 100 từ tiếng Việt
+            num_ctx=8192,           # Đủ cho một mục nhiều chunk và lịch sử ngắn
+            num_predict=1000,       # Đủ cho câu trả lời liệt kê tối đa 320 từ
             top_p=0.9,
             repeat_penalty=1.1,
         )
@@ -847,9 +870,12 @@ class RAGChain:
         conversation_history: Optional[Sequence[Mapping[str, str]]] = None,
         document_filename: Optional[str] = None,
         active_filenames: Optional[Sequence[str]] = None,
-    ) -> tuple[str, list[dict], float]:
+    ) -> tuple[str, list[dict], float, Optional[str]]:
         """
-        Async chat: trả về (answer, sources, avg_score).
+        Async chat: trả về (answer, sources, avg_score, refusal_reason).
+
+        refusal_reason là None khi LLM trả lời bình thường, hoặc một chuỗi
+        mô tả lý do từ chối để main.py ghi vào activity log.
         """
         if self._vector_store is None or self._llm is None:
             raise RuntimeError("RAG Chain chưa được khởi tạo. Gọi initialize() trước.")
@@ -861,14 +887,13 @@ class RAGChain:
                 "⚠️ Hệ thống chưa có tài liệu nào. "
                 "Vui lòng liên hệ quản trị viên để nạp tài liệu vào hệ thống."
             )
-            return no_data_msg, [], 0.0
+            return no_data_msg, [], 0.0, "no_data"
 
         # Retrieve documents với score
         retrieval_query = build_retrieval_query(question, conversation_history)
-        retrieval_query = expand_retrieval_query(question, retrieval_query)
         if active_filenames is not None and not active_filenames:
             logger.info("RAG refusal: no active documents are available")
-            return NO_ACTIVE_DOCUMENTS_MESSAGE, [], 0.0
+            return NO_ACTIVE_DOCUMENTS_MESSAGE, [], 0.0, "no_active_docs"
 
         inferred_filename = infer_document_filename(question, active_filenames)
         effective_filename = document_filename or inferred_filename
@@ -896,6 +921,7 @@ class RAGChain:
                 "Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
                 [],
                 0.0,
+                "empty_retrieval",
             )
 
         candidate_scores = [score for _, score in retriever_with_score]
@@ -918,6 +944,7 @@ class RAGChain:
                 "Vui lòng diễn đạt cụ thể hơn hoặc liên hệ trực tiếp với Khoa để được hỗ trợ.",
                 [],
                 best_score,
+                f"low_score={best_evidence_score:.3f}",
             )
 
         context_results = select_context_results(
@@ -939,71 +966,25 @@ class RAGChain:
             question=question,
             answer_guidance=build_answer_guidance(question),
         )
-        is_content_list = _asks_for_content_list(question)
+        is_enumeration = asks_for_enumeration(question)
         response = await self._llm.ainvoke(prompt_messages)
         answer = response.content if hasattr(response, "content") else str(response)
-        draft_word_limit = 180 if is_content_list else 100
+        answer_word_limit = _enumeration_answer_word_limit(question) if is_enumeration else 100
+        draft_word_limit = answer_word_limit + 80 if is_enumeration else answer_word_limit
+        # Repair pass cần không gian rộng hơn để viết đầy đủ trước khi trim
+        repair_word_limit = answer_word_limit + 150 if is_enumeration else answer_word_limit
         answer = remove_embedded_citations(
             normalize_answer(answer, max_words=draft_word_limit)
         )
 
-        if is_content_list and not content_answer_is_complete(answer):
-            logger.info(
-                "RAG content answer had {} bullets; requesting one bounded rewrite",
-                count_answer_bullets(answer),
-            )
-            retry_messages = RAG_PROMPT.format_messages(
-                context=context,
-                conversation_history=format_conversation_history(conversation_history),
+        if is_enumeration:
+            # A second, domain-independent pass compares the draft with the
+            # complete matching section. This avoids adding one hard-coded
+            # checklist for every new wording or document topic.
+            repair_messages = ENUMERATION_REPAIR_PROMPT.format_messages(
                 question=question,
-                answer_guidance=build_content_retry_guidance(),
-            )
-            retry_response = await self._llm.ainvoke(retry_messages)
-            retry_answer = (
-                retry_response.content
-                if hasattr(retry_response, "content")
-                else str(retry_response)
-            )
-            retry_answer = remove_embedded_citations(
-                normalize_answer(retry_answer, max_words=draft_word_limit)
-            )
-            if (
-                content_answer_coverage(retry_answer),
-                count_answer_bullets(retry_answer),
-            ) > (
-                content_answer_coverage(answer),
-                count_answer_bullets(answer),
-            ):
-                answer = retry_answer
-
-        if is_content_list and count_answer_bullets(answer) < 10:
-            existing_bullets = answer_bullet_lines(answer)
-            missing_count = 10 - len(existing_bullets)
-            tail_messages = CONTENT_TAIL_PROMPT.format_messages(
-                context=context,
-                existing_answer="\n".join(existing_bullets),
-                missing_count=missing_count,
-            )
-            tail_response = await self._llm.ainvoke(tail_messages)
-            tail_answer = (
-                tail_response.content
-                if hasattr(tail_response, "content")
-                else str(tail_response)
-            )
-            tail_answer = remove_embedded_citations(
-                normalize_answer(tail_answer, max_words=draft_word_limit)
-            )
-            additions = answer_bullet_lines(tail_answer)
-            if additions:
-                answer = normalize_answer(
-                    "\n".join((existing_bullets + additions)[:10]),
-                    max_words=draft_word_limit,
-                )
-        if is_content_list and not content_answer_is_complete(answer):
-            repair_messages = CONTENT_REPAIR_PROMPT.format_messages(
                 context=context,
                 existing_answer=answer,
-                missing_topics=", ".join(content_missing_topics(answer)),
             )
             repair_response = await self._llm.ainvoke(repair_messages)
             repair_answer = (
@@ -1011,19 +992,13 @@ class RAGChain:
                 if hasattr(repair_response, "content")
                 else str(repair_response)
             )
-            repair_answer = remove_embedded_citations(
-                normalize_answer(repair_answer, max_words=draft_word_limit)
-            )
-            if (
-                content_answer_coverage(repair_answer),
-                count_answer_bullets(repair_answer) == 10,
-            ) > (
-                content_answer_coverage(answer),
-                count_answer_bullets(answer) == 10,
-            ):
-                answer = repair_answer
-        if is_content_list:
-            answer = normalize_answer(compact_content_bullets(answer), max_words=100)
+            repair_answer = extract_final_answer(repair_answer)
+            repair_answer = normalize_answer(repair_answer, max_words=repair_word_limit)
+            if repair_answer:
+                answer = deduplicate_answer_lines(repair_answer)
+            # Repair có thể tái sinh citation → cleanup sau cùng
+            answer = remove_embedded_citations(answer)
+            answer = normalize_answer(answer, max_words=answer_word_limit)
 
         # Trích xuất sources
         sources = extract_sources(docs, answer, scores)
@@ -1034,7 +1009,7 @@ class RAGChain:
             f"avg_score={avg_score:.3f}, "
             f"best_evidence={best_evidence_score:.3f}"
         )
-        return answer, sources, avg_score
+        return answer, sources, avg_score, None
 
     def reload_vector_store(self) -> None:
         """Reload vector store sau khi cập nhật tài liệu."""

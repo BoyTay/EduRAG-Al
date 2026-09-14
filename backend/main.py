@@ -26,7 +26,7 @@ from db import (
     get_db, init_db, save_chat, get_chat_history, get_all_sessions,
     get_all_sessions_with_info, get_recent_chat_history, create_default_admin, verify_admin,
     save_feedback, get_system_stats, create_student, get_student_by_email,
-    verify_student, DocumentMetadata, ChatHistory, get_account_user,
+    verify_student, DocumentMetadata, ChatHistory, ActivityLog, get_account_user,
     update_account_display_name, change_account_password, create_auth_session,
     get_auth_session, revoke_auth_session, create_password_reset_token,
     consume_password_reset_token, get_recent_activities, get_retrievable_document_filenames, log_activity, as_utc_iso,
@@ -525,6 +525,33 @@ def admin_activities(
     } for activity in activities]}
 
 
+@app.get("/admin/rag-refusals", tags=["admin"])
+def get_rag_refusals(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """Danh sách câu hỏi bị RAG từ chối, kèm score để admin điều chỉnh ngưỡng."""
+    records = (
+        db.query(ActivityLog)
+        .filter(ActivityLog.action == "rag_refusal")
+        .order_by(ActivityLog.created_at.desc())
+        .limit(max(1, min(limit, 200)))
+        .all()
+    )
+    return {
+        "refusals": [
+            {
+                "id": r.id,
+                "question": r.entity_name,
+                "actor": r.actor_name,
+                "created_at": as_utc_iso(r.created_at),
+            }
+            for r in records
+        ],
+        "total": len(records),
+    }
+
 @app.post("/chat", response_model=ChatResponse, tags=["chat"])
 async def chat(
     request: ChatRequest,
@@ -575,7 +602,7 @@ async def chat(
 
         # Thực hiện RAG
         citation_labels = build_citation_labels(db)
-        answer, sources, avg_score = await rag_chain_instance.achat(
+        answer, sources, avg_score, refusal_reason = await rag_chain_instance.achat(
             request.question, citation_labels, conversation_history,
             document_filename, active_filenames,
         )
@@ -593,10 +620,17 @@ async def chat(
             user_id=current_user["user_id"],
             user_role=current_user["role"],
         )
-        log_activity(
-            db, "chat_processed", "chat", None,
-            current_user["email"], current_user["role"],
-        )
+        if refusal_reason:
+            log_activity(
+                db, "rag_refusal", "chat",
+                f"{request.question[:100]} [{refusal_reason}]",
+                current_user["email"], current_user["role"],
+            )
+        else:
+            log_activity(
+                db, "chat_processed", "chat", None,
+                current_user["email"], current_user["role"],
+            )
 
         return ChatResponse(
             answer=answer,
