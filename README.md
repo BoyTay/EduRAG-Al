@@ -26,7 +26,7 @@ scripts/             Lệnh tạo lại chỉ mục vector
 
 ## Chạy bằng Docker
 
-Đảm bảo Ollama chạy trên máy host và đã có model `qwen2.5:7b`, sau đó chạy từ thư mục gốc:
+Đảm bảo Ollama chạy trên máy host và đã có model `qwen3.5:9b`, sau đó chạy từ thư mục gốc:
 
 ```powershell
 docker compose up --build -d
@@ -71,6 +71,13 @@ liệt kê nội dung được mở rộng theo tiêu đề mục và gom các c
 câu hỏi chứa ngày tháng/số văn bản có thêm tín hiệu rerank. Có thể điều chỉnh
 `RETRIEVAL_CANDIDATE_K`, `TOP_K` và `MIN_RELEVANCE_SCORE` trong `.env`; cần
 benchmark trước khi thay đổi ngưỡng từ chối.
+
+`LLM_TEMPERATURE=0.3` áp dụng cho lượt sinh câu trả lời để cách diễn đạt tự
+nhiên hơn. `LLM_AUDIT_TEMPERATURE=0.0` chỉ áp dụng cho lượt rà soát câu hỏi
+liệt kê, giúp việc bổ sung ý còn thiếu ổn định và hạn chế phát sinh nội dung.
+Model mặc định là `qwen3.5:9b`; chế độ reasoning được tắt để giảm độ trễ và
+không đưa suy luận nội bộ vào câu trả lời. Chỉ tăng lên `LLM_TEMPERATURE=0.4`
+sau kiểm thử A/B vì mức 0.4 chưa cho thấy lợi ích rõ ràng về độ chính xác.
 
 Torch và PaddlePaddle được cài từ các CPU index riêng; không đổi các lệnh này
 thành một lần resolve chung trên PyPI vì có thể kéo theo wheel CUDA dung lượng lớn.

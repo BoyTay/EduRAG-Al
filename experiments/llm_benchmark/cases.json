@@ -1,0 +1,129 @@
+[
+  {
+    "id": "fact_exam_weight",
+    "category": "factual_number",
+    "question": "Đối với học phần từ 2 tín chỉ trở lên, điểm thi kết thúc học phần chiếm tối thiểu bao nhiêu phần trăm?",
+    "document_filename": "So_tay_sinh_vien.pdf",
+    "expected_pages": [26],
+    "required_groups": [["50%", "50 %"], ["2 tín chỉ", "02 tín chỉ"]]
+  },
+  {
+    "id": "fact_weak_academic_rank",
+    "category": "factual_condition",
+    "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+    "document_filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+    "expected_pages": [6],
+    "required_groups": [["dưới 2,00", "dưới 2.00"], ["chưa", "không"], ["buộc thôi học"]],
+    "forbidden_groups": [["30 tín chỉ", "60 tín chỉ"], ["khối lượng kiến thức tích lũy"]]
+  },
+  {
+    "id": "fact_certificate_validity",
+    "category": "factual_duration",
+    "question": "Chứng chỉ ngoại ngữ có hiệu lực bao lâu để xét chuẩn đầu ra?",
+    "document_filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+    "expected_pages": [2],
+    "required_groups": [["24 tháng"], ["ngày cấp", "được cấp"], ["ngày nộp", "nộp"]]
+  },
+  {
+    "id": "fact_phone_in_class",
+    "category": "factual_rule",
+    "question": "Sinh viên được sử dụng điện thoại di động trong giờ học khi nào?",
+    "document_filename": "So_tay_sinh_vien.pdf",
+    "expected_pages": [14],
+    "required_groups": [["giảng viên"], ["cho phép"]]
+  },
+  {
+    "id": "list_expulsion_conditions",
+    "category": "enumeration",
+    "question": "Quy chế đào tạo theo tín chỉ quy định sinh viên bị buộc thôi học trong những trường hợp nào?",
+    "document_filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+    "expected_pages": [7],
+    "required_groups": [
+      ["0,80", "0.80"],
+      ["1,00", "1.00"],
+      ["1,10", "1.10"],
+      ["1,20", "1.20"],
+      ["1,40", "1.40"],
+      ["1,60", "1.60"],
+      ["1,80", "1.80"],
+      ["thời gian tối đa"],
+      ["thi hộ", "nhờ người thi hộ"]
+    ]
+  },
+  {
+    "id": "list_study_responsibilities",
+    "category": "enumeration",
+    "question": "Người học có những trách nhiệm gì đối với công tác học tập và rèn luyện?",
+    "document_filename": "So_tay_sinh_vien.pdf",
+    "expected_pages": [14],
+    "required_groups": [
+      ["quy định"],
+      ["đúng giờ"],
+      ["điện thoại"],
+      ["tự học"],
+      ["trung thực"],
+      ["truyền thống", "lịch sử phát triển"]
+    ]
+  },
+  {
+    "id": "list_it_exemptions",
+    "category": "enumeration",
+    "question": "Những trường hợp nào được miễn chuẩn đầu ra tin học?",
+    "document_filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+    "expected_pages": [3],
+    "required_groups": [
+      ["trung cấp", "bằng tốt nghiệp"],
+      ["tin học", "công nghệ thông tin"],
+      ["IC3"],
+      ["MOS"],
+      ["Word"],
+      ["Excel"],
+      ["Powerpoint", "PowerPoint"],
+      ["ICDL"]
+    ]
+  },
+  {
+    "id": "list_graduation_conditions",
+    "category": "enumeration",
+    "question": "Sinh viên cần đáp ứng những điều kiện nào để được xét và công nhận tốt nghiệp?",
+    "document_filename": "So_tay_sinh_vien.pdf",
+    "expected_pages": [32],
+    "required_groups": [
+      ["tín chỉ"],
+      ["trung bình"],
+      ["ngoại ngữ"],
+      ["tin học", "công nghệ thông tin"],
+      ["giáo dục thể chất"],
+      ["quốc phòng"],
+      ["trách nhiệm hình sự"],
+      ["đình chỉ học tập"]
+    ]
+  },
+  {
+    "id": "fact_submission_deadline",
+    "category": "factual_process",
+    "question": "Sinh viên phải nộp chứng chỉ ngoại ngữ, tin học chậm nhất khi nào và nộp qua đâu?",
+    "document_filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+    "expected_pages": [4],
+    "required_groups": [["06 tháng", "6 tháng"], ["trước khi tốt nghiệp"], ["bản sao công chứng"], ["khoa"], ["Phòng Quản lý Đào tạo"]],
+    "forbidden_groups": [["sổ hộ chiếu"]]
+  },
+  {
+    "id": "confirmation_wrong_abbreviation",
+    "category": "confirmation_correction",
+    "question": "Tên trường được viết tắt bằng Dalat Uni đúng không?",
+    "document_filename": "So_tay_sinh_vien.pdf",
+    "expected_pages": [],
+    "required_groups": [["không"], ["DLU"]],
+    "forbidden_groups": [["đúng vậy"], ["đúng, tên", "đúng tên"]]
+  },
+  {
+    "id": "negative_wifi_password",
+    "category": "unanswerable",
+    "question": "Mật khẩu Wi-Fi hiện tại của thư viện Trường Đại học Đà Lạt là gì?",
+    "document_filename": null,
+    "expected_pages": [],
+    "required_groups": [],
+    "expect_refusal": true
+  }
+]

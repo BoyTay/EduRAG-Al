@@ -1,0 +1,109 @@
+{
+  "started_at": "2026-09-20T11:40:28.433584+00:00",
+  "temperature": 0.3,
+  "audit_temperature": 0.0,
+  "models": [
+    "qwen3.5:9b"
+  ],
+  "cases": [
+    "fact_weak_academic_rank"
+  ],
+  "repeats": 1,
+  "results": [
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 1,
+      "case_id": "fact_weak_academic_rank",
+      "category": "factual_condition",
+      "status": "ok",
+      "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+      "answer": "Sinh viên xếp hạng học lực yếu khi điểm trung bình chung tích lũy đạt dưới 2,00 nhưng chưa bị buộc thôi học hoặc khối lượng kiến thức tích lũy ở năm thứ nhất từ 30 tín chỉ đến dưới 60 tín chỉ (tùy theo tiêu chí cụ thể).",
+      "elapsed_seconds": 3.928,
+      "warmup_seconds": 7.062,
+      "avg_retrieval_score": 0.3715,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "forbidden_check": {
+        "pass": false,
+        "found": [
+          [
+            "30 tín chỉ",
+            "60 tín chỉ"
+          ],
+          [
+            "khối lượng kiến thức tích lũy"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          10,
+          13
+        ],
+        "primary_pages": [
+          6
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 3,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 2,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 49
+    }
+  ],
+  "finished_at": "2026-09-20T11:40:39.561223+00:00"
+}

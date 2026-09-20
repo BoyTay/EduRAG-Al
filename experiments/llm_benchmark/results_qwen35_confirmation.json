@@ -1,0 +1,178 @@
+{
+  "started_at": "2026-09-20T13:00:28.381711+00:00",
+  "temperature": 0.3,
+  "audit_temperature": 0.0,
+  "models": [
+    "qwen3.5:9b"
+  ],
+  "cases": [
+    "confirmation_wrong_abbreviation"
+  ],
+  "repeats": 2,
+  "results": [
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 1,
+      "case_id": "confirmation_wrong_abbreviation",
+      "category": "confirmation_correction",
+      "status": "ok",
+      "question": "Tên trường được viết tắt bằng Dalat Uni đúng không?",
+      "answer": "Không, tên viết tắt bằng tiếng Anh của trường là DLU chứ không phải Dalat Uni theo thông tin trên tài liệu.",
+      "elapsed_seconds": 3.423,
+      "warmup_seconds": 0.536,
+      "avg_retrieval_score": 0.3489,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "forbidden_check": {
+        "pass": true,
+        "found": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          5,
+          7,
+          8,
+          9,
+          61
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 7,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 8,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 9,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 61,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 5,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 1,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 22
+    },
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 2,
+      "case_id": "confirmation_wrong_abbreviation",
+      "category": "confirmation_correction",
+      "status": "ok",
+      "question": "Tên trường được viết tắt bằng Dalat Uni đúng không?",
+      "answer": "Đúng, tên viết tắt bằng tiếng Anh của Trường Đại học Đà Lạt là DLU chứ không phải Dalat Uni theo thông tin trên tài liệu.",
+      "elapsed_seconds": 1.208,
+      "warmup_seconds": 0.536,
+      "avg_retrieval_score": 0.3489,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "forbidden_check": {
+        "pass": false,
+        "found": [
+          [
+            "đúng, tên",
+            "đúng tên"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          5,
+          7,
+          8,
+          9,
+          61
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 7,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 8,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 9,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 61,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 5,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 1,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 26
+    }
+  ],
+  "finished_at": "2026-09-20T13:00:33.709521+00:00"
+}

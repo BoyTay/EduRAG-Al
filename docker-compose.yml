@@ -24,7 +24,9 @@ services:
       - ocr_result_cache:/app/ocr_cache
     environment:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - LLM_MODEL=qwen2.5:7b
+      - LLM_MODEL=${LLM_MODEL:-qwen3.5:9b}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.3}
+      - LLM_AUDIT_TEMPERATURE=${LLM_AUDIT_TEMPERATURE:-0.0}
       - EMBEDDING_MODEL=AITeamVN/Vietnamese_Embedding
       - CHROMA_PATH=/app/chroma_db
       - DATA_PATH=/app/data

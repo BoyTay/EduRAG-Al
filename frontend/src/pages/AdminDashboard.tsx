@@ -12,7 +12,7 @@ import { DeleteConfirmModal } from "../components/admin/DeleteConfirmModal";
 import { DocumentModal } from "../components/admin/DocumentModal";
 import { DocumentTable } from "../components/admin/DocumentTable";
 import { RecentActivities } from "../components/admin/RecentActivities";
-import { RagRefusalPanel } from "../components/admin/RagRefusalPanel";
+// import { RagRefusalPanel } from "../components/admin/RagRefusalPanel";
 import {
   deleteDocument,
   getActivities,
@@ -237,8 +237,8 @@ export function AdminDashboard() {
           <CategoryChart documents={docs} />
         </div>
 
-        {/* RAG Refusal Log */}
-        <RagRefusalPanel />
+        {/* RAG Refusal Log — tạm ẩn, bỏ comment để bật lại */}
+        {/* <RagRefusalPanel /> */}
       </div>
 
       {/* Document Upload / Edit Modal */}

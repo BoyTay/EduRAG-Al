@@ -1,0 +1,1214 @@
+{
+  "started_at": "2026-09-20T11:14:13.710399+00:00",
+  "temperature": 0.3,
+  "audit_temperature": 0.0,
+  "models": [
+    "qwen2.5:7b",
+    "qwen3.5:9b",
+    "gemma4:12b"
+  ],
+  "cases": [
+    "fact_exam_weight",
+    "fact_certificate_validity",
+    "list_expulsion_conditions",
+    "list_study_responsibilities",
+    "list_it_exemptions",
+    "negative_wifi_password"
+  ],
+  "results": [
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "fact_exam_weight",
+      "category": "factual_number",
+      "status": "ok",
+      "question": "Đối với học phần từ 2 tín chỉ trở lên, điểm thi kết thúc học phần chiếm tối thiểu bao nhiêu phần trăm?",
+      "answer": "- Điểm thi kết thúc học phần đối với các học phần từ 2 tín chỉ trở lên chiếm không nhỏ hơn 50% điểm học phần.",
+      "elapsed_seconds": 2.585,
+      "warmup_seconds": 4.937,
+      "avg_retrieval_score": 0.399,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          17,
+          19,
+          26,
+          27,
+          28,
+          29,
+          30,
+          32
+        ],
+        "primary_pages": [
+          26
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 26,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 28,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 17,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 27,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 26
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "fact_certificate_validity",
+      "category": "factual_duration",
+      "status": "ok",
+      "question": "Chứng chỉ ngoại ngữ có hiệu lực bao lâu để xét chuẩn đầu ra?",
+      "answer": "- Chứng chỉ ngoại ngữ quốc tế và chứng chỉ theo khung tham chiếu chuẩn châu Âu có hiệu lực trong vòng 24 tháng tính từ ngày chứng nhận, chứng chỉ được cấp đến ngày nộp về Trường.\n- Các chứng chỉ tin học thuộc đối tượng miễn chuẩn đầu ra không bị giới hạn thời hạn hiệu lực.",
+      "elapsed_seconds": 2.338,
+      "warmup_seconds": 4.937,
+      "avg_retrieval_score": 0.3495,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          2
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 59
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "list_expulsion_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Quy chế đào tạo theo tín chỉ quy định sinh viên bị buộc thôi học trong những trường hợp nào?",
+      "answer": "Sinh viên bị buộc thôi học theo Quy chế đào tạo theo tín chỉ quy định trong các trường hợp sau:\n- Có điểm trung bình chung học kỳ đạt dưới 0,80 đối với học kỳ đầu của khóa học; đạt dưới 1,00 đối với các học kỳ tiếp theo hoặc đạt dưới 1,10 đối với 2 học kỳ liên tiếp;\n- Có điểm trung bình chung tích lũy đạt dưới 1,20 đối với sinh viên năm thứ nhất; dưới 1,40 đối với sinh viên năm thứ hai; dưới 1,60 đối với sinh viên năm thứ ba hoặc dưới 1,80 đối với sinh viên các năm tiếp theo và cuối khóa;\n- Vượt quá thời gian tối đa được phép học tại trường quy định tại khoản 3 Điều 6 của Quy chế này.",
+      "elapsed_seconds": 11.541,
+      "warmup_seconds": 4.937,
+      "avg_retrieval_score": 0.3425,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 8,
+        "total": 9,
+        "ratio": 0.8889,
+        "missing": [
+          [
+            "thi hộ",
+            "nhờ người thi hộ"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 8,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 9,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 134
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "list_study_responsibilities",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Người học có những trách nhiệm gì đối với công tác học tập và rèn luyện?",
+      "answer": "Sinh viên có những trách nhiệm sau:\n- a) Tìm hiểu và đăng ký học phần: Sinh viên phải tìm hiểu kỹ thông tin về kế hoạch giảng dạy, số tín chỉ bắt buộc và tự chọn trước khi tiến hành đăng ký và điều chỉnh. Sinh viên không được nhờ người khác đăng ký hoặc điều chỉnh hộ và phải bảo mật thông tin tài khoản cá nhân.\n- b) Lưu trữ minh chứng: Sau khi hoàn tất việc đăng ký và điều chỉnh học phần, sinh viên phải lưu trữ minh chứng kết quả để đối chiếu khi cần thiết.\n- c) Thực hiện quy trình đăng ký: Khoa và giảng viên chủ nhiệm hướng dẫn sinh viên nếu có thắc mắc trong quá trình thực hiện quy trình đăng ký, điều chỉnh học phần.\n- d) Tổ chức lớp học: Lớp học của sinh viên được tổ chức theo hai hình thức: lớp sinh viên và lớp học phần.\n- e) Điều chỉnh lớp học: Sinh viên có thể chuyển sinh hoạt lớp với lớp sinh viên cùng ngành, chuyên ngành hoặc chương trình đào tạo ở khóa sau; nghỉ học tạm thời khi trở lại học tập; chuyển ngành, chuyên ngành hoặc chương trình đào tạo để điều chỉnh lớp sinh viên tương ứng; và học cùng lúc hai chương trình thuộc lớp sinh viên của chương trình chính.",
+      "elapsed_seconds": 9.647,
+      "warmup_seconds": 4.937,
+      "avg_retrieval_score": 0.3334,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 0,
+        "total": 6,
+        "ratio": 0.0,
+        "missing": [
+          [
+            "quy định"
+          ],
+          [
+            "đúng giờ"
+          ],
+          [
+            "điện thoại"
+          ],
+          [
+            "tự học"
+          ],
+          [
+            "trung thực"
+          ],
+          [
+            "truyền thống",
+            "lịch sử phát triển"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          22,
+          23
+        ],
+        "primary_pages": [
+          22
+        ],
+        "expected_page_cited": false,
+        "expected_page_primary": false
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 22,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 23,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 233
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "list_it_exemptions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Những trường hợp nào được miễn chuẩn đầu ra tin học?",
+      "answer": "Sinh viên có thể miễn chuẩn đầu ra tin học trong một số trường hợp như sau:\n- Sinh viên có bằng tốt nghiệp từ trung cấp chuyên nghiệp trở lên các ngành liên quan đến tin học và công nghệ thông tin hoặc có các chứng chỉ tin học quốc tế được các Trung tâm có thẩm quyền cấp bao gồm: IC3 (Internet and Computing Core Certification), MOS (Microsoft Office Specialist, thi đầy đủ 3 kỹ năng: Word, Excel và Powerpoint), ICDL (International Computer Driving Licence – phần cơ bản).\n- Các chương trình đào tạo, trường hợp đặc thù khác Trường Đại học Đà Lạt có thể quy định chuẩn đầu ra tin học riêng nhưng không được thấp hơn quy định trên.",
+      "elapsed_seconds": 7.786,
+      "warmup_seconds": 4.937,
+      "avg_retrieval_score": 0.2765,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 8,
+        "total": 8,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          3,
+          4
+        ],
+        "primary_pages": [
+          3
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 125
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "negative_wifi_password",
+      "category": "unanswerable",
+      "status": "ok",
+      "question": "Mật khẩu Wi-Fi hiện tại của thư viện Trường Đại học Đà Lạt là gì?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "elapsed_seconds": 1.846,
+      "warmup_seconds": 4.937,
+      "avg_retrieval_score": 0.3301,
+      "refusal_reason": null,
+      "refusal_pass": false,
+      "coverage": {
+        "matched": 0,
+        "total": 0,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          4,
+          7,
+          9,
+          19
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 7,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 9,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 4,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 27
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "fact_exam_weight",
+      "category": "factual_number",
+      "status": "ok",
+      "question": "Đối với học phần từ 2 tín chỉ trở lên, điểm thi kết thúc học phần chiếm tối thiểu bao nhiêu phần trăm?",
+      "answer": "Đối với học phần từ 02 tín chỉ trở lên, điểm thi kết thúc học kỳ là bắt buộc và chiếm trọng số không nhỏ hơn 50% tổng điểm của học phần đó.",
+      "elapsed_seconds": 4.044,
+      "warmup_seconds": 40.028,
+      "avg_retrieval_score": 0.399,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          17,
+          19,
+          26,
+          27,
+          28,
+          29,
+          30,
+          32
+        ],
+        "primary_pages": [
+          26
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 26,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 28,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 17,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 27,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 33
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "fact_certificate_validity",
+      "category": "factual_duration",
+      "status": "ok",
+      "question": "Chứng chỉ ngoại ngữ có hiệu lực bao lâu để xét chuẩn đầu ra?",
+      "answer": "Chứng chỉ ngoại ngữ có hiệu lực để xét công nhận đạt chuẩn đầu ra trong vòng 24 tháng tính từ ngày chứng chỉ, chứng nhận được cấp đến ngày nộp về Trường. Các chứng chỉ tin học cơ bản và các chứng chỉ tin học quốc tế thuộc đối tượng miễn chuẩn không bị giới hạn về thời hạn hiệu lực.",
+      "elapsed_seconds": 8.241,
+      "warmup_seconds": 40.028,
+      "avg_retrieval_score": 0.3495,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          2
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 62
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "list_expulsion_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Quy chế đào tạo theo tín chỉ quy định sinh viên bị buộc thôi học trong những trường hợp nào?",
+      "answer": "Sinh viên bị buộc thôi học nếu rơi vào một trong các trường hợp sau: điểm trung bình chung học kỳ đạt dưới 0,80 đối với học kỳ đầu của khóa học; đạt dưới 1,00 đối với các học kỳ tiếp theo hoặc đạt dưới 1,10 đối với 2 học kỳ liên tiếp.\n* Có điểm trung bình chung tích lũy thấp hơn mức quy định cho từng năm đào tạo cụ thể: dưới 1,20 đối với sinh viên năm thứ nhất; dưới 1,40 đối với sinh viên năm thứ hai; dưới 1,60 đối với sinh viên năm thứ ba hoặc dưới 1,80 đối với sinh viên các năm tiếp theo và cuối khoá.\n* Vượt quá thời gian tối đa được phép học tại trường quy định trong Quy chế này.\n* Bị kỷ luật lần thứ hai vì lý do đi thi hộ hoặc nhờ người thi hộ theo quy định của Điều 29, hoặc bị kỷ luật ở mức xoá tên khỏi danh sách sinh viên của trường.",
+      "elapsed_seconds": 26.511,
+      "warmup_seconds": 40.028,
+      "avg_retrieval_score": 0.3425,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 9,
+        "total": 9,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 8,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 9,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 171
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "list_study_responsibilities",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Người học có những trách nhiệm gì đối với công tác học tập và rèn luyện?",
+      "answer": "Người học phải thực hiện các trách nhiệm sau:\n* Tìm hiểu kỹ thông tin về kế hoạch giảng dạy, số tín chỉ bắt buộc và tự chọn trước khi tiến hành đăng ký hay điều chỉnh học phần.\n* Tự mình thực hiện việc đăng ký hoặc điều chỉnh học phần mà không nhờ người khác làm hộ, đồng thời không được giúp đỡ người khác trong công tác này cũng như phải bảo mật thông tin tài khoản cá nhân của bản thân.\n* Lưu trữ minh chứng kết quả đăng ký để đối chiếu khi cần thiết sau này.\n* Tuân thủ quy định về việc duy trì hoạt động trong toàn khóa học hoặc chuyển sang lớp phù hợp (lớp sinh viên) khi hết thời gian theo kế hoạch đào tạo, cũng như khi có sự thay đổi ngành/chuyên nghiệp hay chương trình đào tạo khác.",
+      "elapsed_seconds": 25.544,
+      "warmup_seconds": 40.028,
+      "avg_retrieval_score": 0.3334,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 1,
+        "total": 6,
+        "ratio": 0.1667,
+        "missing": [
+          [
+            "đúng giờ"
+          ],
+          [
+            "điện thoại"
+          ],
+          [
+            "tự học"
+          ],
+          [
+            "trung thực"
+          ],
+          [
+            "truyền thống",
+            "lịch sử phát triển"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          22,
+          23
+        ],
+        "primary_pages": [
+          22
+        ],
+        "expected_page_cited": false,
+        "expected_page_primary": false
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 22,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 23,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 150
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "list_it_exemptions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Những trường hợp nào được miễn chuẩn đầu ra tin học?",
+      "answer": "Sinh viên thuộc các trường hợp sau đây được miễn chuẩn đầu ra tin học:\n* Sinh viên tốt nghiệp từ trung cấp chuyên nghiệp trở lên trong các ngành liên quan đến tin học và công nghệ thông tin.\n* Sinh viên sở hữu các chứng chỉ tin học quốc tế do Trung tâm có thẩm quyền cấp, bao gồm IC3 (Internet and Computing Core Certification), MOS (Microsoft Office Specialist thi đầy đủ 3 kỹ năng Word, Excel và PowerPoint) hoặc ICDL (International Computer Driving Licence – phần cơ bản).",
+      "elapsed_seconds": 20.789,
+      "warmup_seconds": 40.028,
+      "avg_retrieval_score": 0.2765,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 8,
+        "total": 8,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          3,
+          4
+        ],
+        "primary_pages": [
+          3
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 91
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "negative_wifi_password",
+      "category": "unanswerable",
+      "status": "ok",
+      "question": "Mật khẩu Wi-Fi hiện tại của thư viện Trường Đại học Đà Lạt là gì?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "elapsed_seconds": 5.302,
+      "warmup_seconds": 40.028,
+      "avg_retrieval_score": 0.3301,
+      "refusal_reason": null,
+      "refusal_pass": false,
+      "coverage": {
+        "matched": 0,
+        "total": 0,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          4,
+          7,
+          9,
+          19
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 7,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 9,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 4,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 27
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "fact_exam_weight",
+      "category": "factual_number",
+      "status": "ok",
+      "question": "Đối với học phần từ 2 tín chỉ trở lên, điểm thi kết thúc học phần chiếm tối thiểu bao nhiêu phần trăm?",
+      "answer": "Đối với các học phần từ 02 tín chỉ trở lên, điểm thi kết thúc học kỳ là bắt buộc cho mọi trường hợp và có trọng số không nhỏ hơn 50% điểm học phần.",
+      "elapsed_seconds": 14.082,
+      "warmup_seconds": 37.368,
+      "avg_retrieval_score": 0.399,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          17,
+          19,
+          26,
+          27,
+          28,
+          29,
+          30,
+          32
+        ],
+        "primary_pages": [
+          26
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 26,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 28,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 17,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 27,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 35
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "fact_certificate_validity",
+      "category": "factual_duration",
+      "status": "ok",
+      "question": "Chứng chỉ ngoại ngữ có hiệu lực bao lâu để xét chuẩn đầu ra?",
+      "answer": "Giấy chứng nhận và chứng chỉ ngoại ngữ có hiệu lực để xét công nhận đạt chuẩn đầu ra là trong vòng 24 tháng tính từ ngày chứng nhận.",
+      "elapsed_seconds": 11.276,
+      "warmup_seconds": 37.368,
+      "avg_retrieval_score": 0.3495,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 1,
+        "total": 3,
+        "ratio": 0.3333,
+        "missing": [
+          [
+            "ngày cấp",
+            "được cấp"
+          ],
+          [
+            "ngày nộp",
+            "nộp"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          2
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 29
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "list_expulsion_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Quy chế đào tạo theo tín chỉ quy định sinh viên bị buộc thôi học trong những trường hợp nào?",
+      "answer": "Sinh viên bị buộc thôi học sau mỗi học kỳ nếu rơi vào một trong các trường hợp sau:\n* Kết quả học tập không đạt yêu cầu: Có điểm trung bình chung học kỳ dưới 0,80 đối với học kỳ đầu của khóa học; dưới 1,00 đối với các học kỳ tiếp theo hoặc dưới 1,10 đối với 2 học kỳ liên tiếp.\n* Điểm trung bình chung tích lũy không đạt chuẩn: Dưới 1,20 đối với sinh viên năm thứ nhất; dưới 1,40 đối với sinh viên năm thứ hai; dưới 1,60 đối với sinh viên năm thứ ba hoặc dưới 1,80 đối với sinh viên các năm tiếp theo và cuối khóa.\n* Vấn đề về thời gian: Vượt quá thời gian tối đa được phép học tại trường quy định tại khoản 3 Điều 6 của Quy chế này.\n* Vi phạm kỷ luật: Bị kỷ luật lần thứ hai vì lý do đi thi hộ hoặc nhờ người thi hộ theo quy định tại khoản 2 Điều 29 của Quy chế này hoặc bị kỷ luật ở mức xoá tên khỏi danh sách sinh viên của trường.",
+      "elapsed_seconds": 49.544,
+      "warmup_seconds": 37.368,
+      "avg_retrieval_score": 0.3425,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 9,
+        "total": 9,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 8,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 9,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 192
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "list_study_responsibilities",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Người học có những trách nhiệm gì đối với công tác học tập và rèn luyện?",
+      "answer": "Sinh viên có các trách nhiệm sau đối với công tác học tập và rèn luyện:\n* Công tác đăng ký và điều chỉnh học phần: Sinh viên phải tìm hiểu kỹ thông tin về kế hoạch giảng dạy của học kỳ, số tín chỉ bắt buộc và tự chọn trước khi tiến hành đăng ký và điều chỉnh.\n* Quy trình thực hiện và bảo mật: Sinh viên phải tự mình đăng ký, điều chỉnh học phần (không nhờ người khác đăng ký hoặc điều chỉnh hộ) và phải bảo mật thông tin tài khoản cá nhân.\n* Lưu trữ hồ sơ: Sau khi hoàn tất việc đăng ký và điều chỉnh học phần, sinh viên phải lưu trữ minh chứng kết quả đăng ký để đối chiếu khi cần thiết.",
+      "elapsed_seconds": 26.709,
+      "warmup_seconds": 37.368,
+      "avg_retrieval_score": 0.3334,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 0,
+        "total": 6,
+        "ratio": 0.0,
+        "missing": [
+          [
+            "quy định"
+          ],
+          [
+            "đúng giờ"
+          ],
+          [
+            "điện thoại"
+          ],
+          [
+            "tự học"
+          ],
+          [
+            "trung thực"
+          ],
+          [
+            "truyền thống",
+            "lịch sử phát triển"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          22,
+          23
+        ],
+        "primary_pages": [
+          22
+        ],
+        "expected_page_cited": false,
+        "expected_page_primary": false
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 22,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 23,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 132
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "list_it_exemptions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Những trường hợp nào được miễn chuẩn đầu ra tin học?",
+      "answer": "Các trường hợp được miễn chuẩn đầu ra tin học bao gồm:\n* Sinh viên có bằng tốt nghiệp từ trung cấp chuyên nghiệp trở lên các ngành liên quan đến tin học và công nghệ thông tin.\n* Sinh viên có các chứng chỉ tin học quốc tế được các Trung tâm có thẩm quyền cấp, bao gồm: IC3 (Internet and Computing Core Certification), MOS (Microsoft Office Specialist, thi đầy đủ 3 kỹ năng: Word, Excel và Powerpoint), hoặc ICDL (International Computer Driving Licence – phần cơ bản).\n* Các chương trình đào tạo hoặc các trường hợp đặc thù khác do Trường quy định riêng nhưng không được thấp hơn quy định chung.",
+      "elapsed_seconds": 26.421,
+      "warmup_seconds": 37.368,
+      "avg_retrieval_score": 0.2765,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 8,
+        "total": 8,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          3,
+          4
+        ],
+        "primary_pages": [
+          3
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 115
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "negative_wifi_password",
+      "category": "unanswerable",
+      "status": "ok",
+      "question": "Mật khẩu Wi-Fi hiện tại của thư viện Trường Đại học Đà Lạt là gì?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "elapsed_seconds": 7.429,
+      "warmup_seconds": 37.368,
+      "avg_retrieval_score": 0.3301,
+      "refusal_reason": null,
+      "refusal_pass": false,
+      "coverage": {
+        "matched": 0,
+        "total": 0,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          4,
+          7,
+          9,
+          19
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 7,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 9,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 4,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 27
+    }
+  ],
+  "finished_at": "2026-09-20T11:19:58.122991+00:00"
+}

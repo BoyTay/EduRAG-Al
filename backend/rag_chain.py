@@ -1,6 +1,6 @@
 """
 rag_chain.py - Pipeline RAG chính
-Kết hợp Chroma retriever + Qwen2.5-7B (Ollama) + LangChain để trả lời câu hỏi
+Kết hợp Chroma retriever + Qwen3.5-9B (Ollama) + LangChain để trả lời câu hỏi
 dựa trên tài liệu được cung cấp.
 """
 
@@ -23,7 +23,22 @@ from loguru import logger
 # ─── Cấu hình ─────────────────────────────────────────────────────────────────
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:7b")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen3.5:9b")
+
+
+def _read_temperature(env_name: str, default: float) -> float:
+    """Read a bounded Ollama temperature without breaking startup."""
+    raw_value = os.getenv(env_name, str(default))
+    try:
+        return min(1.0, max(0.0, float(raw_value)))
+    except ValueError:
+        logger.warning("{}='{}' không hợp lệ; dùng {}", env_name, raw_value, default)
+        return default
+
+
+# Lượt trả lời được phép diễn đạt tự nhiên; lượt rà soát vẫn deterministic.
+LLM_TEMPERATURE = _read_temperature("LLM_TEMPERATURE", 0.3)
+LLM_AUDIT_TEMPERATURE = _read_temperature("LLM_AUDIT_TEMPERATURE", 0.0)
 # Model embedding tiếng Việt tốt nhất hiện tại:
 # - "AITeamVN/Vietnamese_Embedding" (~560MB, fine-tuned 300k VI triplets)
 # - "BAAI/bge-m3" (~2.3GB, multilingual, hỗ trợ VI xuất sắc)
@@ -172,7 +187,9 @@ Quy tắc bắt buộc:
 11. Với câu hỏi liệt kê hoặc tổng hợp, phải đọc hết mục trực tiếp trả lời câu hỏi và giữ mọi ý độc lập trong mục đó. Không dừng ở một số lượng bullet tùy ý. Khi nguồn có từ năm ý trở lên, có thể nhóm thành 3–5 chủ đề để dễ đọc nhưng từng chi tiết độc lập vẫn phải xuất hiện. Không trộn nội dung của mục hoặc đối tượng khác chỉ vì có từ khóa gần giống.
 12. Chỉ thêm câu kết về nghĩa vụ, tính bắt buộc hoặc yêu cầu tham gia khi chính phần nguồn dùng để trả lời nêu rõ điều đó. Không biến lời khuyên thành quy định.
 13. Với số tiền, giữ nguyên giá trị số và đối tượng/điều kiện áp dụng trong nguồn. Phần trong ngoặc viết số tiền bằng chữ chỉ diễn giải cùng một số tiền; "đồng chẵn" không phải đơn vị tính hoặc mẫu số. Có thể bỏ phần viết bằng chữ khi đã nêu số tiền bằng số. Nếu OCR làm sai dấu ở phần viết bằng chữ, không sao chép lỗi đó thành đơn vị như "đồng/chãn", "đồng/chăn" hay "đồng/chẵn". Không tự thêm đơn vị theo người, tháng hoặc năm nếu nguồn không nêu; nếu số tiền bằng số và bằng chữ mâu thuẫn hoặc không đọc rõ thì nói rõ chưa xác định được, không tự sửa con số.
-14. TUYỆT ĐỐI không thêm câu kết mang tính tổng hợp, nhắc nhở, hoặc kêu gọi tuân thủ nếu phần nguồn dùng để trả lời không nêu rõ điều đó. Ví dụ: không được tự thêm 'Sinh viên cần tuân thủ đầy đủ các quy định trên' hay 'Đây là điều bắt buộc với mọi sinh viên.'"""
+14. TUYỆT ĐỐI không thêm câu kết mang tính tổng hợp, nhắc nhở, hoặc kêu gọi tuân thủ nếu phần nguồn dùng để trả lời không nêu rõ điều đó. Ví dụ: không được tự thêm 'Sinh viên cần tuân thủ đầy đủ các quy định trên' hay 'Đây là điều bắt buộc với mọi sinh viên.'
+15. Chỉ trả lời đúng thuộc tính, đối tượng và điều kiện được hỏi. Không ghép ngưỡng, phân loại hoặc điều kiện của đoạn lân cận vào câu trả lời. Nếu nhiều đoạn cùng trang nói về các tiêu chí khác nhau, chỉ dùng đoạn trực tiếp định nghĩa nội dung được hỏi.
+16. Với câu hỏi xác nhận như "đúng không", "phải không" hoặc "có phải", phải đánh giá mệnh đề trước khi trả lời. Nếu mệnh đề sai, mở đầu bằng "Không," và nêu thông tin đúng. Nếu mệnh đề đúng, mở đầu bằng "Đúng,". Không được mở đầu đồng tình rồi phủ định chính mệnh đề đó trong cùng câu trả lời."""
 
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 {context}
@@ -209,6 +226,23 @@ ENUMERATION_REPAIR_PROMPT = ChatPromptTemplate.from_messages([
         "Bên trong thẻ <FINAL>, mở đầu bằng một câu trực tiếp rồi dùng bullet. "
         "Nếu có từ năm ý trở lên, được nhóm thành 3–5 chủ đề nhưng không được làm mất chi tiết. "
         "Không lấy nhiệm vụ, quyền hoặc nội dung của đối tượng khác để điền vào câu trả lời.",
+    ),
+])
+
+CONFIRMATION_REPAIR_PROMPT = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "Bạn là bộ kiểm tra nhất quán cho câu trả lời RAG dạng đúng/sai. Chỉ dùng nguồn "
+        "được cung cấp, không nhắc tên tệp hoặc trang và không thêm kiến thức ngoài nguồn.",
+    ),
+    (
+        "human",
+        "[Mệnh đề cần xác nhận]\n{question}\n\n[Nguồn]\n{context}\n\n"
+        "[Câu trả lời ban đầu]\n{existing_answer}\n\n"
+        "Hãy tự đối chiếu mệnh đề với nguồn. Nếu mệnh đề sai, câu trả lời phải bắt đầu "
+        "bằng 'Không,' rồi nêu thông tin đúng. Nếu mệnh đề đúng, câu trả lời phải bắt đầu "
+        "bằng 'Đúng,'. Không được vừa đồng ý vừa phủ định cùng một mệnh đề. Chỉ trả về "
+        "câu trả lời đã sửa bên trong cặp thẻ <FINAL> và </FINAL>.",
     ),
 ])
 
@@ -302,6 +336,15 @@ def asks_for_enumeration(question: str) -> bool:
     )
 
 
+def asks_for_confirmation(question: str) -> bool:
+    """Detect Vietnamese yes/no assertions that require an explicit verdict."""
+    normalized = _search_normalize(question)
+    return bool(
+        re.search(r"\b(?:dung|phai)\s+khong\b", normalized)
+        or re.search(r"\bco\s+phai\b", normalized)
+    )
+
+
 def build_answer_guidance(question: str) -> str:
     if asks_for_enumeration(question):
         return (
@@ -310,6 +353,13 @@ def build_answer_guidance(question: str) -> str:
             "dừng sau một số bullet tùy ý. Mở đầu bằng một câu trực tiếp và dùng bullet. "
             "Nếu có từ năm ý trở lên, nhóm thành 3–5 chủ đề để dễ đọc nhưng vẫn giữ đủ chi tiết. "
             "Không lấy nội dung của mục hoặc đối tượng khác có từ khóa gần giống."
+        )
+    if asks_for_confirmation(question):
+        return (
+            "Đây là câu hỏi xác nhận một mệnh đề. Đối chiếu toàn bộ mệnh đề với nguồn trước "
+            "khi trả lời. Nếu sai, bắt đầu đúng bằng 'Không,' rồi sửa lại thông tin; nếu đúng, "
+            "bắt đầu đúng bằng 'Đúng,'. Không đồng tình xã giao và không đưa ra hai kết luận "
+            "mâu thuẫn trong cùng câu trả lời."
         )
     return "Trả lời trực tiếp, ngắn gọn theo các quy tắc hệ thống."
 
@@ -793,7 +843,7 @@ class RAGChain:
     1. Embed câu hỏi
     2. Retrieve top-K chunks từ Chroma
     3. Format context
-    4. Gọi Qwen2.5-7B qua Ollama
+    4. Gọi Qwen3.5-9B qua Ollama
     5. Parse output
     """
 
@@ -801,6 +851,7 @@ class RAGChain:
         self._embedding_model: Optional[HuggingFaceEmbeddings] = None
         self._vector_store: Optional[Chroma] = None
         self._llm: Optional[ChatOllama] = None
+        self._audit_llm: Optional[ChatOllama] = None
         self._chain = None
 
     def initialize(self) -> None:
@@ -813,18 +864,37 @@ class RAGChain:
         # 2. Vector store
         self._vector_store = get_vector_store(self._embedding_model)
 
-        # 3. LLM (Qwen2.5-7B qua Ollama)
+        # 3. LLM (Qwen3.5-9B qua Ollama)
         self._llm = ChatOllama(
             model=LLM_MODEL,
             base_url=OLLAMA_BASE_URL,
-            temperature=0.1,        # Thấp để câu trả lời ổn định, ít hallucination
+            reasoning=False,
+            temperature=LLM_TEMPERATURE,
             num_ctx=8192,           # Đủ cho một mục nhiều chunk và lịch sử ngắn
             num_predict=1000,       # Đủ cho câu trả lời liệt kê tối đa 320 từ
             top_p=0.9,
             repeat_penalty=1.1,
         )
 
-        logger.info("RAG Chain initialized successfully")
+        # Lượt kiểm tra danh sách cần ổn định để không thêm/bớt ý ngẫu nhiên.
+        self._audit_llm = ChatOllama(
+            model=LLM_MODEL,
+            base_url=OLLAMA_BASE_URL,
+            reasoning=False,
+            temperature=LLM_AUDIT_TEMPERATURE,
+            num_ctx=8192,
+            num_predict=1000,
+            top_p=0.9,
+            repeat_penalty=1.1,
+        )
+
+        logger.info(
+            "RAG Chain initialized: model={}, answer_temperature={}, "
+            "audit_temperature={}",
+            LLM_MODEL,
+            LLM_TEMPERATURE,
+            LLM_AUDIT_TEMPERATURE,
+        )
 
     def _build_chain(self):
         """Xây dựng LangChain chain với retriever."""
@@ -967,6 +1037,7 @@ class RAGChain:
             answer_guidance=build_answer_guidance(question),
         )
         is_enumeration = asks_for_enumeration(question)
+        is_confirmation = asks_for_confirmation(question)
         response = await self._llm.ainvoke(prompt_messages)
         answer = response.content if hasattr(response, "content") else str(response)
         answer_word_limit = _enumeration_answer_word_limit(question) if is_enumeration else 100
@@ -977,6 +1048,29 @@ class RAGChain:
             normalize_answer(answer, max_words=draft_word_limit)
         )
 
+        if is_confirmation:
+            # Natural-temperature generation can agree socially before
+            # contradicting the user's proposition. Re-evaluate the verdict
+            # deterministically against the same retrieved evidence.
+            repair_messages = CONFIRMATION_REPAIR_PROMPT.format_messages(
+                question=question,
+                context=context,
+                existing_answer=answer,
+            )
+            reviewer = self._audit_llm or self._llm
+            repair_response = await reviewer.ainvoke(repair_messages)
+            repair_answer = (
+                repair_response.content
+                if hasattr(repair_response, "content")
+                else str(repair_response)
+            )
+            repair_answer = normalize_answer(
+                extract_final_answer(repair_answer),
+                max_words=answer_word_limit,
+            )
+            if repair_answer:
+                answer = remove_embedded_citations(repair_answer)
+
         if is_enumeration:
             # A second, domain-independent pass compares the draft with the
             # complete matching section. This avoids adding one hard-coded
@@ -986,7 +1080,8 @@ class RAGChain:
                 context=context,
                 existing_answer=answer,
             )
-            repair_response = await self._llm.ainvoke(repair_messages)
+            reviewer = self._audit_llm or self._llm
+            repair_response = await reviewer.ainvoke(repair_messages)
             repair_answer = (
                 repair_response.content
                 if hasattr(repair_response, "content")

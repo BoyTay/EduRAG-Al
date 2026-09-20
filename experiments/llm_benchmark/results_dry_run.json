@@ -1,0 +1,105 @@
+{
+  "started_at": "2026-09-20T11:13:22.887350+00:00",
+  "temperature": 0.3,
+  "audit_temperature": 0.0,
+  "models": [
+    "qwen2.5:7b"
+  ],
+  "cases": [
+    "fact_exam_weight"
+  ],
+  "results": [
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "fact_exam_weight",
+      "category": "factual_number",
+      "status": "ok",
+      "question": "Đối với học phần từ 2 tín chỉ trở lên, điểm thi kết thúc học phần chiếm tối thiểu bao nhiêu phần trăm?",
+      "answer": "- Điểm thi kết thúc học phần đối với các học phần từ 2 tín chỉ trở lên chiếm tối thiểu 50% trọng số điểm học phần.",
+      "elapsed_seconds": 2.718,
+      "warmup_seconds": 5.021,
+      "avg_retrieval_score": 0.399,
+      "refusal_reason": null,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 3,
+        "ratio": 0.6667,
+        "missing": [
+          [
+            "bắt buộc"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          17,
+          19,
+          26,
+          27,
+          28,
+          29,
+          30,
+          32
+        ],
+        "primary_pages": [
+          26
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 26,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 28,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 17,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 27,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 27
+    }
+  ],
+  "finished_at": "2026-09-20T11:13:30.792491+00:00"
+}

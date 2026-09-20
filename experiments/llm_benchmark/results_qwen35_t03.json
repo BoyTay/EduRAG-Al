@@ -1,0 +1,446 @@
+{
+  "started_at": "2026-09-20T11:25:31.855795+00:00",
+  "temperature": 0.3,
+  "audit_temperature": 0.0,
+  "models": [
+    "qwen3.5:9b"
+  ],
+  "cases": [
+    "fact_weak_academic_rank",
+    "list_expulsion_conditions",
+    "fact_submission_deadline"
+  ],
+  "results": [
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 1,
+      "case_id": "fact_weak_academic_rank",
+      "category": "factual_condition",
+      "status": "ok",
+      "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+      "answer": "Sinh viên bị xếp hạng học lực yếu khi điểm trung bình chung tích lũy đạt dưới 2,00 nhưng chưa rơi vào trường hợp buộc thôi học hoặc khối lượng kiến thức tích lũy của sinh viên năm thứ nhất nằm trong khoảng từ 30 tín chỉ đến dưới 60 tín chỉ.",
+      "elapsed_seconds": 3.904,
+      "warmup_seconds": 8.51,
+      "avg_retrieval_score": 0.3715,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          10,
+          13
+        ],
+        "primary_pages": [
+          6
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 3,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 2,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 52
+    },
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 1,
+      "case_id": "list_expulsion_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Quy chế đào tạo theo tín chỉ quy định sinh viên bị buộc thôi học trong những trường hợp nào?",
+      "answer": "Sinh viên bị buộc thôi học nếu rơi vào một trong các trường hợp sau:\n* Có điểm trung bình chung học kỳ đạt dưới 0,80 đối với học kỳ đầu của khóa học; hoặc có điểm trung bình chung tích lũy không đủ yêu cầu theo năm đào tạo (dưới 1,20 cho sinh viên năm thứ nhất; dưới 1,40 cho sinh viên năm thứ hai; dưới 1,60 cho sinh viên năm thứ ba; và dưới 1,80 đối với sinh viên các năm tiếp theo).\n* Có điểm trung bình chung học kỳ đạt thấp hơn quy định đối với các học kỳ sau (dưới 1,00 đối với các học kỳ tiếp theo hoặc dưới 1,10 đối với hai học kỳ liên tiếp) và vượt quá thời gian tối đa được phép học tại trường.\n* Bị kỷ luật lần thứ hai vì lý do đi thi hộ hoặc nhờ người thi hộ theo quy định của Quy chế này; hoặc bị kỷ luật ở mức xoá tên khỏi danh sách sinh viên của trường.",
+      "elapsed_seconds": 18.43,
+      "warmup_seconds": 8.51,
+      "avg_retrieval_score": 0.3425,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 9,
+        "total": 9,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 8,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 9,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 175
+    },
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 1,
+      "case_id": "fact_submission_deadline",
+      "category": "factual_process",
+      "status": "ok",
+      "question": "Sinh viên phải nộp chứng chỉ ngoại ngữ, tin học chậm nhất khi nào và nộp qua đâu?",
+      "answer": "Sinh viên phải nộp chứng chỉ chậm nhất 06 tháng trước khi tốt nghiệp và nộp qua khoa để tập hợp rồi gửi về Phòng Quản lý Đào tạo.",
+      "elapsed_seconds": 3.525,
+      "warmup_seconds": 8.51,
+      "avg_retrieval_score": 0.3161,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 4,
+        "total": 5,
+        "ratio": 0.8,
+        "missing": [
+          [
+            "bản sao công chứng"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 29
+    },
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 2,
+      "case_id": "fact_weak_academic_rank",
+      "category": "factual_condition",
+      "status": "ok",
+      "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+      "answer": "Sinh viên xếp hạng học lực yếu nếu điểm trung bình chung tích lũy đạt dưới 2,00 nhưng chưa bị buộc thôi học hoặc khối lượng kiến thức tích lũy của sinh viên năm thứ nhất nằm trong khoảng từ 30 đến dưới 60 tín chỉ.",
+      "elapsed_seconds": 3.721,
+      "warmup_seconds": 8.51,
+      "avg_retrieval_score": 0.3715,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          10,
+          13
+        ],
+        "primary_pages": [
+          6
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 3,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 2,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 46
+    },
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 2,
+      "case_id": "list_expulsion_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Quy chế đào tạo theo tín chỉ quy định sinh viên bị buộc thôi học trong những trường hợp nào?",
+      "answer": "Sinh viên bị buộc thôi học nếu rơi vào một trong các trường hợp sau: * Có điểm trung bình chung học kỳ đầu tiên đạt dưới 0,80; có điểm trung bình chung từ các học kỳ tiếp theo đạt dưới 1,00 đối với từng học kỳ riêng lẻ hoặc dưới 1,10 đối với hai học kỳ liên tiếp. * Điểm trung bình chung tích lũy sau mỗi học kỳ của sinh viên năm thứ nhất, thứ hai, thứ ba và các năm tiếp theo đến cuối khóa lần lượt đạt dưới 1,20; 1,40; 1,60 và 1,80 điểm tùy từng năm. * Vượt quá thời gian tối đa được phép học tại trường quy định trong chương trình đào tạo. * Bị kỷ luật lần thứ hai vì lý do đi thi hộ hoặc nhờ người thi hộ theo quy chế của nhà trường hoặc bị xử phạt ở mức xoá tên khỏi danh sách sinh viên.",
+      "elapsed_seconds": 14.207,
+      "warmup_seconds": 8.51,
+      "avg_retrieval_score": 0.3425,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 9,
+        "total": 9,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "primary_pages": [
+          7
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 8,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 9,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 157
+    },
+    {
+      "model": "qwen3.5:9b",
+      "repeat": 2,
+      "case_id": "fact_submission_deadline",
+      "category": "factual_process",
+      "status": "ok",
+      "question": "Sinh viên phải nộp chứng chỉ ngoại ngữ, tin học chậm nhất khi nào và nộp qua đâu?",
+      "answer": "Chậm nhất 06 tháng trước khi tốt nghiệp, sinh viên nộp qua khoa để tập hợp và gửi về Phòng Quản lý Đào tạo.",
+      "elapsed_seconds": 1.644,
+      "warmup_seconds": 8.51,
+      "avg_retrieval_score": 0.3161,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 4,
+        "total": 5,
+        "ratio": 0.8,
+        "missing": [
+          [
+            "bản sao công chứng"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 24
+    }
+  ],
+  "finished_at": "2026-09-20T11:26:25.934135+00:00"
+}

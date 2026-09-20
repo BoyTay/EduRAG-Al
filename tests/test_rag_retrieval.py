@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from rag_chain import (
     asks_for_enumeration,
     build_answer_guidance,
+    asks_for_confirmation,
     deduplicate_answer_lines,
     extract_sources,
     extract_final_answer,
@@ -208,6 +209,19 @@ class RagRetrievalTests(unittest.TestCase):
         self.assertIn("3–5 chủ đề", guidance)
         self.assertIn("Không lấy nội dung của mục hoặc đối tượng khác", guidance)
         self.assertIn("từng chi tiết độc lập vẫn phải xuất hiện", SYSTEM_PROMPT)
+
+    def test_confirmation_question_requires_consistent_verdict(self):
+        for question in (
+            "Tên trường được viết tắt bằng Dalat Uni đúng không?",
+            "Có phải tên viết tắt của Trường là DLU?",
+            "Tên viết tắt là DLU phải không?",
+        ):
+            with self.subTest(question=question):
+                self.assertTrue(asks_for_confirmation(question))
+                guidance = build_answer_guidance(question)
+                self.assertIn("Nếu sai", guidance)
+                self.assertIn("Không,", guidance)
+                self.assertIn("mâu thuẫn", guidance)
 
     def test_enumeration_intent_handles_different_phrasings(self):
         questions = (
@@ -430,13 +444,12 @@ class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
                 for index in range(2)
             ],
         }
-        llm = _FakeLlm([
-            "Câu dẫn.\n- Nhóm 1\n- Nhóm 2",
-            GROUPED_ORIENTATION_ANSWER,
-        ])
+        answer_llm = _FakeLlm(["Câu dẫn.\n- Nhóm 1\n- Nhóm 2"])
+        audit_llm = _FakeLlm([GROUPED_ORIENTATION_ANSWER])
         chain = RAGChain()
         chain._vector_store = _FakeVectorStore([(anchor, 1.60)], records)
-        chain._llm = llm
+        chain._llm = answer_llm
+        chain._audit_llm = audit_llm
 
         answer, _sources, _score, *_rest = await chain.achat(
             "Tuần định hướng hướng dẫn tân sinh viên những nội dung gì?",
@@ -444,7 +457,8 @@ class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
             active_filenames=[filename],
         )
 
-        self.assertEqual(llm.calls, 2)
+        self.assertEqual(answer_llm.calls, 1)
+        self.assertEqual(audit_llm.calls, 1)
         self.assertEqual(answer, GROUPED_ORIENTATION_ANSWER)
 
 

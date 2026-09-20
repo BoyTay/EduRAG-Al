@@ -1,0 +1,783 @@
+{
+  "started_at": "2026-09-20T11:20:51.078434+00:00",
+  "temperature": 0.3,
+  "audit_temperature": 0.0,
+  "models": [
+    "qwen2.5:7b",
+    "qwen3.5:9b",
+    "gemma4:12b"
+  ],
+  "cases": [
+    "fact_weak_academic_rank",
+    "fact_phone_in_class",
+    "list_graduation_conditions",
+    "fact_submission_deadline"
+  ],
+  "results": [
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "fact_weak_academic_rank",
+      "category": "factual_condition",
+      "status": "ok",
+      "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+      "answer": "Sinh viên được xếp hạng học lực yếu khi điểm trung bình chung tích lũy đạt dưới 2,00.",
+      "elapsed_seconds": 2.068,
+      "warmup_seconds": 5.125,
+      "avg_retrieval_score": 0.3715,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 1,
+        "total": 3,
+        "ratio": 0.3333,
+        "missing": [
+          [
+            "chưa",
+            "không"
+          ],
+          [
+            "buộc thôi học"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          10,
+          13
+        ],
+        "primary_pages": [
+          6
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 3,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 2,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 18
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "fact_phone_in_class",
+      "category": "factual_rule",
+      "status": "ok",
+      "question": "Sinh viên được sử dụng điện thoại di động trong giờ học khi nào?",
+      "answer": "Sinh viên chỉ được sử dụng điện thoại di động trong giờ học khi được giảng viên cho phép.",
+      "elapsed_seconds": 1.52,
+      "warmup_seconds": 5.125,
+      "avg_retrieval_score": 0.3219,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          3,
+          14,
+          19,
+          24
+        ],
+        "primary_pages": [
+          14
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 14,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 24,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 3,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 19
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "list_graduation_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Sinh viên cần đáp ứng những điều kiện nào để được xét và công nhận tốt nghiệp?",
+      "answer": "Sinh viên cần đáp ứng các điều kiện sau để được xét và công nhận tốt nghiệp:\n- Tích lũy đủ số học phần, số tín chỉ, đạt chuẩn đầu ra và các yêu cầu khác của chương trình đào tạo (Đoạn 5).\n- Đạt điểm trung bình chung tích lũy toàn khóa từ trung bình trở lên (Đoạn 6).\n- Đạt chuẩn đầu ra ngoại ngữ và tin học theo quy định của Trường (Đoạn 6).\n- Sinh viên người nước ngoài được miễn chuẩn đầu ra ngoại ngữ, tin học nhưng phải đạt điều kiện hoàn thành chương trình ngoại khóa về ngôn ngữ và văn hóa, lịch sử Việt Nam (Đoạn 6).\n- Tại thời điểm xét tốt nghiệp không bị truy cứu trách nhiệm hình sự hoặc không đang trong thời gian bị kỷ luật ở mức đình chỉ học tập (Đoạn 6).",
+      "elapsed_seconds": 9.29,
+      "warmup_seconds": 5.125,
+      "avg_retrieval_score": 0.479,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 6,
+        "total": 8,
+        "ratio": 0.75,
+        "missing": [
+          [
+            "giáo dục thể chất"
+          ],
+          [
+            "quốc phòng"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          31,
+          32
+        ],
+        "primary_pages": [
+          32
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 31,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        }
+      ],
+      "answer_words": 147
+    },
+    {
+      "model": "qwen2.5:7b",
+      "case_id": "fact_submission_deadline",
+      "category": "factual_process",
+      "status": "ok",
+      "question": "Sinh viên phải nộp chứng chỉ ngoại ngữ, tin học chậm nhất khi nào và nộp qua đâu?",
+      "answer": "- Sinh viên phải nộp 01 bản sao công chứng các chứng chỉ ngoại ngữ, tin học chậm nhất 06 tháng trước khi tốt nghiệp.\n- Sổ hộ chiếu nộp qua khoa, sau đó khoa tập hợp nộp về Phòng Quản lý Đào tạo.",
+      "elapsed_seconds": 2.228,
+      "warmup_seconds": 5.125,
+      "avg_retrieval_score": 0.3161,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 5,
+        "total": 5,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 44
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "fact_weak_academic_rank",
+      "category": "factual_condition",
+      "status": "ok",
+      "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+      "answer": "Sinh viên xếp hạng học lực yếu khi điểm trung bình chung tích lũy đạt dưới 2,00 nhưng chưa rơi vào trường hợp bị buộc thôi học hoặc khối lượng kiến thức tích lũy của sinh viên năm thứ nhất từ 30 tín chỉ trở lên đến dưới 60 tín chỉ.",
+      "elapsed_seconds": 5.114,
+      "warmup_seconds": 9.073,
+      "avg_retrieval_score": 0.3715,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          10,
+          13
+        ],
+        "primary_pages": [
+          6
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 3,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 2,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 51
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "fact_phone_in_class",
+      "category": "factual_rule",
+      "status": "ok",
+      "question": "Sinh viên được sử dụng điện thoại di động trong giờ học khi nào?",
+      "answer": "Sinh viên chỉ sử dụng điện thoại di động trong giờ học khi được giảng viên cho phép.",
+      "elapsed_seconds": 3.259,
+      "warmup_seconds": 9.073,
+      "avg_retrieval_score": 0.3219,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          3,
+          14,
+          19,
+          24
+        ],
+        "primary_pages": [
+          14
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 14,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 24,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 3,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 18
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "list_graduation_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Sinh viên cần đáp ứng những điều kiện nào để được xét và công nhận tốt nghiệp?",
+      "answer": "Để được xét và công nhận tốt nghiệp tại Trường Đại học Đà Lạt, sinh viên cần đáp ứng các điều kiện sau:\n* Tích lũy đủ số lượng học phần, tín chỉ theo chương trình đào tạo; đạt chuẩn đầu ra của từng môn cũng như điểm trung bình chung tích lũy toàn khóa từ mức trung bình trở lên.\n* Đạt được các chuẩn đầu ra về ngoại ngữ và tin học theo quy định riêng của Trường (trừ sinh viên nước ngoài có thể miễn nhưng phải hoàn thành yêu cầu ngoại khóa ngôn ngữ, văn hóa lịch sử Việt Nam).\n* Hoàn thành đầy đủ các học phần giáo dục thể chất và đã được cấp chứng chỉ Giáo dục quốc phòng và an ninh.\n* Tại thời điểm xét tốt nghiệp không bị truy cứu trách nhiệm hình sự hoặc không đang trong thời gian bị kỷ luật ở mức đình chỉ học tập.",
+      "elapsed_seconds": 21.723,
+      "warmup_seconds": 9.073,
+      "avg_retrieval_score": 0.479,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 8,
+        "total": 8,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          31,
+          32
+        ],
+        "primary_pages": [
+          32
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 31,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        }
+      ],
+      "answer_words": 159
+    },
+    {
+      "model": "qwen3.5:9b",
+      "case_id": "fact_submission_deadline",
+      "category": "factual_process",
+      "status": "ok",
+      "question": "Sinh viên phải nộp chứng chỉ ngoại ngữ, tin học chậm nhất khi nào và nộp qua đâu?",
+      "answer": "Sinh viên chậm nhất 06 tháng trước khi tốt nghiệp nộp qua khoa để tập hợp rồi nộp về Phòng Quản lý Đào tạo.",
+      "elapsed_seconds": 5.108,
+      "warmup_seconds": 9.073,
+      "avg_retrieval_score": 0.3161,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 4,
+        "total": 5,
+        "ratio": 0.8,
+        "missing": [
+          [
+            "bản sao công chứng"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 24
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "fact_weak_academic_rank",
+      "category": "factual_condition",
+      "status": "ok",
+      "question": "Khi nào sinh viên được xếp hạng học lực yếu?",
+      "answer": "Sinh viên được xếp hạng học lực yếu nếu điểm trung bình chung tích lũy đạt dưới 2,00 nhưng chưa rơi vào trường hợp bị buộc thôi học.",
+      "elapsed_seconds": 5.976,
+      "warmup_seconds": 12.254,
+      "avg_retrieval_score": 0.3715,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 3,
+        "total": 3,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          10,
+          13
+        ],
+        "primary_pages": [
+          6
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 5,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 3,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 2,
+          "source_path": "/app/data/Quy_che_dao_tao_theo_tin_chi.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 28
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "fact_phone_in_class",
+      "category": "factual_rule",
+      "status": "ok",
+      "question": "Sinh viên được sử dụng điện thoại di động trong giờ học khi nào?",
+      "answer": "Sinh viên chỉ được sử dụng điện thoại di động trong giờ học khi được giảng viên cho phép.",
+      "elapsed_seconds": 5.532,
+      "warmup_seconds": 12.254,
+      "avg_retrieval_score": 0.3219,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 2,
+        "total": 2,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          3,
+          14,
+          19,
+          24
+        ],
+        "primary_pages": [
+          14
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 14,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 19,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 24,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 3,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 19
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "list_graduation_conditions",
+      "category": "enumeration",
+      "status": "ok",
+      "question": "Sinh viên cần đáp ứng những điều kiện nào để được xét và công nhận tốt nghiệp?",
+      "answer": "Sinh viên cần đáp ứng các điều kiện sau để được xét và công nhận tốt nghiệp:\n* Kết quả học tập và chương trình đào tạo: Tích lũy đủ số học phần, số tín chỉ, đạt chuẩn đầu ra và các yêu cầu khác của chương trình đào tạo; điểm trung bình chung tích lũy toàn khóa đạt từ trung bình trở lên.\n* Kỹ năng bổ trợ và giáo dục thể chất: Đạt chuẩn đầu ra ngoại ngữ và tin học theo quy định của Trường; đạt yêu cầu về các học phần giáo dục thể chất và đã được cấp chứng chỉ giáo dục quốc phòng và an ninh.\n* Quy định đối với sinh viên là người nước ngoài: Được miễn chuẩn đầu ra ngoại ngữ, tin học và chứng chỉ giáo dục quốc phòng và an ninh nhưng phải hoàn thành chương trình ngoại khóa về ngôn ngữ và văn hóa, lịch sử Việt Nam theo quy định.\n* Kỷ luật và pháp luật: Tại thời điểm xét tốt nghiệp không bị truy cứu trách nhiệm hình sự hoặc không đang trong thời gian bị kỷ luật ở mức đình chỉ học tập.",
+      "elapsed_seconds": 42.525,
+      "warmup_seconds": 12.254,
+      "avg_retrieval_score": 0.479,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 8,
+        "total": 8,
+        "ratio": 1.0,
+        "missing": []
+      },
+      "source_check": {
+        "cited_pages": [
+          31,
+          32
+        ],
+        "primary_pages": [
+          32
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 31,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32,
+          "source_path": "/app/data/So_tay_sinh_vien.pdf",
+          "is_primary": true
+        }
+      ],
+      "answer_words": 198
+    },
+    {
+      "model": "gemma4:12b",
+      "case_id": "fact_submission_deadline",
+      "category": "factual_process",
+      "status": "ok",
+      "question": "Sinh viên phải nộp chứng chỉ ngoại ngữ, tin học chậm nhất khi nào và nộp qua đâu?",
+      "answer": "Sinh viên phải nộp 01 bản sao công chứng các chứng chỉ ngoại ngữ, tin học cho Trường thông qua khoa chậm nhất là 06 tháng trước khi tốt nghiệp.",
+      "elapsed_seconds": 7.978,
+      "warmup_seconds": 12.254,
+      "avg_retrieval_score": 0.3161,
+      "refusal_reason": null,
+      "refusal_detected": false,
+      "refusal_pass": true,
+      "coverage": {
+        "matched": 4,
+        "total": 5,
+        "ratio": 0.8,
+        "missing": [
+          [
+            "Phòng Quản lý Đào tạo"
+          ]
+        ]
+      },
+      "source_check": {
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "primary_pages": [
+          4
+        ],
+        "expected_page_cited": true,
+        "expected_page_primary": true
+      },
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 4,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": true
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 1,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3,
+          "source_path": "/app/data/Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "is_primary": false
+        }
+      ],
+      "answer_words": 30
+    }
+  ],
+  "finished_at": "2026-09-20T11:23:10.247305+00:00"
+}
