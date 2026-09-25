@@ -7,6 +7,7 @@ dựa trên tài liệu được cung cấp.
 import os
 import re
 import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
@@ -253,13 +254,14 @@ CONFIRMATION_REPAIR_PROMPT = ChatPromptTemplate.from_messages([
 
 MAX_CONVERSATION_TURNS = 4
 MAX_CONVERSATION_CHARS = 3_500
+CLARIFICATION_MESSAGE = "Bạn muốn hỏi tiếp về nội dung nào? Vui lòng nêu rõ chủ đề hoặc tài liệu để tôi tra cứu chính xác."
 NO_ACTIVE_DOCUMENTS_MESSAGE = (
     "Hiện chưa có tài liệu còn hiệu lực để tra cứu. "
     "Vui lòng liên hệ quản trị viên để được hỗ trợ."
 )
 
 
-def format_conversation_history(conversation_history: Optional[Sequence[Mapping[str, str]]]) -> str:
+def format_conversation_history(conversation_history: Optional[Sequence[Mapping[str, object]]]) -> str:
     """Create a bounded, clearly separated history section for the answer prompt."""
     if not conversation_history:
         return "Không có lượt hội thoại trước."
@@ -271,7 +273,9 @@ def format_conversation_history(conversation_history: Optional[Sequence[Mapping[
         answer = str(turn.get("answer", "")).strip()
         if not question:
             continue
-        entry = f"Sinh viên: {question[:900]}\nTrợ lý: {answer[:1_200]}"
+        entry = f"Sinh viên: {question[:900]}"
+        if answer:
+            entry += f"\nTrợ lý: {answer[:1_200]}"
         if used_chars + len(entry) > MAX_CONVERSATION_CHARS:
             break
         turns.append(entry)
@@ -279,22 +283,121 @@ def format_conversation_history(conversation_history: Optional[Sequence[Mapping[
     return "\n---\n".join(turns) if turns else "Không có lượt hội thoại trước."
 
 
-def build_retrieval_query(question: str, conversation_history: Optional[Sequence[Mapping[str, str]]]) -> str:
-    """Use the preceding user question to make a short follow-up searchable.
+@dataclass(frozen=True)
+class ConversationResolution:
+    kind: str
+    retrieval_query: str
+    history: tuple[Mapping[str, object], ...] = ()
 
-    When the follow-up is very short (e.g. "Còn nữa không?"), the previous
-    question is prepended in full so the embedding captures enough context.
-    """
-    if not conversation_history:
-        return question
-    previous_questions = [str(turn.get("question", "")).strip() for turn in conversation_history]
-    previous_question = next((item for item in reversed(previous_questions) if item), "")
-    if not previous_question:
-        return question
-    # Câu hỏi tiếp nối rất ngắn: nối đủ câu trước để retrieval có context
-    if len(question.strip()) < 20:
-        return f"{previous_question} {question}"
-    return f"Chủ đề ở lượt trước: {previous_question[:900]}\nCâu hỏi tiếp theo: {question}"
+
+def _previous_topic(question: str) -> str:
+    """Drop the previous question's answer target, retaining its subject."""
+    words = question.split()
+    normalized = [_search_normalize(word) for word in words]
+    endings = (
+        ("dien", "ra"), ("bao", "nhieu"), ("o", "dau"),
+        ("khi", "nao"), ("la", "gi"), ("la", "may"),
+        ("nhu", "the", "nao"), ("gom",),
+    )
+    for index in range(1, len(words)):
+        if any(tuple(normalized[index:index + len(ending)]) == ending for ending in endings):
+            return " ".join(words[:index]).rstrip(" ,.;:?!")
+    return question.rstrip(" ,.;:?!")
+
+
+def _previous_scope(question: str) -> str:
+    """Keep cohort/program scope, not the previous answer's competing topic."""
+    words = _previous_topic(question).split()
+    normalized = [_search_normalize(word) for word in words]
+    for index, word in enumerate(normalized):
+        if re.fullmatch(r"k\d+", word):
+            return words[index].rstrip(" ,.;:?!")
+        if word in {"he", "khoa", "nam"} and index + 1 < len(words):
+            scope_length = 3 if word == "he" else 2
+            return " ".join(words[index:index + scope_length]).rstrip(" ,.;:?!")
+    return ""
+
+
+def _grade_follow_up(question: str, previous_question: str) -> Optional[str]:
+    """Carry the grading scale, never a claimed value for the previous grade."""
+    normalized_previous = _search_normalize(previous_question)
+    normalized_current = _search_normalize(question)
+    grade = re.match(r"^(?:(?:con|vay)\s+)?([a-f])\b", normalized_current)
+    if not grade or not re.search(r"\bdiem\s+[a-f]\b", normalized_previous):
+        return None
+    scale = re.search(r"\bthang\s+điểm\s+\d+\b", previous_question, re.IGNORECASE)
+    if not scale:
+        return ""
+    return f"Điểm {grade.group(1).upper()} trên {scale.group(0)}. {question}"
+
+
+def resolve_conversation_context(
+    question: str,
+    conversation_history: Optional[Sequence[Mapping[str, object]]],
+) -> ConversationResolution:
+    """Resolve only explicit ellipsis; never assume every new turn is a follow-up."""
+    current = question.strip()
+    normalized = _search_normalize(current)
+    words = normalized.split()
+    if not words:
+        return ConversationResolution("needs_clarification", current)
+
+    last_turn = conversation_history[-1] if conversation_history else None
+    previous_question = str(last_turn.get("question", "")).strip() if last_turn else ""
+    grade_follow_up = _grade_follow_up(current, previous_question)
+    if grade_follow_up is not None:
+        if not grade_follow_up or (last_turn and last_turn.get("has_sources") is False):
+            return ConversationResolution("needs_clarification", current)
+        return ConversationResolution("follow_up", grade_follow_up)
+    if re.match(r"^(?:(?:con|vay)\s+)?[a-f]\b", normalized):
+        return ConversationResolution("needs_clarification", current)
+
+    starts_follow_up = (
+        words[0] in {"con", "vay"}
+        or (words[0] == "the" and not normalized.startswith("the nao la "))
+        or normalized.startswith("neu vay ")
+    )
+    demonstrative = bool(re.search(
+        r"\b(?:dieu|muc|truong hop|noi dung|quy dinh|yeu cau|chuong trinh|tai lieu|"
+        r"van ban|su kien|ke hoach|quy che|chinh sach)\s+(?:do|nay|ay)\b",
+        normalized,
+    ))
+    bare_reference = normalized in {"o dau", "khi nao", "bao nhieu", "nhu the nao", "la gi"}
+    explicit_scope = bool(re.search(
+        r"\b(?:thang diem\s+\d+|k\d+|khoa\s+\d+|nam\s+\d{4}|he\s+cu nhan)\b",
+        normalized,
+    ))
+    if starts_follow_up and explicit_scope and not demonstrative:
+        return ConversationResolution("independent", current)
+    if not (starts_follow_up or demonstrative or bare_reference):
+        return ConversationResolution("independent", current)
+
+    if not previous_question or (last_turn and last_turn.get("has_sources") is False):
+        return ConversationResolution("needs_clarification", current)
+
+    topic = _previous_topic(previous_question)
+    if not topic:
+        return ConversationResolution("needs_clarification", current)
+
+    # An explicit new subject (e.g. informatics after English) needs only the
+    # prior program scope. Attribute-only questions need the whole prior topic.
+    attribute_only = bool(re.search(
+        r"\b(?:dia diem|thoi gian|o dau|khi nao|bao nhieu|ngay nao|nam nao|con nua)\b",
+        normalized,
+    )) or demonstrative or bare_reference
+    if starts_follow_up and not attribute_only:
+        scope = _previous_scope(previous_question)
+        resolved = f"{current} ({scope})" if scope else current
+        history = ({"question": scope, "answer": ""},) if scope else ()
+    else:
+        resolved = f"{topic}. {current}"
+        history = ({"question": topic, "answer": ""},)
+    return ConversationResolution("follow_up", resolved, history)
+
+
+def build_retrieval_query(question: str, conversation_history: Optional[Sequence[Mapping[str, object]]]) -> str:
+    """Return a standalone search query only when the current turn needs it."""
+    return resolve_conversation_context(question, conversation_history).retrieval_query
 
 
 def l2_distance_to_relevance(distance: float) -> float:
@@ -1018,7 +1121,7 @@ class RAGChain:
         self,
         question: str,
         source_labels: Optional[Mapping[str, str]] = None,
-        conversation_history: Optional[Sequence[Mapping[str, str]]] = None,
+        conversation_history: Optional[Sequence[Mapping[str, object]]] = None,
         document_filename: Optional[str] = None,
         active_filenames: Optional[Sequence[str]] = None,
     ) -> tuple[str, list[dict], float, Optional[str]]:
@@ -1040,13 +1143,18 @@ class RAGChain:
             )
             return no_data_msg, [], 0.0, "no_data"
 
-        # Retrieve documents với score
-        retrieval_query = build_retrieval_query(question, conversation_history)
         if active_filenames is not None and not active_filenames:
             logger.info("RAG refusal: no active documents are available")
             return NO_ACTIVE_DOCUMENTS_MESSAGE, [], 0.0, "no_active_docs"
 
-        inferred_filename = infer_document_filename(question, active_filenames)
+        # Resolve the turn once so retrieval and generation share the same context.
+        resolution = resolve_conversation_context(question, conversation_history)
+        if resolution.kind == "needs_clarification":
+            return CLARIFICATION_MESSAGE, [], 0.0, "needs_clarification"
+        retrieval_query = resolution.retrieval_query
+        effective_question = retrieval_query if resolution.kind == "follow_up" else question
+
+        inferred_filename = infer_document_filename(effective_question, active_filenames)
         effective_filename = document_filename or inferred_filename
         search_kwargs = {"k": RETRIEVAL_CANDIDATE_K}
         if effective_filename:
@@ -1062,7 +1170,7 @@ class RAGChain:
             retrieval_query, **search_kwargs
         )
         retriever_with_score = rerank_retrieval_results(
-            question,
+            effective_question,
             [(doc, l2_distance_to_relevance(distance)) for doc, distance in raw_results],
         )
 
@@ -1074,14 +1182,14 @@ class RAGChain:
                 "empty_retrieval",
             )
 
-        if not has_relevant_document(question, retriever_with_score):
+        if not has_relevant_document(effective_question, retriever_with_score):
             logger.info("RAG refusal: no document supports the named topic or identifier")
             return NO_RELEVANT_DOCUMENTS_MESSAGE, [], 0.0, "no_relevant_document"
 
         candidate_scores = [score for _, score in retriever_with_score]
         best_score = max(candidate_scores) if candidate_scores else 0.0
         best_evidence_score = max(
-            retrieval_evidence_score(question, doc, score)
+            retrieval_evidence_score(effective_question, doc, score)
             for doc, score in retriever_with_score
         )
 
@@ -1103,7 +1211,7 @@ class RAGChain:
 
         context_results = select_context_results(
             self._vector_store,
-            question,
+            effective_question,
             retriever_with_score,
         )
         if not context_results:
@@ -1119,8 +1227,8 @@ class RAGChain:
         # Gọi LLM
         prompt_messages = RAG_PROMPT.format_messages(
             context=context,
-            conversation_history=format_conversation_history(conversation_history),
-            question=question,
+            conversation_history=format_conversation_history(resolution.history),
+            question=effective_question,
             answer_guidance=build_answer_guidance(question),
         )
         is_enumeration = asks_for_enumeration(question)

@@ -596,7 +596,11 @@ async def chat(
             user_id=current_user["user_id"], user_role=current_user["role"],
         )
         conversation_history = [
-            {"question": turn.user_message, "answer": turn.bot_response}
+            {
+                "question": turn.user_message,
+                "answer": turn.bot_response,
+                "has_sources": bool(turn.sources_list()),
+            }
             for turn in previous_turns
         ]
 
