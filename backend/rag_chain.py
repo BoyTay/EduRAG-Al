@@ -85,6 +85,10 @@ def _read_relevance_threshold() -> float:
 
 
 MIN_RELEVANCE_SCORE = _read_relevance_threshold()
+NO_RELEVANT_DOCUMENTS_MESSAGE = (
+    "Xin lỗi, tôi không tìm thấy tài liệu phù hợp để trả lời câu hỏi này. "
+    "Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ."
+)
 
 # ─── Phát hiện GPU ────────────────────────────────────────────────────────────
 
@@ -555,6 +559,69 @@ def retrieval_evidence_score(question: str, document: Document, semantic_score: 
     return min(1.0, max(0.0, semantic_score + _retrieval_intent_bonus(question, document)))
 
 
+def has_relevant_document(
+    question: str,
+    results: Sequence[tuple[Document, float]],
+) -> bool:
+    """Require evidence for named identifiers and topics before generation.
+
+    Intent bonuses can lift a weak semantic match above the refusal threshold
+    (for example, a handbook paragraph about weeks rather than a named event).
+    Search both chunk text and its filename because scanned headings can be noisy.
+    """
+    if not results:
+        return False
+    normalized_question = _search_normalize(question)
+    evidence = [
+        _search_normalize(
+            f"{doc.metadata.get('filename', '')} {doc.page_content}"
+        )
+        for doc, _score in results
+    ]
+    identifiers = set(re.findall(r"\b[a-z]+\d+\b", normalized_question))
+    identifiers.update(re.findall(r"\bkhoa\s+\d+\b", normalized_question))
+    def identifier_in_text(identifier: str, text: str) -> bool:
+        aliases = {identifier}
+        # Cohort labels can be abbreviated or written out in the PDF.
+        cohort = re.fullmatch(r"k(\d+)", identifier)
+        if cohort:
+            aliases.add(f"khoa {cohort.group(1)}")
+        full_cohort = re.fullmatch(r"khoa\s+(\d+)", identifier)
+        if full_cohort:
+            aliases.add(f"k{full_cohort.group(1)}")
+        return any(re.search(rf"\b{re.escape(alias)}\b", text) for alias in aliases)
+
+    # Common question words and broad university terms do not establish that
+    # the retrieved document actually covers the subject being asked about.
+    stopwords = {
+        "ai", "bao", "cho", "co", "cua", "dai", "dien", "duoc", "gi",
+        "hoc", "hoi", "khi", "khong", "la", "lam", "nao", "nhung",
+        "phai", "ra", "sinh", "tai", "tan", "the", "theo", "trong",
+        "truong", "tu", "ve", "vien", "vao",
+    }
+    tokens = normalized_question.split()
+    topic_phrases = {
+        f"{left} {right}"
+        for left, right in zip(tokens, tokens[1:])
+        if left not in stopwords and right not in stopwords
+        and len(left) >= 3 and len(right) >= 3
+    }
+    topic_tokens = {
+        token for token in tokens if token not in stopwords and len(token) >= 3
+    }
+    for (_doc, score), text in zip(results, evidence):
+        if any(not identifier_in_text(identifier, text) for identifier in identifiers):
+            continue
+        if not topic_phrases or any(phrase in text for phrase in topic_phrases):
+            return True
+        if len(topic_tokens & set(text.split())) >= 2:
+            return True
+        # Preserve a strong semantic hit when OCR has damaged the wording.
+        if score >= 0.45:
+            return True
+    return False
+
+
 def rerank_retrieval_results(
     question: str,
     results: Sequence[tuple[Document, float]],
@@ -987,12 +1054,15 @@ class RAGChain:
 
         if not retriever_with_score:
             return (
-                "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. "
-                "Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+                NO_RELEVANT_DOCUMENTS_MESSAGE,
                 [],
                 0.0,
                 "empty_retrieval",
             )
+
+        if not has_relevant_document(question, retriever_with_score):
+            logger.info("RAG refusal: no document supports the named topic or identifier")
+            return NO_RELEVANT_DOCUMENTS_MESSAGE, [], 0.0, "no_relevant_document"
 
         candidate_scores = [score for _, score in retriever_with_score]
         best_score = max(candidate_scores) if candidate_scores else 0.0
@@ -1094,6 +1164,10 @@ class RAGChain:
             # Repair có thể tái sinh citation → cleanup sau cùng
             answer = remove_embedded_citations(answer)
             answer = normalize_answer(answer, max_words=answer_word_limit)
+
+        if not answer.strip():
+            logger.info("RAG refusal: model returned an empty answer")
+            return NO_RELEVANT_DOCUMENTS_MESSAGE, [], avg_score, "empty_answer"
 
         # Trích xuất sources
         sources = extract_sources(docs, answer, scores)

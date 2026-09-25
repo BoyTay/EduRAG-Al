@@ -10,6 +10,7 @@ from rag_chain import (
     deduplicate_answer_lines,
     extract_sources,
     extract_final_answer,
+    has_relevant_document,
     infer_document_filename,
     l2_distance_to_relevance,
     normalize_answer,
@@ -343,6 +344,90 @@ class _FakeLlm:
 
 
 class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_missing_event_document_refuses_without_sources_or_model_call(self):
+        handbook = Document(
+            page_content=(
+                "Lời ngỏ chào đón tân sinh viên khóa K45. "
+                "Lịch học có các tuần sinh hoạt công dân."
+            ),
+            metadata={"filename": "So_tay_sinh_vien.pdf", "source": "So_tay_sinh_vien.pdf", "page": 5},
+        )
+        chain = RAGChain()
+        chain._vector_store = _FakeVectorStore([(handbook, 1.16)])
+        chain._llm = _FakeLlm()
+
+        answer, sources, _score, reason = await chain.achat(
+            "Tuần định hướng Tân sinh viên K50 diễn ra khi nào?",
+            active_filenames=["So_tay_sinh_vien.pdf"],
+        )
+
+        self.assertIn("không tìm thấy tài liệu phù hợp", answer)
+        self.assertEqual(sources, [])
+        self.assertEqual(reason, "no_relevant_document")
+        self.assertEqual(chain._llm.calls, 0)
+
+    def test_missing_topic_without_identifier_does_not_pass_on_generic_weeks(self):
+        handbook = Document(
+            page_content="Lịch học có các tuần sinh hoạt công dân và lịch thi học kỳ.",
+            metadata={"filename": "So_tay_sinh_vien.pdf"},
+        )
+        self.assertFalse(has_relevant_document(
+            "Tuần định hướng tân sinh viên diễn ra khi nào?",
+            [(handbook, 0.29)],
+        ))
+
+    def test_cohort_identifier_matches_full_wording_in_document(self):
+        plan = Document(
+            page_content="Tuần định hướng dành cho tân sinh viên Khóa 50 bắt đầu ngày 24/8.",
+            metadata={"filename": "Ke_hoach_dinh_huong.pdf"},
+        )
+        self.assertTrue(has_relevant_document(
+            "Tuần định hướng K50 diễn ra khi nào?",
+            [(plan, 0.29)],
+        ))
+
+    def test_full_cohort_wording_rejects_another_cohort(self):
+        handbook = Document(
+            page_content="Chào đón sinh viên Khóa 45 đến trường.",
+            metadata={"filename": "So_tay_sinh_vien.pdf"},
+        )
+        self.assertFalse(has_relevant_document(
+            "Chương trình định hướng khóa 50 bắt đầu hôm nào?",
+            [(handbook, 0.29)],
+        ))
+
+    def test_topic_and_cohort_must_be_in_same_document(self):
+        cohort = Document(
+            page_content="Tân sinh viên Khóa 50 nhập học.",
+            metadata={"filename": "Thong_bao_nhap_hoc.pdf"},
+        )
+        other_event = Document(
+            page_content="Tuần định hướng sinh viên Khóa 45 diễn ra tháng 8.",
+            metadata={"filename": "Ke_hoach_dinh_huong.pdf"},
+        )
+        self.assertFalse(has_relevant_document(
+            "Tuần định hướng K50 diễn ra khi nào?",
+            [(cohort, 0.29), (other_event, 0.29)],
+        ))
+
+    async def test_empty_model_answer_does_not_attach_sources(self):
+        handbook = Document(
+            page_content="Trường Đại học Đà Lạt viết tắt là DLU.",
+            metadata={"filename": "So_tay_sinh_vien.pdf", "source": "So_tay_sinh_vien.pdf", "page": 6},
+        )
+        chain = RAGChain()
+        chain._vector_store = _FakeVectorStore([(handbook, 1.0)])
+        chain._llm = _FakeLlm([""])
+
+        answer, sources, _score, reason = await chain.achat(
+            "Tên viết tắt của Trường Đại học Đà Lạt là gì?",
+            active_filenames=["So_tay_sinh_vien.pdf"],
+        )
+
+        self.assertIn("không tìm thấy tài liệu phù hợp", answer)
+        self.assertEqual(sources, [])
+        self.assertEqual(reason, "empty_answer")
+
     async def test_document_identifier_filters_and_prevents_false_refusal(self):
         filename = "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf"
         issue_header = Document(
