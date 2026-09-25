@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from rag_chain import (
     asks_for_enumeration,
     build_answer_guidance,
+    build_retrieval_query,
     asks_for_confirmation,
     deduplicate_answer_lines,
     extract_sources,
@@ -17,6 +18,7 @@ from rag_chain import (
     RAGChain,
     RETRIEVAL_CANDIDATE_K,
     rerank_retrieval_results,
+    resolve_conversation_context,
     retrieval_evidence_score,
     select_context_results,
     SYSTEM_PROMPT,
@@ -57,6 +59,91 @@ GROUPED_ORIENTATION_ANSWER = """Tân sinh viên được hướng dẫn các n�
 
 
 class RagRetrievalTests(unittest.TestCase):
+    def test_new_topic_does_not_inherit_previous_question(self):
+        history = [{"question": "TOEIC 4 kỹ năng tương đương Bậc 4 cần bao nhiêu điểm?", "answer": "..."}]
+        question = "Điểm A tương ứng thang điểm 4 là mấy?"
+        resolution = resolve_conversation_context(question, history)
+        self.assertEqual(resolution.kind, "independent")
+        self.assertEqual(build_retrieval_query(question, history), question)
+        self.assertEqual(resolution.history, ())
+
+    def test_short_standalone_question_does_not_use_history(self):
+        history = [{"question": "Chuẩn đầu ra tiếng Anh là gì?", "answer": "..."}]
+        self.assertEqual(build_retrieval_query("Học phí bao nhiêu?", history), "Học phí bao nhiêu?")
+        self.assertEqual(
+            resolve_conversation_context("Thế nào là điểm rèn luyện?", history).kind,
+            "independent",
+        )
+
+    def test_follow_up_keeps_subject_but_not_previous_answer(self):
+        history = [{"question": "Tuần định hướng K50 diễn ra khi nào?", "answer": "Ngày 24/8/2026."}]
+        resolution = resolve_conversation_context("Còn địa điểm tổ chức ở đâu?", history)
+        self.assertEqual(resolution.kind, "follow_up")
+        self.assertIn("Tuần định hướng K50", resolution.retrieval_query)
+        self.assertNotIn("24/8/2026", str(resolution))
+
+    def test_new_follow_up_subject_does_not_copy_old_subject(self):
+        history = [{"question": "Chuẩn đầu ra tiếng Anh hệ cử nhân là gì?", "answer": "..."}]
+        resolution = resolve_conversation_context("Còn điều kiện về tin học thì sao?", history)
+        self.assertEqual(resolution.kind, "follow_up")
+        self.assertIn("tin học", resolution.retrieval_query)
+        self.assertIn("hệ cử nhân", resolution.retrieval_query)
+        self.assertNotIn("tiếng Anh", resolution.retrieval_query)
+        cohort = [{"question": "Tuần định hướng K50 diễn ra khi nào?", "answer": "..."}]
+        cohort_resolution = resolve_conversation_context("Còn trách nhiệm sinh viên thì sao?", cohort)
+        self.assertIn("K50", cohort_resolution.retrieval_query)
+
+    def test_unresolved_reference_requests_clarification(self):
+        question = "Còn nữa không?"
+        self.assertEqual(resolve_conversation_context(question, []).kind, "needs_clarification")
+        history = [{"question": "Tuần định hướng diễn ra khi nào?", "has_sources": False}]
+        self.assertEqual(resolve_conversation_context(question, history).kind, "needs_clarification")
+
+    def test_long_referential_question_still_uses_context(self):
+        history = [{"question": "Điều kiện xét tốt nghiệp là gì?", "answer": "..."}]
+        question = "Quy định đó có áp dụng cho tất cả sinh viên hệ cử nhân không?"
+        self.assertEqual(resolve_conversation_context(question, history).kind, "follow_up")
+
+    def test_discourse_marker_does_not_override_explicit_new_topic(self):
+        history = [{"question": "TOEIC 4 kỹ năng tương đương Bậc 4 cần bao nhiêu điểm?"}]
+        question = "Vậy điểm A trên thang điểm 4 là bao nhiêu?"
+        resolution = resolve_conversation_context(question, history)
+        self.assertEqual(resolution.kind, "independent")
+        self.assertEqual(resolution.retrieval_query, question)
+        self.assertEqual(resolution.history, ())
+
+    def test_elliptical_grade_question_inherits_scale_not_old_grade_value(self):
+        history = [{"question": "Điểm A tương ứng 4.0 trên thang điểm 4 phải không?"}]
+        for question in ("Còn B thì sao?", "B tương ứng mấy điểm?"):
+            with self.subTest(question=question):
+                resolution = resolve_conversation_context(question, history)
+                self.assertEqual(resolution.kind, "follow_up")
+                self.assertIn("Điểm B", resolution.retrieval_query)
+                self.assertIn("thang điểm 4", resolution.retrieval_query)
+                self.assertNotIn("4.0", resolution.retrieval_query)
+        self.assertEqual(
+            resolve_conversation_context("Còn B thì sao?", []).kind,
+            "needs_clarification",
+        )
+        self.assertEqual(
+            resolve_conversation_context(
+                "Còn B thì sao?", [{"question": "TOEIC Bậc 4 cần bao nhiêu điểm?"}]
+            ).kind,
+            "needs_clarification",
+        )
+
+    def test_demonstrative_subject_uses_prior_topic_not_full_question(self):
+        history = [{"question": "Tuần định hướng K50 diễn ra khi nào?"}]
+        resolution = resolve_conversation_context("Chương trình đó diễn ra ở đâu?", history)
+        self.assertEqual(resolution.kind, "follow_up")
+        self.assertIn("Tuần định hướng K50", resolution.retrieval_query)
+
+        history = [{"question": "Tuần định hướng K50 gồm những nội dung gì?"}]
+        resolution = resolve_conversation_context("Nội dung đó có bắt buộc không?", history)
+        self.assertEqual(resolution.kind, "follow_up")
+        self.assertIn("Tuần định hướng K50", resolution.retrieval_query)
+        self.assertNotIn("gồm những nội dung gì", resolution.retrieval_query)
+
     def test_duplicate_list_item_and_dangling_connector_are_removed(self):
         answer = (
             "Thực hiện đúng quy định của Nhà trường và Khoa:\n"
@@ -383,6 +470,146 @@ class _FakeLlm:
 
 
 class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_discourse_marker_topic_switch_does_not_reach_prompt(self):
+        grade = Document(
+            page_content="Điểm A tương ứng 4,0 trên thang điểm 4.",
+            metadata={"filename": "Quy_che_dao_tao.pdf", "source": "Quy_che_dao_tao.pdf", "page": 10},
+        )
+        store = _FakeVectorStore([(grade, 1.0)])
+        llm = _FakeLlm(["Điểm A tương ứng 4,0 trên thang điểm 4."])
+        chain = RAGChain()
+        chain._vector_store = store
+        chain._llm = llm
+        question = "Vậy điểm A trên thang điểm 4 là bao nhiêu?"
+
+        _answer, sources, _score, reason = await chain.achat(
+            question,
+            conversation_history=[{
+                "question": "TOEIC 4 kỹ năng tương đương Bậc 4 cần bao nhiêu điểm?",
+                "answer": "Nghe 400–489 điểm.",
+                "has_sources": True,
+            }],
+            active_filenames=["Quy_che_dao_tao.pdf", "Chuan_ngoai_ngu.pdf"],
+        )
+
+        self.assertEqual(store.search_query, question)
+        self.assertNotIn("TOEIC", "\n".join(str(message.content) for message in llm.messages))
+        self.assertEqual(sources[0]["filename"], "Quy_che_dao_tao.pdf")
+        self.assertIsNone(reason)
+
+    async def test_grade_follow_up_uses_new_grade_and_not_previous_value(self):
+        grade = Document(
+            page_content="Điểm B tương ứng 3,0 trên thang điểm 4.",
+            metadata={"filename": "Quy_che_dao_tao.pdf", "source": "Quy_che_dao_tao.pdf", "page": 10},
+        )
+        store = _FakeVectorStore([(grade, 1.0)])
+        llm = _FakeLlm(["Điểm B tương ứng 3,0 trên thang điểm 4."])
+        chain = RAGChain()
+        chain._vector_store = store
+        chain._llm = llm
+
+        answer, sources, _score, reason = await chain.achat(
+            "Còn B thì sao?",
+            conversation_history=[{
+                "question": "Điểm A tương ứng 4.0 trên thang điểm 4 phải không?",
+                "answer": "Điểm A là 4.0.",
+                "has_sources": True,
+            }],
+            active_filenames=["Quy_che_dao_tao.pdf"],
+        )
+
+        self.assertIn("Điểm B", store.search_query)
+        self.assertNotIn("4.0", store.search_query)
+        prompt = "\n".join(str(message.content) for message in llm.messages)
+        self.assertNotIn("Điểm A", prompt)
+        self.assertNotIn("4.0", prompt)
+        self.assertIn("3,0", answer)
+        self.assertEqual(sources[0]["filename"], "Quy_che_dao_tao.pdf")
+        self.assertIsNone(reason)
+
+    async def test_topic_switch_uses_only_current_question_in_search_and_prompt(self):
+        grade = Document(
+            page_content="Điểm A tương ứng 4,0 trên thang điểm 4.",
+            metadata={"filename": "Quy_che_dao_tao.pdf", "source": "Quy_che_dao_tao.pdf", "page": 10},
+        )
+        store = _FakeVectorStore([(grade, 1.0)])
+        llm = _FakeLlm(["Điểm A tương ứng 4,0 trên thang điểm 4."])
+        chain = RAGChain()
+        chain._vector_store = store
+        chain._llm = llm
+
+        answer, sources, _score, reason = await chain.achat(
+            "Điểm A tương ứng thang điểm 4 là mấy?",
+            conversation_history=[{
+                "question": "TOEIC 4 kỹ năng tương đương Bậc 4 cần bao nhiêu điểm?",
+                "answer": "Nghe 400–489 điểm.",
+                "has_sources": True,
+            }],
+            active_filenames=["Quy_che_dao_tao.pdf", "Chuan_ngoai_ngu.pdf"],
+        )
+
+        self.assertEqual(store.search_query, "Điểm A tương ứng thang điểm 4 là mấy?")
+        self.assertNotIn("TOEIC", "\n".join(str(message.content) for message in llm.messages))
+        self.assertIn("4,0", answer)
+        self.assertEqual(sources[0]["filename"], "Quy_che_dao_tao.pdf")
+        self.assertIsNone(reason)
+
+    async def test_ambiguous_question_returns_before_search_or_model(self):
+        store = _FakeVectorStore([])
+        llm = _FakeLlm()
+        chain = RAGChain()
+        chain._vector_store = store
+        chain._llm = llm
+
+        answer, sources, _score, reason = await chain.achat(
+            "Còn nữa không?", active_filenames=["Quy_che_dao_tao.pdf"]
+        )
+
+        self.assertIn("nêu rõ", answer)
+        self.assertEqual(sources, [])
+        self.assertEqual(reason, "needs_clarification")
+        self.assertIsNone(store.search_query)
+        self.assertEqual(llm.calls, 0)
+
+    async def test_inactive_library_still_refuses_before_clarification(self):
+        chain = RAGChain()
+        chain._vector_store = _FakeVectorStore([])
+        chain._llm = _FakeLlm()
+        _answer, _sources, _score, reason = await chain.achat(
+            "Còn nữa không?", active_filenames=[]
+        )
+        self.assertEqual(reason, "no_active_docs")
+
+    async def test_follow_up_keeps_document_scope_without_prior_answer(self):
+        venue = Document(
+            page_content="Tuần định hướng K50 được tổ chức tại hội trường A.",
+            metadata={"filename": "Ke_hoach_K50.pdf", "source": "Ke_hoach_K50.pdf", "page": 2},
+        )
+        store = _FakeVectorStore([(venue, 1.0)])
+        llm = _FakeLlm(["Tuần định hướng K50 được tổ chức tại hội trường A."])
+        chain = RAGChain()
+        chain._vector_store = store
+        chain._llm = llm
+
+        answer, sources, _score, reason = await chain.achat(
+            "Còn địa điểm tổ chức ở đâu?",
+            conversation_history=[{
+                "question": "Tuần định hướng K50 diễn ra khi nào?",
+                "answer": "Ngày 24/8/2026.",
+                "has_sources": True,
+            }],
+            document_filename="Ke_hoach_K50.pdf",
+            active_filenames=["Ke_hoach_K50.pdf", "So_tay.pdf"],
+        )
+
+        self.assertIn("Tuần định hướng K50", store.search_query)
+        self.assertEqual(store.search_kwargs["filter"], {"filename": "Ke_hoach_K50.pdf"})
+        prompt = "\n".join(str(message.content) for message in llm.messages)
+        self.assertNotIn("24/8/2026", prompt)
+        self.assertIn("hội trường A", answer)
+        self.assertEqual(sources[0]["filename"], "Ke_hoach_K50.pdf")
+        self.assertIsNone(reason)
+
     async def test_missing_event_document_refuses_without_sources_or_model_call(self):
         handbook = Document(
             page_content=(
