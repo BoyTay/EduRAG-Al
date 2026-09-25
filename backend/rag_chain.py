@@ -193,7 +193,8 @@ Quy tắc bắt buộc:
 13. Với số tiền, giữ nguyên giá trị số và đối tượng/điều kiện áp dụng trong nguồn. Phần trong ngoặc viết số tiền bằng chữ chỉ diễn giải cùng một số tiền; "đồng chẵn" không phải đơn vị tính hoặc mẫu số. Có thể bỏ phần viết bằng chữ khi đã nêu số tiền bằng số. Nếu OCR làm sai dấu ở phần viết bằng chữ, không sao chép lỗi đó thành đơn vị như "đồng/chãn", "đồng/chăn" hay "đồng/chẵn". Không tự thêm đơn vị theo người, tháng hoặc năm nếu nguồn không nêu; nếu số tiền bằng số và bằng chữ mâu thuẫn hoặc không đọc rõ thì nói rõ chưa xác định được, không tự sửa con số.
 14. TUYỆT ĐỐI không thêm câu kết mang tính tổng hợp, nhắc nhở, hoặc kêu gọi tuân thủ nếu phần nguồn dùng để trả lời không nêu rõ điều đó. Ví dụ: không được tự thêm 'Sinh viên cần tuân thủ đầy đủ các quy định trên' hay 'Đây là điều bắt buộc với mọi sinh viên.'
 15. Chỉ trả lời đúng thuộc tính, đối tượng và điều kiện được hỏi. Không ghép ngưỡng, phân loại hoặc điều kiện của đoạn lân cận vào câu trả lời. Nếu nhiều đoạn cùng trang nói về các tiêu chí khác nhau, chỉ dùng đoạn trực tiếp định nghĩa nội dung được hỏi.
-16. Với câu hỏi xác nhận như "đúng không", "phải không" hoặc "có phải", phải đánh giá mệnh đề trước khi trả lời. Nếu mệnh đề sai, mở đầu bằng "Không," và nêu thông tin đúng. Nếu mệnh đề đúng, mở đầu bằng "Đúng,". Không được mở đầu đồng tình rồi phủ định chính mệnh đề đó trong cùng câu trả lời."""
+16. Với câu hỏi xác nhận như "đúng không", "phải không" hoặc "có phải", phải đánh giá mệnh đề trước khi trả lời. Nếu mệnh đề sai, mở đầu bằng "Không," và nêu thông tin đúng. Nếu mệnh đề đúng, mở đầu bằng "Đúng,". Không được mở đầu đồng tình rồi phủ định chính mệnh đề đó trong cùng câu trả lời.
+17. Với dữ liệu bảng, chỉ dùng giá trị nằm đúng hàng và cột tương ứng với đối tượng, chứng chỉ hoặc bậc được hỏi; không lấy số ở cột bên cạnh."""
 
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
 {context}
@@ -650,6 +651,17 @@ def select_context_results(
     """Select compact context or the complete matching section for list questions."""
     if not ranked_results:
         return []
+    requested_level = re.search(
+        r"\b(?:bac|level|muc)\s*(\d+)\b", _search_normalize(question)
+    )
+    if requested_level:
+        level = int(requested_level.group(1))
+        ranked_results = [
+            (document, score) for document, score in ranked_results
+            if document.metadata.get("table_level") in (None, level)
+        ]
+        if not ranked_results:
+            return []
     selected = list(ranked_results[:TOP_K])
     if not asks_for_enumeration(question):
         return selected
@@ -676,6 +688,8 @@ def select_context_results(
         records.get("metadatas", []),
     ):
         if not text or not metadata:
+            continue
+        if requested_level and metadata.get("table_level") not in (None, level):
             continue
         file_chunk = Document(page_content=text, metadata=dict(metadata))
         file_chunks.append(
@@ -1092,6 +1106,9 @@ class RAGChain:
             question,
             retriever_with_score,
         )
+        if not context_results:
+            logger.info("RAG refusal: no context remains after table-level filtering")
+            return NO_RELEVANT_DOCUMENTS_MESSAGE, [], 0.0, "no_matching_table_level"
         docs = [doc for doc, _ in context_results]
         scores = [score for _, score in context_results]
         avg_score = sum(scores) / len(scores) if scores else 0.0

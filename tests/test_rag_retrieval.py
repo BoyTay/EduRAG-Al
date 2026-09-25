@@ -18,6 +18,7 @@ from rag_chain import (
     RETRIEVAL_CANDIDATE_K,
     rerank_retrieval_results,
     retrieval_evidence_score,
+    select_context_results,
     SYSTEM_PROMPT,
 )
 
@@ -194,6 +195,44 @@ class RagRetrievalTests(unittest.TestCase):
         self.assertTrue(
             asks_for_enumeration("Tân sinh viên được hướng dẫn những nội dung gì?")
         )
+
+    def test_requested_table_level_excludes_other_columns(self):
+        documents = [
+            Document(page_content=f"TOEIC Bậc {level}: mức điểm {level}00", metadata={"table_level": level})
+            for level in (3, 4, 5)
+        ]
+        selected = select_context_results(
+            None,
+            "TOEIC 4 kỹ năng tương đương Bậc 4 cần bao nhiêu điểm?",
+            [(document, 0.6) for document in documents],
+        )
+        self.assertEqual([doc.metadata["table_level"] for doc, _score in selected], [4])
+        self.assertIn("đúng hàng và cột", SYSTEM_PROMPT)
+        self.assertEqual(
+            select_context_results(None, "TOEIC Bậc 6 gồm những mức nào?", [(doc, 0.6) for doc in documents]),
+            [],
+        )
+
+    def test_table_level_filter_also_applies_to_expanded_section(self):
+        documents = [
+            Document(
+                page_content=f"TOEIC Bậc {level}: mức điểm {level}00",
+                metadata={"table_level": level, "filename": "scores.pdf", "chunk_index": level},
+            )
+            for level in (3, 4, 5)
+        ]
+        collection = SimpleNamespace(get=lambda **_kwargs: {
+            "ids": [f"scores.pdf_chunk_{level}" for level in (3, 4, 5)],
+            "documents": [doc.page_content for doc in documents],
+            "metadatas": [doc.metadata for doc in documents],
+        })
+        store = SimpleNamespace(_collection=collection)
+        selected = select_context_results(
+            store,
+            "TOEIC Bậc 4 gồm những mức điểm nào?",
+            [(doc, 0.6) for doc in documents],
+        )
+        self.assertEqual([doc.metadata["table_level"] for doc, _score in selected], [4])
 
     def test_inline_bullets_are_normalized_to_separate_lines(self):
         answer = "- Ý thứ nhất. - Ý thứ hai. - Ý thứ ba."

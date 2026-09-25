@@ -335,6 +335,108 @@ def _page_document(
     return Document(page_content=normalize_text(text), metadata=metadata)
 
 
+def _native_table_documents(
+    page: fitz.Page, file_path: Path, page_index: int
+) -> tuple[list[Document], list[fitz.Rect]]:
+    """Keep native PDF table headers attached to their individual cells."""
+    try:
+        tables = page.find_tables().tables
+    except Exception as exc:
+        logger.warning("Không thể nhận diện bảng ở trang {} của {}: {}", page_index + 1, file_path.name, exc)
+        return [], []
+
+    documents: list[Document] = []
+    bounds: list[fitz.Rect] = []
+    for table_index, table in enumerate(tables):
+        rows = table.extract()
+        column_count = table.col_count
+        if column_count < 2 or len(rows) < 2:
+            continue
+        # Some PDF headers span several physical rows. A continuation row
+        # fills blank header cells or contains only a small fragment such as
+        # the level number; the first populated data row ends the header.
+        header_end = 1
+        if any(not normalize_text(cell) for cell in rows[0]):
+            for row in rows[1:4]:
+                first = normalize_text(row[0]) if row else ""
+                filled = sum(bool(normalize_text(cell)) for cell in row)
+                if first.isdigit() or (filled > column_count // 2 and first.lower() != "tt"):
+                    break
+                header_end += 1
+        headers = [
+            normalize_text(" ".join(
+                str(row[column]) for row in rows[:header_end]
+                if column < len(row) and normalize_text(row[column])
+            )) or f"Cột {column + 1}"
+            for column in range(column_count)
+        ]
+        level_columns = [
+            column for column, heading in enumerate(headers)
+            if re.search(r"\b(?:bậc|bac|level|mức)\s*\d+\b", heading, re.IGNORECASE)
+        ]
+        # A multi-level table gets one searchable document per value cell;
+        # ordinary tables get one document per row with labeled columns.
+        separate_levels = len(level_columns) >= 2
+        context_columns = [
+            column for column in range(column_count)
+            if column not in level_columns
+        ] if separate_levels else list(range(column_count))
+        carried = [""] * column_count
+        table_documents: list[Document] = []
+        for row_index, row in enumerate(rows[header_end:], start=header_end):
+            values = [
+                re.sub(r"(?<=\d)-\s+(?=\d)", "-", normalize_text(row[column]))
+                if column < len(row) else ""
+                for column in range(column_count)
+            ]
+            if not any(values):
+                continue
+            for column in context_columns:
+                if values[column]:
+                    carried[column] = values[column]
+            if separate_levels:
+                context = [
+                    f"{headers[column]}: {carried[column]}"
+                    for column in context_columns if carried[column] and headers[column] != "TT"
+                ]
+                for column in level_columns:
+                    if not values[column]:
+                        continue
+                    text = "; ".join([*context, f"{headers[column]}: {values[column]}"])
+                    doc = _page_document(file_path, page_index, text, "native_table")
+                    doc.metadata.update(table_index=table_index, table_row=row_index, table_column=column)
+                    level = re.search(r"\b(?:bậc|bac|level|mức)\s*(\d+)\b", headers[column], re.IGNORECASE)
+                    if level:
+                        doc.metadata["table_level"] = int(level.group(1))
+                    table_documents.append(doc)
+            else:
+                text = "; ".join(
+                    f"{headers[column]}: {values[column]}"
+                    for column in range(column_count) if values[column]
+                )
+                doc = _page_document(file_path, page_index, text, "native_table")
+                doc.metadata.update(table_index=table_index, table_row=row_index)
+                table_documents.append(doc)
+        if table_documents:
+            documents.extend(table_documents)
+            bounds.append(fitz.Rect(table.bbox))
+    return documents, bounds
+
+
+def _native_text_outside_tables(page: fitz.Page, bounds: list[fitz.Rect]) -> str:
+    """Remove flattened table words while keeping text around the table."""
+    words = page.get_text("words", sort=True)
+    kept = [
+        word[4]
+        for word in words
+        if not any(
+            rect.contains(fitz.Point((word[0] + word[2]) / 2, (word[1] + word[3]) / 2))
+            for rect in bounds
+        )
+    ]
+    return normalize_text(" ".join(kept))
+
+
 def _load_pdf_pages(
     file_path: Path,
     settings: IngestionSettings,
@@ -353,7 +455,16 @@ def _load_pdf_pages(
             for page_index, page in enumerate(pdf):
                 native_text = normalize_text(page.get_text("text"))
                 if len(native_text) >= settings.native_text_threshold:
-                    pages.append(_page_document(file_path, page_index, native_text, "native"))
+                    table_documents, table_bounds = _native_table_documents(
+                        page, file_path, page_index
+                    )
+                    if table_documents:
+                        prose = _native_text_outside_tables(page, table_bounds)
+                        if has_sane_text(prose, settings.sanity_min_chars):
+                            pages.append(_page_document(file_path, page_index, prose, "native"))
+                        pages.extend(table_documents)
+                    else:
+                        pages.append(_page_document(file_path, page_index, native_text, "native"))
                     continue
 
                 native_is_sane = has_sane_text(native_text, settings.sanity_min_chars)
@@ -523,8 +634,9 @@ def load_and_chunk_document(
     annotate_chunk_metadata(chunks)
 
     logger.info(
-        "Chunked {}: {} pages -> {} chunks (size={}, overlap={})",
+        "Chunked {}: {} pages, {} text/table sections -> {} chunks (size={}, overlap={})",
         file_path.name,
+        len({page.metadata.get("page") for page in pages}),
         len(pages),
         len(chunks),
         settings.chunk_size,

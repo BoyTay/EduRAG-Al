@@ -142,6 +142,51 @@ class DocumentIngestionTests(unittest.TestCase):
         self.assertEqual(fake.calls, 0)
         self.assertEqual(result.chunks[0].metadata["extraction_method"], "native")
 
+    def test_native_table_keeps_each_level_with_its_own_scores(self):
+        path = self.root / "levels.pdf"
+        with fitz.open() as document:
+            page = document.new_page(width=580, height=240)
+            x_positions = (20, 65, 155, 250, 350, 450, 560)
+            y_positions = (25, 55, 85, 115)
+            for x in x_positions:
+                page.draw_line((x, 25), (x, 115), color=(0, 0, 0))
+            for y in y_positions:
+                page.draw_line((20, y), (560, y), color=(0, 0, 0))
+            cells = (
+                ("TT", "Language", "Certificate", "Bac 3", "Bac 4", "Bac 5"),
+                ("1", "English", "TOEIC", "Listen 275-399", "Listen 400-489", "Listen 490-495"),
+                ("", "", "IELTS", "4.0-5.0", "5.5-6.5", "7.0-8.0"),
+            )
+            for row_index, row in enumerate(cells):
+                for column, value in enumerate(row):
+                    if value:
+                        page.insert_text((x_positions[column] + 4, y_positions[row_index] + 19), value, fontsize=8)
+            page.insert_text((25, 150), "Other policy text outside the table must remain searchable.")
+            document.save(path)
+
+        result = load_and_chunk_document(path, settings=self.settings, cache=self.cache)
+        toeic = [chunk for chunk in result.chunks if "TOEIC" in chunk.page_content]
+        self.assertEqual(len(toeic), 3)
+        bac3 = next(chunk for chunk in toeic if "Bac 3" in chunk.page_content)
+        bac4 = next(chunk for chunk in toeic if "Bac 4" in chunk.page_content)
+        bac5 = next(chunk for chunk in toeic if "Bac 5" in chunk.page_content)
+        self.assertIn("Listen 275-399", bac3.page_content)
+        self.assertNotIn("400-489", bac3.page_content)
+        self.assertIn("Listen 400-489", bac4.page_content)
+        self.assertNotIn("275-399", bac4.page_content)
+        self.assertNotIn("490-495", bac4.page_content)
+        self.assertIn("Listen 490-495", bac5.page_content)
+        self.assertNotIn("400-489", bac5.page_content)
+        self.assertEqual(bac4.metadata["extraction_method"], "native_table")
+        self.assertEqual(bac4.metadata["page"], 0)
+        self.assertEqual(bac4.metadata["table_level"], 4)
+        self.assertTrue(any(
+            chunk.metadata["extraction_method"] == "native"
+            and "Other policy text" in chunk.page_content
+            and "TOEIC" not in chunk.page_content
+            for chunk in result.chunks
+        ))
+
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])
         fake = FakeOCR()
