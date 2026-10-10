@@ -187,6 +187,91 @@ class DocumentIngestionTests(unittest.TestCase):
             for chunk in result.chunks
         ))
 
+    def _grid(self, page, x_positions, y_positions, skip_vertical=None):
+        """Vẽ lưới bảng; skip_vertical = {(cột, hàng)} bỏ đoạn kẻ dọc để tạo ô gộp ngang."""
+        skip_vertical = skip_vertical or set()
+        for y in y_positions:
+            page.draw_line((x_positions[0], y), (x_positions[-1], y), color=(0, 0, 0))
+        for column, x in enumerate(x_positions):
+            for row in range(len(y_positions) - 1):
+                if (column, row) not in skip_vertical:
+                    page.draw_line((x, y_positions[row]), (x, y_positions[row + 1]), color=(0, 0, 0))
+
+    def _write_cells(self, page, x_positions, y_positions, rows):
+        for r, row in enumerate(rows):
+            for c, value in enumerate(row):
+                if value:
+                    page.insert_text((x_positions[c] + 4, y_positions[r] + 17), value, fontsize=9)
+
+    def test_table_split_across_pages_keeps_caption_headers_and_merged_cells(self):
+        path = self.root / "split.pdf"
+        xs = (40, 160, 300, 460)
+        with fitz.open() as document:
+            first = document.new_page(width=520, height=420)
+            first.insert_text((40, 330), "6. Xep loai hoc tap theo diem trung binh chung tich luy nhu sau:", fontsize=9)
+            ys1 = (345, 370, 395)
+            # Ô tiêu đề "Xep loai" trải trên hai cột đầu: bỏ kẻ dọc giữa chúng ở hàng tiêu đề.
+            self._grid(first, xs, ys1, skip_vertical={(1, 0)})
+            self._write_cells(first, xs, ys1, (("Xep loai", "", "Thang diem 4"), ("Dat", "Xuat sac", "Tu 3,60 den 4,00")))
+            second = document.new_page(width=520, height=420)
+            second.insert_text((40, 300), "Van ban noi dung de trang co du chu native khong can nhan dang OCR.", fontsize=9)
+            ys2 = (30, 55, 80, 105)
+            self._grid(second, xs, ys2)
+            self._write_cells(second, xs, ys2, (("", "Gioi", "Tu 3,20 den 3,59"), ("", "Kha", "Tu 2,50 den 3,19"), ("Khong dat", "Yeu", "Tu 1,00 den 1,99")))
+            document.save(path)
+
+        result = load_and_chunk_document(path, settings=self.settings, cache=self.cache)
+        rows = [chunk for chunk in result.chunks if chunk.metadata["extraction_method"] == "native_table"]
+        texts = [chunk.page_content for chunk in rows]
+        self.assertEqual(len(rows), 4, texts)
+        for text in texts:
+            self.assertIn("Xep loai hoc tap theo diem trung binh chung tich luy", text)
+            self.assertNotIn("Cột", text)
+        by_grade = {name: next(t for t in texts if name in t) for name in ("Xuat sac", "Gioi", "Kha", "Yeu")}
+        self.assertIn("Xep loai: Dat - Xuat sac", by_grade["Xuat sac"])
+        self.assertIn("Xep loai: Dat - Gioi; Thang diem 4: Tu 3,20 den 3,59", by_grade["Gioi"])
+        self.assertIn("Xep loai: Dat - Kha", by_grade["Kha"])
+        self.assertIn("Xep loai: Khong dat - Yeu", by_grade["Yeu"])
+        continued = [chunk for chunk in rows if chunk.metadata.get("table_continued")]
+        self.assertEqual(len(continued), 3)
+
+    def test_table_with_its_own_header_on_next_page_is_not_a_continuation(self):
+        path = self.root / "two_tables.pdf"
+        xs = (40, 160, 300, 460)
+        with fitz.open() as document:
+            first = document.new_page(width=520, height=420)
+            first.insert_text((40, 200), "Van ban noi dung de trang co du chu native khong can nhan dang OCR.", fontsize=9)
+            ys1 = (330, 355, 380)
+            self._grid(first, xs, ys1)
+            self._write_cells(first, xs, ys1, (("TT", "Ten", "Gia tri"), ("1", "Alpha", "Mot")))
+            second = document.new_page(width=520, height=420)
+            second.insert_text((40, 300), "Van ban noi dung de trang co du chu native khong can nhan dang OCR.", fontsize=9)
+            ys2 = (30, 55, 80)
+            self._grid(second, xs, ys2)
+            self._write_cells(second, xs, ys2, (("TT", "Nhom", "Muc"), ("1", "Beta", "Hai")))
+            document.save(path)
+
+        result = load_and_chunk_document(path, settings=self.settings, cache=self.cache)
+        texts = [c.page_content for c in result.chunks if c.metadata["extraction_method"] == "native_table"]
+        self.assertTrue(any("Nhom: Beta; Muc: Hai" in text for text in texts), texts)
+        self.assertFalse(any(c.metadata.get("table_continued") for c in result.chunks))
+
+    def test_long_paragraph_above_table_is_not_used_as_caption(self):
+        path = self.root / "paragraph.pdf"
+        xs = (40, 160, 300, 460)
+        with fitz.open() as document:
+            page = document.new_page(width=520, height=300)
+            page.insert_text((40, 60), "Day la mot doan van dai khong phai ten bang " + "noi dung " * 25 + ":", fontsize=6)
+            ys = (100, 125, 150)
+            self._grid(page, xs, ys)
+            self._write_cells(page, xs, ys, (("Ten", "Gia tri", "Ghi chu"), ("A", "1", "x")))
+            document.save(path)
+
+        result = load_and_chunk_document(path, settings=self.settings, cache=self.cache)
+        rows = [c for c in result.chunks if c.metadata["extraction_method"] == "native_table"]
+        self.assertTrue(rows)
+        self.assertFalse(any("table_caption" in c.metadata for c in rows))
+
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])
         fake = FakeOCR()

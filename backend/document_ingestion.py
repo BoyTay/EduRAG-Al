@@ -335,41 +335,134 @@ def _page_document(
     return Document(page_content=normalize_text(text), metadata=metadata)
 
 
+_CAPTION_SEARCH_PT = 70
+_CAPTION_MAX_CHARS = 180
+_CONTINUATION_TOP_PT = 120
+_CONTINUATION_BOTTOM_PT = 120
+
+
+def _table_caption(
+    page: fitz.Page, bbox: tuple[float, float, float, float], other_bboxes: list | None = None
+) -> str:
+    """Câu dẫn ngay trên bảng ("… như sau:" hoặc "Bảng N. …"), để dòng bảng không mất ngữ cảnh.
+
+    Không có câu dẫn rõ ràng thì trả về chuỗi rỗng, tránh gắn nhầm một đoạn văn bất kỳ.
+    """
+    top = bbox[1]
+    # Bỏ chữ nằm trong các bảng khác (vd. dòng cuối của bảng ngay phía trên).
+    others = [fitz.Rect(other) for other in (other_bboxes or [])]
+    words = [
+        word for word in page.get_text("words", sort=True)
+        if top - _CAPTION_SEARCH_PT <= word[3] <= top + 1
+        and not any(
+            rect.contains(fitz.Point((word[0] + word[2]) / 2, (word[1] + word[3]) / 2))
+            for rect in others
+        )
+    ]
+    text = normalize_text(" ".join(word[4] for word in words))
+    if not text:
+        return ""
+    # Cắt ở dấu kết câu cuối cùng không phải số thứ tự ("6." hay "a)").
+    start = 0
+    for match in re.finditer(r"[.;!?]\s+", text):
+        before = text[:match.start() + 1].split()[-1].rstrip(".;!?")
+        if re.fullmatch(r"\d{1,2}|[a-zđ]", before, re.IGNORECASE):
+            continue
+        start = match.end()
+    sentence = text[start:].strip()
+    sentence = re.sub(r"^(?:\d{1,2}\s*[.)]|[a-zđ]\))\s*", "", sentence, flags=re.IGNORECASE)
+    if not (sentence.endswith(":") or re.match(r"(?:bảng|biểu|table)\b", sentence, re.IGNORECASE)):
+        return ""
+    sentence = re.sub(r"\s*(?:cụ thể\s+)?(?:như sau|sau đây)?\s*:\s*$", "", sentence, flags=re.IGNORECASE)
+    sentence = sentence.rstrip(" ,;").strip()
+    # Câu dẫn thật ngắn gọn; một đoạn dài là văn bản thường chứ không phải tên bảng.
+    return sentence if len(sentence) <= _CAPTION_MAX_CHARS else ""
+
+
+def _is_table_continuation(
+    page: fitz.Page, table: "fitz.table.Table", rows: list, previous: dict | None, page_index: int
+) -> bool:
+    """Bảng đầu trang tiếp nối bảng cuối trang trước: cùng số cột và không lặp lại dòng tiêu đề."""
+    if not previous or previous["page"] != page_index - 1 or table.col_count != previous["columns"]:
+        return False
+    if not previous["ends_low"] or table.bbox[1] > _CONTINUATION_TOP_PT:
+        return False
+    first_row = [normalize_text(cell) for cell in rows[0]]
+    if first_row and first_row[0].lower() in {"tt", "stt"}:
+        return False  # dòng đầu là tiêu đề của một bảng mới
+    repeated_header = [normalize_text(h).lower() for h in previous["raw_headers"]]
+    return [cell.lower() for cell in first_row] != repeated_header
+
+
 def _native_table_documents(
-    page: fitz.Page, file_path: Path, page_index: int
+    page: fitz.Page, file_path: Path, page_index: int, state: dict | None = None
 ) -> tuple[list[Document], list[fitz.Rect]]:
-    """Keep native PDF table headers attached to their individual cells."""
+    """Keep native PDF table headers attached to their individual cells.
+
+    `state` (do _load_pdf_pages giữ qua các trang) cho phép nối bảng bị ngắt giữa hai trang:
+    phần tiếp theo không có dòng tiêu đề nên dùng lại tiêu đề, câu dẫn và ô gộp dọc của phần trước.
+    """
+    if state is None:
+        state = {}
     try:
         tables = page.find_tables().tables
     except Exception as exc:
         logger.warning("Không thể nhận diện bảng ở trang {} của {}: {}", page_index + 1, file_path.name, exc)
+        state.pop("last", None)
         return [], []
 
     documents: list[Document] = []
     bounds: list[fitz.Rect] = []
+    last_on_this_page: dict | None = None
     for table_index, table in enumerate(tables):
         rows = table.extract()
         column_count = table.col_count
-        if column_count < 2 or len(rows) < 2:
+        if column_count < 2 or len(rows) < 1:
             continue
-        # Some PDF headers span several physical rows. A continuation row
-        # fills blank header cells or contains only a small fragment such as
-        # the level number; the first populated data row ends the header.
-        header_end = 1
-        if any(not normalize_text(cell) for cell in rows[0]):
-            for row in rows[1:4]:
-                first = normalize_text(row[0]) if row else ""
-                filled = sum(bool(normalize_text(cell)) for cell in row)
-                if first.isdigit() or (filled > column_count // 2 and first.lower() != "tt"):
-                    break
-                header_end += 1
-        headers = [
-            normalize_text(" ".join(
-                str(row[column]) for row in rows[:header_end]
-                if column < len(row) and normalize_text(row[column])
-            )) or f"Cột {column + 1}"
-            for column in range(column_count)
-        ]
+        previous = state.get("last") if table_index == 0 else None
+        continuation = len(rows) >= 1 and _is_table_continuation(page, table, rows, previous, page_index)
+        if not continuation and len(rows) < 2:
+            continue
+
+        if continuation:
+            raw_headers = list(previous["raw_headers"])
+            caption = previous["caption"]
+            carried_first = previous["carried_first"]
+            header_end = 0
+        else:
+            caption = _table_caption(
+                page, table.bbox, [other.bbox for other in tables if other is not table]
+            )
+            carried_first = ""
+            # Some PDF headers span several physical rows. A continuation row
+            # fills blank header cells or contains only a small fragment such as
+            # the level number; the first populated data row ends the header.
+            header_end = 1
+            if any(not normalize_text(cell) for cell in rows[0]):
+                for row in rows[1:4]:
+                    first = normalize_text(row[0]) if row else ""
+                    filled = sum(bool(normalize_text(cell)) for cell in row)
+                    if first.isdigit() or (filled > column_count // 2 and first.lower() != "tt"):
+                        break
+                    header_end += 1
+            raw_headers = [
+                normalize_text(" ".join(
+                    str(row[column]) for row in rows[:header_end]
+                    if column < len(row) and normalize_text(row[column])
+                ))
+                for column in range(column_count)
+            ]
+        headers = [heading or f"Cột {column + 1}" for column, heading in enumerate(raw_headers)]
+        # Ô tiêu đề gộp ngang (vd. "Xếp loại" trải trên 2 cột) để trống ở cột sau: coi các cột đó
+        # là một nhóm, giá trị được nối lại thay vì thành "Cột 2".
+        group_of = list(range(column_count))
+        for column in range(1, column_count):
+            if not raw_headers[column] and raw_headers[column - 1]:
+                group_of[column] = group_of[column - 1]
+            elif not raw_headers[column] and group_of[column - 1] != column - 1:
+                group_of[column] = group_of[column - 1]
+        grouped = len(set(group_of)) < column_count
+
         level_columns = [
             column for column, heading in enumerate(headers)
             if re.search(r"\b(?:bậc|bac|level|mức)\s*\d+\b", heading, re.IGNORECASE)
@@ -382,7 +475,9 @@ def _native_table_documents(
             if column not in level_columns
         ] if separate_levels else list(range(column_count))
         carried = [""] * column_count
+        carried[0] = carried_first
         table_documents: list[Document] = []
+        prefix = f"[{caption}] " if caption else ""
         for row_index, row in enumerate(rows[header_end:], start=header_end):
             values = [
                 re.sub(r"(?<=\d)-\s+(?=\d)", "-", normalize_text(row[column]))
@@ -391,6 +486,9 @@ def _native_table_documents(
             ]
             if not any(values):
                 continue
+            # Ô gộp dọc ở cột đầu (vd. "Đạt" bao trùm nhiều dòng) chỉ có giá trị ở dòng đầu tiên.
+            if not values[0] and raw_headers[0].lower() not in {"tt", "stt"} and carried[0]:
+                values[0] = carried[0]
             for column in context_columns:
                 if values[column]:
                     carried[column] = values[column]
@@ -402,24 +500,49 @@ def _native_table_documents(
                 for column in level_columns:
                     if not values[column]:
                         continue
-                    text = "; ".join([*context, f"{headers[column]}: {values[column]}"])
+                    text = prefix + "; ".join([*context, f"{headers[column]}: {values[column]}"])
                     doc = _page_document(file_path, page_index, text, "native_table")
                     doc.metadata.update(table_index=table_index, table_row=row_index, table_column=column)
+                    if caption:
+                        doc.metadata["table_caption"] = caption
                     level = re.search(r"\b(?:bậc|bac|level|mức)\s*(\d+)\b", headers[column], re.IGNORECASE)
                     if level:
                         doc.metadata["table_level"] = int(level.group(1))
                     table_documents.append(doc)
             else:
-                text = "; ".join(
-                    f"{headers[column]}: {values[column]}"
-                    for column in range(column_count) if values[column]
-                )
-                doc = _page_document(file_path, page_index, text, "native_table")
+                if grouped:
+                    parts: list[str] = []
+                    for group in dict.fromkeys(group_of):
+                        members = [values[c] for c in range(column_count) if group_of[c] == group and values[c]]
+                        if members:
+                            parts.append(f"{headers[group]}: {' - '.join(members)}")
+                else:
+                    parts = [
+                        f"{headers[column]}: {values[column]}"
+                        for column in range(column_count) if values[column]
+                    ]
+                doc = _page_document(file_path, page_index, prefix + "; ".join(parts), "native_table")
                 doc.metadata.update(table_index=table_index, table_row=row_index)
+                if caption:
+                    doc.metadata["table_caption"] = caption
+                if continuation:
+                    doc.metadata["table_continued"] = True
                 table_documents.append(doc)
         if table_documents:
             documents.extend(table_documents)
             bounds.append(fitz.Rect(table.bbox))
+            last_on_this_page = {
+                "page": page_index,
+                "columns": column_count,
+                "raw_headers": raw_headers,
+                "caption": caption,
+                "carried_first": carried[0],
+                "ends_low": table.bbox[3] >= page.rect.height - _CONTINUATION_BOTTOM_PT,
+            }
+    if last_on_this_page is not None:
+        state["last"] = last_on_this_page
+    else:
+        state.pop("last", None)
     return documents, bounds
 
 
@@ -451,12 +574,13 @@ def _load_pdf_pages(
     service = ocr_service
 
     try:
+        table_state: dict = {}
         with fitz.open(file_path) as pdf:
             for page_index, page in enumerate(pdf):
                 native_text = normalize_text(page.get_text("text"))
                 if len(native_text) >= settings.native_text_threshold:
                     table_documents, table_bounds = _native_table_documents(
-                        page, file_path, page_index
+                        page, file_path, page_index, table_state
                     )
                     if table_documents:
                         prose = _native_text_outside_tables(page, table_bounds)

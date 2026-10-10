@@ -16,7 +16,7 @@ FastAPI (:8000) ─────────► SQLite (tài khoản, phiên, met
 
 Backend dùng FastAPI, SQLAlchemy, LangChain và ChromaDB. Frontend dùng React Router, TanStack Query, Zustand và Tailwind CSS. Model sinh câu trả lời mặc định là `qwen3.5:9b` qua Ollama, đổi được bằng `LLM_MODEL`. Embedding mặc định là `AITeamVN/Vietnamese_Embedding` qua Hugging Face.
 
-PDF có text được đọc trực tiếp. Trang scan hoặc thiếu text được OCR riêng theo trang; Docker mặc định dùng Tesseract `vie`. PaddleOCR là lựa chọn thay thế qua `OCR_PROVIDER` và có kiểm tra bảng ký tự tiếng Việt. Luồng RAG chỉ dùng tài liệu `active`, xét các lượt hội thoại gần đây để xử lý câu hỏi tiếp nối, rerank chunk và từ chối khi thiếu bằng chứng phù hợp.
+PDF có text được đọc trực tiếp; mỗi dòng bảng được lưu cùng tiêu đề cột và câu dẫn phía trên bảng (kể cả bảng bị ngắt giữa hai trang hoặc có ô gộp). Trang scan hoặc thiếu text được OCR riêng theo trang; Docker mặc định dùng Tesseract `vie`. PaddleOCR là lựa chọn thay thế qua `OCR_PROVIDER` và có kiểm tra bảng ký tự tiếng Việt. Luồng RAG chỉ dùng tài liệu `active`, xét các lượt hội thoại gần đây để xử lý câu hỏi tiếp nối, rerank chunk và từ chối khi thiếu bằng chứng phù hợp.
 
 ## Chạy bằng Docker Compose
 
