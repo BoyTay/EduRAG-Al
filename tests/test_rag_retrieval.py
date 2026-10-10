@@ -473,6 +473,82 @@ class _FakeLlm:
         return SimpleNamespace(content=self.responses[response_index])
 
 
+class _FakeReranker:
+    def __init__(self, scores_by_text):
+        self.scores_by_text = scores_by_text
+        self.pairs = None
+
+    def predict(self, pairs):
+        self.pairs = pairs
+        return [self.scores_by_text[text] for _question, text in pairs]
+
+
+class CrossEncoderPruneTests(unittest.IsolatedAsyncioTestCase):
+    def _results(self):
+        texts = {
+            "row": 0.93, "near": 0.30, "other_table": 0.20, "noise": 0.05,
+        }
+        docs = [(Document(page_content=text, metadata={"filename": "a.pdf"}), 0.5) for text in texts]
+        return texts, docs
+
+    def test_keeps_only_candidates_close_to_the_top_score(self):
+        texts, docs = self._results()
+        chain = RAGChain()
+        chain._reranker = _FakeReranker(texts)
+        kept = chain._cross_encoder_prune("câu hỏi", docs)
+        self.assertEqual([doc.page_content for doc, _ in kept], ["row"])
+
+    def test_orders_survivors_by_reranker_score_and_keeps_heuristic_scores(self):
+        texts = {"b": 0.6, "a": 0.9}
+        docs = [(Document(page_content=t, metadata={}), 0.1 * i) for i, t in enumerate(texts, 1)]
+        chain = RAGChain()
+        chain._reranker = _FakeReranker(texts)
+        kept = chain._cross_encoder_prune("q", docs)
+        self.assertEqual([doc.page_content for doc, _ in kept], ["a", "b"])
+        self.assertEqual({doc.page_content: score for doc, score in kept}, {"b": 0.1, "a": 0.2})
+
+    def test_close_top_candidates_keep_heuristic_ranking(self):
+        texts = {"row_a": 0.89, "row_b": 0.82, "other": 0.20}
+        docs = [(Document(page_content=t, metadata={}), 0.5) for t in texts]
+        chain = RAGChain()
+        chain._reranker = _FakeReranker(texts)
+        self.assertEqual(chain._cross_encoder_prune("q", docs), docs)
+
+    def test_rows_of_one_table_are_capped(self):
+        texts = {"r1": 0.95, "r2": 0.80, "r3": 0.78, "elsewhere": 0.70}
+        docs = []
+        for text in texts:
+            metadata = {"filename": "a.pdf", "page": 1, "table_index": 0} if text.startswith("r") else {"filename": "a.pdf", "page": 2}
+            docs.append((Document(page_content=text, metadata=metadata), 0.5))
+        chain = RAGChain()
+        chain._reranker = _FakeReranker(texts)
+        kept = chain._cross_encoder_prune("q", docs)
+        self.assertEqual([doc.page_content for doc, _ in kept], ["r1", "r2", "elsewhere"])
+
+    def test_low_confidence_keeps_everything(self):
+        texts = {"x": 0.10, "y": 0.05, "z": 0.01}
+        docs = [(Document(page_content=t, metadata={}), 0.5) for t in texts]
+        chain = RAGChain()
+        chain._reranker = _FakeReranker(texts)
+        self.assertEqual(chain._cross_encoder_prune("q", docs), docs)
+
+    def test_without_reranker_results_are_unchanged(self):
+        _texts, docs = self._results()
+        self.assertEqual(RAGChain()._cross_encoder_prune("q", docs), docs)
+
+    async def test_enumeration_questions_skip_the_reranker(self):
+        grade = Document(
+            page_content="Quyền của sinh viên gồm nhiều ý.",
+            metadata={"filename": "Quy_che.pdf", "source": "Quy_che.pdf", "page": 3},
+        )
+        chain = RAGChain()
+        chain._vector_store = _FakeVectorStore([(grade, 1.0)])
+        chain._llm = _FakeLlm(["- Một ý.\n- Hai ý."])
+        chain._reranker = _FakeReranker({})
+        await chain.achat("Hãy liệt kê đầy đủ quyền của sinh viên.", active_filenames=["Quy_che.pdf"])
+        self.assertIsNone(chain._reranker.pairs)
+
+
 class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_model_decline_is_logged_as_refusal_without_sources(self):
         grade = Document(

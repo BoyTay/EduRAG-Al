@@ -29,6 +29,9 @@ services:
       - LLM_AUDIT_TEMPERATURE=${LLM_AUDIT_TEMPERATURE:-0.0}
       - LLM_NUM_CTX=${LLM_NUM_CTX:-6144}
       - LLM_KEEP_ALIVE=${LLM_KEEP_ALIVE:-30m}
+      - RERANKER_MODEL=${RERANKER_MODEL-BAAI/bge-reranker-v2-m3}
+      - RERANKER_TOP_N=${RERANKER_TOP_N:-12}
+      - RERANKER_KEEP_RATIO=${RERANKER_KEEP_RATIO:-0.6}
       - EMBEDDING_MODEL=AITeamVN/Vietnamese_Embedding
       - CHROMA_PATH=/app/chroma_db
       - DATA_PATH=/app/data

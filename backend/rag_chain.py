@@ -4,6 +4,7 @@ Kết hợp Chroma retriever + Qwen3.5-9B (Ollama) + LangChain để trả lời
 dựa trên tài liệu được cung cấp.
 """
 
+import asyncio
 import os
 import re
 import threading
@@ -43,6 +44,17 @@ LLM_TEMPERATURE = _read_temperature("LLM_TEMPERATURE", 0.3)
 # 6144 giúp qwen3.5:9b (Q4_K_M) nằm gọn trong GPU 8 GB; 8192 làm ~12% model tràn sang CPU
 # và chậm hơn khoảng 25%. Prompt lớn nhất (20 chunk) cỡ ~5,3k token nên vẫn đủ.
 LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX", "6144"))
+# Cross-encoder xếp lại ứng viên cho câu tra cứu một giá trị (~2,2 GB, tải lần đầu; để trống
+# để tắt). Chạy trên CPU: ~0,25 giây mỗi đoạn, nên chỉ xét RERANKER_TOP_N ứng viên đầu.
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3").strip()
+RERANKER_TOP_N = int(os.getenv("RERANKER_TOP_N", "12"))
+# Giữ đoạn có điểm >= tỷ lệ này so với đoạn đứng đầu; dưới ngưỡng tin cậy thì không cắt gì.
+RERANKER_KEEP_RATIO = float(os.getenv("RERANKER_KEEP_RATIO", "0.6"))
+RERANKER_MIN_CONFIDENCE = float(os.getenv("RERANKER_MIN_CONFIDENCE", "0.2"))
+# Chỉ cắt khi đoạn đứng đầu nổi bật: điểm hạng 2 phải <= tỷ lệ này so với hạng 1.
+RERANKER_TIE_RATIO = float(os.getenv("RERANKER_TIE_RATIO", "0.85"))
+# Số dòng tối đa giữ lại từ cùng một bảng (0 = không giới hạn).
+RERANKER_MAX_PER_TABLE = int(os.getenv("RERANKER_MAX_PER_TABLE", "2"))
 # Giữ model trong bộ nhớ để lượt hỏi đầu sau thời gian rảnh không phải nạp lại (~7 giây).
 LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "30m")
 LLM_AUDIT_TEMPERATURE = _read_temperature("LLM_AUDIT_TEMPERATURE", 0.0)
@@ -1163,11 +1175,70 @@ class RAGChain:
         self._vector_store: Optional[Chroma] = None
         self._llm: Optional[ChatOllama] = None
         self._audit_llm: Optional[ChatOllama] = None
+        self._reranker = None
         self._chain = None
+
+    def _load_reranker(self) -> None:
+        """Nạp cross-encoder rerank trên CPU (GPU 8 GB đã dành cho LLM). Lỗi thì chạy không rerank."""
+        if not RERANKER_MODEL:
+            logger.info("Cross-encoder reranker disabled (RERANKER_MODEL is empty)")
+            return
+        try:
+            from sentence_transformers import CrossEncoder
+
+            self._reranker = CrossEncoder(RERANKER_MODEL, device="cpu", max_length=512)
+            logger.info("Cross-encoder reranker loaded: {}", RERANKER_MODEL)
+        except Exception as error:
+            self._reranker = None
+            logger.warning(f"Cross-encoder reranker unavailable, using heuristic ranking only: {error}")
+
+    def _cross_encoder_prune(self, question: str, results: list) -> list:
+        """Xếp lại các ứng viên đầu bằng cross-encoder và bỏ đoạn kém liên quan.
+
+        Chỉ dùng cho câu tra cứu một giá trị (bảng, mức điểm, bậc…): ngữ cảnh lẫn các bảng lân
+        cận làm model đọc nhầm. Không đủ tự tin thì trả nguyên danh sách để không mất bằng chứng.
+        """
+        if self._reranker is None or len(results) < 2:
+            return results
+        head = results[:RERANKER_TOP_N]
+        scores = [float(s) for s in self._reranker.predict([(question, doc.page_content) for doc, _ in head])]
+        ranked = sorted(zip(scores, head), key=lambda item: item[0], reverse=True)
+        top_score = ranked[0][0]
+        if top_score < RERANKER_MIN_CONFIDENCE:
+            logger.info("Reranker not confident (top={:.2f}); keeping heuristic ranking", top_score)
+            return results
+        if len(ranked) > 1 and ranked[1][0] > top_score * RERANKER_TIE_RATIO:
+            # Hai ứng viên đầu sát nhau: reranker không phân biệt được, nên cắt theo nó dễ giữ nhầm
+            # đoạn đồng dạng (vd. bảng xếp loại khác) và bỏ mất đoạn đúng. Giữ nguyên xếp hạng cũ.
+            logger.info(
+                "Reranker top candidates are close ({:.2f} vs {:.2f}); keeping heuristic ranking",
+                top_score, ranked[1][0],
+            )
+            return results
+        kept = []
+        per_table: dict[tuple, int] = {}
+        for score, pair in ranked:
+            if score < top_score * RERANKER_KEEP_RATIO:
+                break
+            metadata = pair[0].metadata or {}
+            if RERANKER_MAX_PER_TABLE and metadata.get("table_index") is not None:
+                # Một bảng sinh ra nhiều dòng giống nhau; chỉ giữ vài dòng khớp nhất để chúng
+                # không át các đoạn khác (vd. bảng quy đổi điểm) trong ngữ cảnh.
+                table_key = (metadata.get("filename"), metadata.get("page"), metadata.get("table_index"))
+                per_table[table_key] = per_table.get(table_key, 0) + 1
+                if per_table[table_key] > RERANKER_MAX_PER_TABLE:
+                    continue
+            kept.append(pair)
+        logger.info(
+            "Reranker kept {}/{} candidates (top={:.2f}, ratio={})",
+            len(kept), len(head), top_score, RERANKER_KEEP_RATIO,
+        )
+        return kept
 
     def initialize(self) -> None:
         """Khởi tạo tất cả components. Gọi một lần khi startup."""
         logger.info("Initializing RAG Chain...")
+        self._load_reranker()
 
         # 1. Embedding model
         self._embedding_model = get_embedding_model()
@@ -1391,6 +1462,12 @@ class RAGChain:
                 [],
                 best_score,
                 f"low_score={best_evidence_score:.3f}",
+            )
+
+        if self._reranker is not None and not asks_for_enumeration(question):
+            # predict() chạy vài giây trên CPU nên đưa ra thread riêng, không chặn event loop.
+            retriever_with_score = await asyncio.to_thread(
+                self._cross_encoder_prune, effective_question, retriever_with_score
             )
 
         context_results = select_context_results(

@@ -102,6 +102,7 @@ Các giá trị mẫu nằm trong `.env.example`; Compose chỉ truyền các bi
 
 - `LLM_MODEL=qwen3.5:9b`, `LLM_TEMPERATURE=0.3`, `LLM_AUDIT_TEMPERATURE=0.0`: model và nhiệt độ cho lượt trả lời/rà soát.
 - `RETRIEVAL_CANDIDATE_K=30`, `TOP_K=8`, `MIN_RELEVANCE_SCORE=0.30`: số candidate, số chunk đưa vào prompt và ngưỡng từ chối. Cần đánh giá trên tài liệu thật trước khi chỉnh ngưỡng.
+- `RERANKER_MODEL=BAAI/bge-reranker-v2-m3`: cross-encoder chạy trên CPU, lọc ngữ cảnh cho câu tra cứu một giá trị (bảng điểm, bậc chuẩn đầu ra…) khi nó tách được một đoạn nổi bật; lần đầu tải khoảng 2,2 GB và mỗi câu chậm thêm vài giây. Để trống để tắt. `RERANKER_TOP_N`, `RERANKER_KEEP_RATIO`, `RERANKER_TIE_RATIO` và `RERANKER_MAX_PER_TABLE` chỉnh cách lọc.
 - `LLM_NUM_CTX=6144`, `LLM_KEEP_ALIVE=30m`: cửa sổ ngữ cảnh (vừa GPU 8 GB) và thời gian giữ model trong bộ nhớ Ollama.
 - `OCR_ENABLED=true`, `OCR_PROVIDER=tesseract`, `OCR_TESSERACT_PSM=6`, `OCR_DPI=300`: xử lý scan. `OCR_TESSERACT_REMOVE_COLORED_OVERLAYS=true` hỗ trợ nhận dạng chữ trên nền có lớp màu.
 - `OCR_PROVIDER=paddleocr`: dùng PaddleOCR; `OCR_DETECTION_MODEL` và `OCR_RECOGNITION_MODEL` chỉ áp dụng với lựa chọn này. Model thiếu ký tự tiếng Việt bị từ chối.
