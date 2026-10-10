@@ -1,9 +1,11 @@
 import unittest
+import unittest.mock
 from types import SimpleNamespace
 
 from langchain_core.documents import Document
 
 from rag_chain import (
+    LLM_NUM_CTX,
     asks_for_enumeration,
     build_answer_guidance,
     build_retrieval_query,
@@ -471,6 +473,30 @@ class _FakeLlm:
         response_index = min(self.calls, len(self.responses) - 1)
         self.calls += 1
         return SimpleNamespace(content=self.responses[response_index])
+
+
+class WarmUpTests(unittest.TestCase):
+    def test_warm_up_limits_generation_through_the_constructor(self):
+        created = []
+
+        class RecordingOllama:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+                self.prompts = []
+                created.append(self)
+
+            def invoke(self, prompt, **kwargs):
+                # invoke() không nhận num_predict: nó bị chuyển thẳng xuống client Ollama.
+                assert not kwargs, kwargs
+                self.prompts.append(prompt)
+
+        with unittest.mock.patch("rag_chain.ChatOllama", RecordingOllama):
+            RAGChain()._warm_up_llm()
+
+        self.assertEqual(len(created), 1)
+        self.assertEqual(created[0].kwargs["num_predict"], 1)
+        self.assertEqual(created[0].kwargs["num_ctx"], LLM_NUM_CTX)
+        self.assertEqual(created[0].prompts, ["ok"])
 
 
 class _FakeReranker:

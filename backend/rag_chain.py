@@ -1286,7 +1286,18 @@ class RAGChain:
     def _warm_up_llm(self) -> None:
         """Gọi một lượt ngắn để Ollama nạp model; lỗi chỉ ghi log, không chặn khởi động."""
         try:
-            self._llm.invoke("ok", num_predict=1)
+            # Cùng model/num_ctx/keep_alive với self._llm (khác num_ctx sẽ khiến Ollama nạp lại
+            # model), chỉ giới hạn độ dài sinh. num_predict là tùy chọn khởi tạo, không phải
+            # tham số của invoke().
+            warm_up = ChatOllama(
+                model=LLM_MODEL,
+                base_url=OLLAMA_BASE_URL,
+                reasoning=False,
+                num_ctx=LLM_NUM_CTX,
+                num_predict=1,
+                keep_alive=LLM_KEEP_ALIVE,
+            )
+            warm_up.invoke("ok")
             logger.info("LLM warm-up completed")
         except Exception as error:
             logger.warning(f"LLM warm-up skipped: {error}")
