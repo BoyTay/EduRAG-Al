@@ -47,7 +47,7 @@ ENV PYTHONPATH=/app/backend
 
 # Environment variables (override via docker-compose or .env)
 ENV OLLAMA_BASE_URL=http://host.docker.internal:11434
-ENV LLM_MODEL=qwen2.5:7b
+ENV LLM_MODEL=qwen3.5:9b
 # Keep the image default aligned with docker-compose; the former repository ID
 # is unavailable and made a direct container start fail before health-check.
 ENV EMBEDDING_MODEL=AITeamVN/Vietnamese_Embedding

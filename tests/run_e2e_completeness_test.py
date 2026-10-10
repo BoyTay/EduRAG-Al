@@ -40,10 +40,10 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 try:
-    from backend.rag_chain import RAGChain, normalize_answer
+    from backend.rag_chain import LLM_MODEL, RAGChain, normalize_answer
     from backend.db import SessionLocal, log_activity, DocumentMetadata
 except ImportError:
-    from rag_chain import RAGChain, normalize_answer  # type: ignore # pyrefly: ignore [missing-import]
+    from rag_chain import LLM_MODEL, RAGChain, normalize_answer  # type: ignore # pyrefly: ignore [missing-import]
     from db import SessionLocal, log_activity, DocumentMetadata  # type: ignore # pyrefly: ignore [missing-import]
 
 
@@ -534,7 +534,7 @@ def generate_markdown_report(results: List[EvaluationResult], active_filenames: 
     md = []
     md.append("# Báo cáo Kiểm thử Tính Hoàn Thiện Câu Trả Lời EduRAG AI\n")
     md.append(f"- **Thời gian kiểm thử**: `{now_str}`")
-    md.append(f"- **Mô hình LLM**: `Qwen2.5-7B` (Ollama)")
+    md.append(f"- **Mô hình LLM**: `{LLM_MODEL}` (Ollama)")
     md.append(f"- **Mô hình Embedding**: `AITeamVN/Vietnamese_Embedding`")
     md.append(f"- **Số tài liệu tham chiếu**: `{len(active_filenames)} tệp active`\n")
 

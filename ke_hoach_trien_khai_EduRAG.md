@@ -24,7 +24,7 @@ EduRAG là chatbot hỗ trợ sinh viên tra cứu quy chế đào tạo, công 
 |---|---|
 | **Frontend** | React 19, TypeScript, Vite 7, Tailwind CSS 4, React Router DOM 6, Zustand 5, TanStack Query 5, Axios, React Hook Form, Zod |
 | **Backend** | Python 3.11, FastAPI 0.115+, Uvicorn, SQLAlchemy 2, Pydantic v2, Loguru |
-| **AI / ML** | LangChain 0.3, LangChain-Ollama, Qwen2.5:7b (qua Ollama), `AITeamVN/Vietnamese_Embedding` (HuggingFace), sentence-transformers |
+| **AI / ML** | LangChain 0.3, LangChain-Ollama, model `LLM_MODEL` (mặc định `qwen3.5:9b` qua Ollama), `AITeamVN/Vietnamese_Embedding` (HuggingFace), sentence-transformers |
 | **Vector DB** | ChromaDB 0.5+ (lưu tại `chroma_db/`) |
 | **Database** | SQLite (file `chat_history.db`, ORM qua SQLAlchemy) |
 | **Đóng gói** | Docker (multi-stage build), Docker Compose, Nginx 1.27-alpine (serve frontend) |
@@ -81,7 +81,7 @@ Backend khởi động theo lifespan: khởi tạo SQLite (`init_db`), tạo adm
 2. Gọi `similarity_search_with_relevance_scores` trên Chroma, lọc theo danh sách file có `status = active`.
 3. Nếu không có tài liệu active hoặc `best_score < MIN_RELEVANCE_SCORE` (mặc định 0.42), từ chối và trả thông điệp thay thế.
 4. Định dạng context từ top-K chunks, kèm nhãn tài liệu từ SQLite.
-5. Gọi Qwen2.5:7b (qua Ollama) với system prompt bắt buộc chỉ dùng tài liệu.
+5. Gọi model được chọn qua `LLM_MODEL` (mặc định `qwen3.5:9b` qua Ollama) với system prompt bắt buộc chỉ dùng tài liệu.
 6. Chuẩn hoá output: loại citation lặp (`remove_embedded_citations`), giới hạn 100 từ (`normalize_answer`).
 7. Trả về `(answer, sources, avg_score)`.
 
@@ -241,7 +241,7 @@ Sinh viên gửi câu hỏi
       ├── Nếu best_score < 0.42 → trả thông báo từ chối
       └── Nếu không tìm được chunk → trả thông báo không có thông tin
   → Format context từ chunks kèm nhãn tài liệu
-  → Gọi Qwen2.5:7b qua Ollama (temperature=0.1, num_ctx=4096, num_predict=220)
+  → Gọi model `LLM_MODEL` qua Ollama (temperature mặc định 0.3, num_ctx=8192, num_predict=1000)
   → Chuẩn hoá output (loại citation, giới hạn 100 từ)
   → Xác định nguồn chính bằng _support_score
   → Enrich sources từ SQLite (display_name, category, issuing_unit, document_year)
@@ -274,7 +274,7 @@ Admin chọn file PDF/DOCX, điền metadata
 
 | Tham số | Giá trị | Nguồn cấu hình |
 |---|---|---|
-| `LLM_MODEL` | `qwen2.5:7b` | biến môi trường / docker-compose |
+| `LLM_MODEL` | `qwen3.5:9b` | biến môi trường / docker-compose |
 | `EMBEDDING_MODEL` | `AITeamVN/Vietnamese_Embedding` | biến môi trường / docker-compose |
 | `CHUNK_SIZE` | `700` ký tự | `CHUNK_SIZE` env, mặc định trong `admin.py` |
 | `CHUNK_OVERLAP` | `150` ký tự | `CHUNK_OVERLAP` env, mặc định trong `admin.py` |
@@ -400,10 +400,10 @@ Model `DocumentMetadata` đã có các cột `display_name`, `category`, `issuin
 ### Yêu cầu
 
 - Docker Desktop (Linux containers)
-- Ollama đang chạy trên máy host với model `qwen2.5:7b` đã được kéo về:
+- Ollama đang chạy trên máy host với model `LLM_MODEL` đã được kéo về (mặc định `qwen3.5:9b`):
 
 ```powershell
-ollama pull qwen2.5:7b
+ollama pull qwen3.5:9b
 ```
 
 ### Cấu hình môi trường
@@ -496,7 +496,7 @@ Frontend dev server chạy tại `http://localhost:3000`, tự reload khi sửa 
 | Biến | Mặc định trong Compose | Ghi chú |
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Trỏ đến Ollama trên máy host |
-| `LLM_MODEL` | `qwen2.5:7b` | Phải có sẵn trong Ollama |
+| `LLM_MODEL` | `qwen3.5:9b` | Phải có sẵn trong Ollama |
 | `EMBEDDING_MODEL` | `AITeamVN/Vietnamese_Embedding` | Tự động tải về từ HuggingFace |
 | `VITE_API_URL` (build arg) | `http://localhost:8000` | URL backend mà trình duyệt gọi |
 | `CHROMA_PATH` | `/app/chroma_db` | Mount vào `./chroma_db` trên host |

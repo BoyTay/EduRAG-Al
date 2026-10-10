@@ -32,7 +32,7 @@ from db import (
     get_auth_session, revoke_auth_session, create_password_reset_token,
     consume_password_reset_token, get_recent_activities, get_retrievable_document_filenames, log_activity, as_utc_iso,
 )
-from rag_chain import rag_chain_instance
+from rag_chain import EMBEDDING_MODEL, LLM_MODEL, rag_chain_instance
 from admin import DATA_PATH, router as admin_router, set_rag_chain
 from auth import RateLimiter, get_current_user, rate_limit, rate_limit_user, require_admin
 
@@ -323,8 +323,8 @@ def health_check():
     return {
         "status": "healthy",
         "vector_store_docs": doc_count,
-        "llm_model": "qwen2.5:7b",
-        "embedding_model": "AITeamVN/Vietnamese_Embedding",
+        "llm_model": LLM_MODEL,
+        "embedding_model": EMBEDDING_MODEL,
     }
 
 

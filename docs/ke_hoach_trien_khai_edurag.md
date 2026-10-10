@@ -292,7 +292,7 @@ scripts/
 
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/health` | Không | Trả trạng thái backend, số chunk và tên model cấu hình cứng trong response. Chưa phải readiness đầy đủ cho Ollama. |
+| GET | `/health` | Không | Trả trạng thái backend, số chunk và tên model từ cấu hình đang dùng. Chưa phải readiness đầy đủ cho Ollama. |
 | GET | `/auth/providers` | Không | Cho frontend biết Google Sign-In có được cấu hình và trả public client ID. |
 | POST | `/auth/register` | Không | Tạo tài khoản student và cấp session dài hạn. |
 | POST | `/auth/login` | Không | Đăng nhập student bằng email/mật khẩu. |
@@ -565,7 +565,7 @@ project-root/
 | --- | --- | --- |
 | Backend image | Build `python:3.11-slim`, Uvicorn cổng 8000 | Có healthcheck `/health`; start period 240 giây cho tải model. |
 | Frontend image | Build Node 24 Alpine, serve bằng Nginx 1.27 Alpine cổng 3000 | Chưa có healthcheck; `VITE_API_URL` được đóng vào build. |
-| Ollama | Không có container; truy cập host qua `host.docker.internal:11434` | Máy host phải chạy Ollama và có `qwen2.5:7b`. |
+| Ollama | Không có container; truy cập host qua `host.docker.internal:11434` | Máy host phải chạy Ollama và có model được chọn qua `LLM_MODEL` (mặc định `qwen3.5:9b`). |
 | `./data:/app/data` | Bind mount | Lưu file nguồn; phải backup. |
 | `./chroma_db:/app/chroma_db` | Bind mount | Lưu vector store và active collection marker; phải backup đồng bộ. |
 | `./chat_history.db:/app/chat_history.db` | Bind mount file | Lưu user/session/history/metadata/activity; cần tồn tại và có quyền phù hợp. |

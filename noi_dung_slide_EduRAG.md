@@ -60,7 +60,7 @@
 +----------v-----------+   +-----------v-----------------+
 |  TANG 3 — AI PIPELINE|   |  TANG 4 — STORAGE           |
 |  LangChain + Ollama  |   |  Chroma DB (vector)         |
-|  LLM: Qwen2.5-7B     |   |  SQLite: chat_history.db    |
+|  LLM: Qwen3.5-9B     |   |  SQLite: chat_history.db    |
 |  Embed: Vietnamese_  |   |  Volume: ./chroma_db        |
 |  Embedding (768 dim) |   |  Volume: ./data (PDF/DOCX)  |
 |  Ollama: port 11434  |   |                             |
@@ -87,7 +87,7 @@
 | Backend | FastAPI (Python) v2.0.0 | REST API, 18 endpoint |
 | Backend | SQLAlchemy + SQLite | ORM, 6 bảng dữ liệu |
 | AI Pipeline | LangChain (Core + Ollama + Chroma) | Orchestration RAG pipeline |
-| AI Pipeline | Qwen2.5:7b (Ollama) | Mô hình sinh ngôn ngữ (LLM) |
+| AI Pipeline | Qwen3.5:9b (Ollama) | Mô hình sinh ngôn ngữ (LLM) |
 | AI Pipeline | AITeamVN/Vietnamese_Embedding | Embedding tiếng Việt (~560MB, 768 chiều) |
 | Storage | Chroma DB | Vector store, persistent local file |
 | Storage | SQLite chat_history.db | Lưu chat, tài khoản, hoạt động |
@@ -227,7 +227,7 @@ retriever = vector_store.as_retriever(
 
 **✅ Thuận lợi:**
 - 🤖 Công cụ AI hỗ trợ phát triển mạnh (Antigravity IDE, Claude) — rút ngắn thời gian viết boilerplate, debug nhanh, viết system prompt phức tạp
-- 🔗 LangChain + Ollama cung cấp abstraction tốt — tích hợp LLM local (qwen2.5:7b) và embedding model chỉ vài chục dòng code, dễ hoán đổi model
+- 🔗 LangChain + Ollama cung cấp abstraction tốt — tích hợp LLM local (mặc định qwen3.5:9b) và embedding model chỉ vài chục dòng code, dễ hoán đổi model
 - 🐳 Docker Compose đảm bảo môi trường nhất quán giữa dev và production — volume tự quản lý data, health check tự động restart khi lỗi
 
 **❌ Khó khăn:**
@@ -270,7 +270,7 @@ retriever = vector_store.as_retriever(
 
 **Chuẩn bị trước khi demo:**
 - Chạy `docker compose up` và chờ health check pass (~4 phút lần đầu do load model embedding ~560MB)
-- Đảm bảo Ollama đang chạy trên host: `ollama serve` và đã pull model: `ollama pull qwen2.5:7b`
+- Đảm bảo Ollama đang chạy trên host: `ollama serve` và đã pull model: `ollama pull qwen3.5:9b`
 - Đã có ít nhất 1 tài liệu PDF trong thư mục `./data` và đã rebuild index
 - Tài khoản demo: đặt trong file `.env` (biến ADMIN_USERNAME, ADMIN_PASSWORD — tối thiểu 12 ký tự)
 
