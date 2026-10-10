@@ -3,6 +3,7 @@ main.py - FastAPI application chính
 Khởi tạo app, các endpoints chính và lifespan management.
 """
 
+import json
 import os
 import re
 import smtplib
@@ -16,14 +17,14 @@ from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Header
 import httpx
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from loguru import logger
 
 from db import (
-    get_db, init_db, save_chat, get_chat_history, get_all_sessions,
+    SessionLocal, get_db, init_db, save_chat, get_chat_history, get_all_sessions,
     get_all_sessions_with_info, get_recent_chat_history, create_default_admin, verify_admin,
     save_feedback, get_system_stats, create_student, get_student_by_email,
     verify_student, DocumentMetadata, ChatHistory, ActivityLog, get_account_user,
@@ -551,19 +552,8 @@ def get_rag_refusals(
         "total": len(records),
     }
 
-@app.post("/chat", response_model=ChatResponse, tags=["chat"], dependencies=[Depends(limit_chat)])
-async def chat(
-    request: ChatRequest,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Endpoint chính: nhận câu hỏi, thực hiện RAG, trả về câu trả lời kèm nguồn.
-
-    - **question**: Câu hỏi của sinh viên
-    - **session_id**: ID phiên hội thoại (tùy chọn, tạo mới nếu không có)
-    """
-    # Tạo session_id nếu chưa có
+def _prepare_chat(request: ChatRequest, db: Session, current_user: dict) -> dict:
+    """Kiểm tra yêu cầu chat và gom đầu vào cho RAG; dùng chung cho /chat và /chat/stream."""
     session_id = request.session_id or str(uuid.uuid4())
     document_filename = request.document_filename.strip() if request.document_filename else None
     if document_filename:
@@ -587,69 +577,133 @@ async def chat(
         f"document={document_filename or 'all'}"
     )
 
+    # Only the latest turns from this user's own session are used to
+    # resolve follow-up references such as "điều kiện đó".
+    previous_turns = get_recent_chat_history(
+        db, session_id, limit=4,
+        user_id=current_user["user_id"], user_role=current_user["role"],
+    )
+    conversation_history = [
+        {
+            "question": turn.user_message,
+            "answer": turn.bot_response,
+            "has_sources": bool(turn.sources_list()),
+        }
+        for turn in previous_turns
+    ]
+    return {
+        "session_id": session_id,
+        "document_filename": document_filename,
+        "active_filenames": active_filenames,
+        "conversation_history": conversation_history,
+        "citation_labels": build_citation_labels(db),
+    }
+
+
+def _complete_chat(
+    db: Session, request: ChatRequest, current_user: dict, prepared: dict, rag_result: tuple
+) -> ChatResponse:
+    """Lưu lịch sử, ghi nhật ký và dựng ChatResponse từ kết quả RAG."""
+    answer, sources, avg_score, refusal_reason = rag_result
+    answer = replace_technical_citations(answer, prepared["citation_labels"])
+    enriched_sources = enrich_sources(db, sources)
+    record = save_chat(
+        db=db,
+        session_id=prepared["session_id"],
+        user_message=request.question,
+        bot_response=answer,
+        sources=enriched_sources,
+        retrieval_score=avg_score,
+        user_id=current_user["user_id"],
+        user_role=current_user["role"],
+    )
+    if refusal_reason:
+        log_activity(
+            db, "rag_refusal", "chat",
+            f"{request.question[:100]} [{refusal_reason}]",
+            current_user["email"], current_user["role"],
+        )
+    else:
+        log_activity(
+            db, "chat_processed", "chat", None,
+            current_user["email"], current_user["role"],
+        )
+    return ChatResponse(
+        answer=answer,
+        sources=[SourceInfo(**s) for s in enriched_sources],
+        session_id=prepared["session_id"],
+        retrieval_score=round(avg_score, 4),
+        message_id=record.id,
+    )
+
+
+_CHAT_ERROR_DETAIL = "Hệ thống gặp lỗi khi xử lý câu hỏi. Vui lòng thử lại sau."
+
+
+@app.post("/chat", response_model=ChatResponse, tags=["chat"], dependencies=[Depends(limit_chat)])
+async def chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Endpoint chính: nhận câu hỏi, thực hiện RAG, trả về câu trả lời kèm nguồn.
+
+    - **question**: Câu hỏi của sinh viên
+    - **session_id**: ID phiên hội thoại (tùy chọn, tạo mới nếu không có)
+    """
+    prepared = _prepare_chat(request, db, current_user)
     try:
-        # Only the latest turns from this user's own session are used to
-        # resolve follow-up references such as "điều kiện đó".
-        previous_turns = get_recent_chat_history(
-            db, session_id, limit=4,
-            user_id=current_user["user_id"], user_role=current_user["role"],
+        rag_result = await rag_chain_instance.achat(
+            request.question, prepared["citation_labels"], prepared["conversation_history"],
+            prepared["document_filename"], prepared["active_filenames"],
         )
-        conversation_history = [
-            {
-                "question": turn.user_message,
-                "answer": turn.bot_response,
-                "has_sources": bool(turn.sources_list()),
-            }
-            for turn in previous_turns
-        ]
-
-        # Thực hiện RAG
-        citation_labels = build_citation_labels(db)
-        answer, sources, avg_score, refusal_reason = await rag_chain_instance.achat(
-            request.question, citation_labels, conversation_history,
-            document_filename, active_filenames,
-        )
-        answer = replace_technical_citations(answer, citation_labels)
-
-        # Lưu lịch sử vào SQLite
-        enriched_sources = enrich_sources(db, sources)
-        record = save_chat(
-            db=db,
-            session_id=session_id,
-            user_message=request.question,
-            bot_response=answer,
-            sources=enriched_sources,
-            retrieval_score=avg_score,
-            user_id=current_user["user_id"],
-            user_role=current_user["role"],
-        )
-        if refusal_reason:
-            log_activity(
-                db, "rag_refusal", "chat",
-                f"{request.question[:100]} [{refusal_reason}]",
-                current_user["email"], current_user["role"],
-            )
-        else:
-            log_activity(
-                db, "chat_processed", "chat", None,
-                current_user["email"], current_user["role"],
-            )
-
-        return ChatResponse(
-            answer=answer,
-            sources=[SourceInfo(**s) for s in enriched_sources],
-            session_id=session_id,
-            retrieval_score=round(avg_score, 4),
-            message_id=record.id,
-        )
-
+        return _complete_chat(db, request, current_user, prepared, rag_result)
     except Exception as e:
         # Chi tiết lỗi chỉ ghi log; không trả đường dẫn/lỗi nội bộ cho client.
         logger.exception(f"Chat error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Hệ thống gặp lỗi khi xử lý câu hỏi. Vui lòng thử lại sau.",
-        )
+        raise HTTPException(status_code=500, detail=_CHAT_ERROR_DETAIL)
+
+
+def _sse(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@app.post("/chat/stream", tags=["chat"], dependencies=[Depends(limit_chat)])
+async def chat_stream(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Như /chat nhưng trả Server-Sent Events: nhiều `token` (bản nháp) rồi một `final`.
+
+    `final` mang ChatResponse đã chuẩn hóa và thay thế phần chữ đã stream. Lỗi sau khi
+    bắt đầu stream được báo bằng sự kiện `error` vì mã HTTP đã gửi đi.
+    """
+    prepared = _prepare_chat(request, db, current_user)
+
+    async def event_stream():
+        try:
+            async for kind, value in rag_chain_instance.achat_stream(
+                request.question, prepared["citation_labels"], prepared["conversation_history"],
+                prepared["document_filename"], prepared["active_filenames"],
+            ):
+                if kind == "token":
+                    yield _sse("token", {"text": value})
+                else:
+                    # Session của dependency có thể đã đóng khi stream chạy; dùng session riêng.
+                    with SessionLocal() as stream_db:
+                        response = _complete_chat(stream_db, request, current_user, prepared, value)
+                    yield _sse("final", response.model_dump())
+        except Exception as e:
+            logger.exception(f"Chat stream error: {e}")
+            yield _sse("error", {"detail": _CHAT_ERROR_DETAIL})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/chat/{message_id}/feedback", tags=["chat"])

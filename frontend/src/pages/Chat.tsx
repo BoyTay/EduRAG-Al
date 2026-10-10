@@ -13,7 +13,7 @@ export function Chat() {
     if (messages.length) {
       endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, [messages.length, isLoading]);
+  }, [messages.length, isLoading, messages[messages.length - 1]?.content.length]);
 
   return (
     <section className="flex h-full flex-col">
@@ -62,7 +62,7 @@ export function Chat() {
                 />
               ))}
 
-              {isLoading && (
+              {isLoading && !messages[messages.length - 1]?.streaming && (
                 <div className="flex items-center gap-3 rounded-2xl border border-teal-100 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-sm backdrop-blur-sm">
                   <span className="size-2 animate-ping rounded-full bg-emerald-500" />
                   <span>EduRAG đang tìm kiếm trong tài liệu...</span>

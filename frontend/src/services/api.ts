@@ -45,6 +45,63 @@ export async function logoutRequest() { await api.post("/auth/logout"); }
 export async function getAccount(): Promise<User> { const { data } = await api.get("/account"); return data.user; }
 export async function updateAccountProfile(display_name: string): Promise<User> { const { data } = await api.patch("/account/profile", { display_name }); return data.user; }
 export async function changeAccountPassword(current_password: string, new_password: string) { const { data } = await api.post("/account/password", { current_password, new_password }); return data; }
+export interface ChatAnswer { answer: string; sources: Source[]; retrieval_score: number; message_id: number; session_id: string }
+
+/** Lỗi từ /chat/stream; `detail` là thông báo tiếng Việt an toàn để hiển thị cho người dùng. */
+export class ChatStreamError extends Error {
+  constructor(public detail: string) { super(detail); }
+}
+
+/**
+ * Gọi /chat/stream (SSE). `onToken` nhận chữ nháp khi LLM đang sinh; kết quả trả về là
+ * câu trả lời đã chuẩn hóa và phải thay thế phần chữ nháp.
+ */
+export async function askStream(
+  question: string,
+  session_id: string,
+  document_filename: string | undefined,
+  onToken: (text: string) => void,
+): Promise<ChatAnswer> {
+  const token = localStorage.getItem("edurag_token") || sessionStorage.getItem("edurag_token");
+  const response = await fetch(`${api.defaults.baseURL}/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ question, session_id, document_filename }),
+  });
+  if (response.status === 401) {
+    [localStorage, sessionStorage].forEach((storage) => { storage.removeItem("edurag_token"); storage.removeItem("edurag_user"); });
+    if (window.location.pathname !== "/login") window.location.replace("/login");
+  }
+  if (!response.ok || !response.body) {
+    const body = await response.json().catch(() => null);
+    throw new ChatStreamError(typeof body?.detail === "string" ? body.detail : "Không thể gửi câu hỏi lúc này. Vui lòng thử lại.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let final: ChatAnswer | null = null;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary: number;
+    while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const event = /^event: (.+)$/m.exec(block)?.[1];
+      const data = /^data: (.+)$/m.exec(block)?.[1];
+      if (!event || !data) continue;
+      const payload = JSON.parse(data);
+      if (event === "token") onToken(payload.text);
+      else if (event === "final") final = payload;
+      else if (event === "error") throw new ChatStreamError(payload.detail);
+    }
+  }
+  if (!final) throw new ChatStreamError("Kết nối bị gián đoạn trước khi nhận đủ câu trả lời. Vui lòng thử lại.");
+  return final;
+}
+
 export async function ask(question: string, session_id: string, document_filename?: string): Promise<{ answer: string; sources: Source[]; retrieval_score: number; message_id: number; session_id: string }> { const { data } = await api.post("/chat", { question, session_id, document_filename }); return data; }
 export async function saveFeedback(messageId: number, feedback: "up" | "down") { const { data } = await api.post(`/chat/${messageId}/feedback`, { feedback }); return data; }
 export async function getSessions(): Promise<SessionInfo[]> { const { data } = await api.get("/sessions"); return data.sessions_detail || data.sessions.map((session_id: string) => ({ session_id })); }
