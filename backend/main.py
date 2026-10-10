@@ -33,6 +33,7 @@ from db import (
 )
 from rag_chain import rag_chain_instance
 from admin import DATA_PATH, router as admin_router, set_rag_chain
+from auth import RateLimiter, get_current_user, rate_limit, rate_limit_user, require_admin
 
 
 def get_cors_origins() -> list[str]:
@@ -127,29 +128,27 @@ class GoogleLoginRequest(BaseModel):
     credential: str = Field(..., min_length=20, max_length=5000)
 
 
+# ─── Rate limiting ───────────────────────────────────────────────────────────
+# Đăng nhập/đăng ký/quên mật khẩu tính theo IP; /chat tính theo tài khoản vì mỗi lượt gọi LLM rất tốn.
+def _limit_from_env(name: str, default: int) -> int:
+    try:
+        return max(1, int(os.getenv(name, str(default))))
+    except ValueError:
+        return default
+
+
+auth_limiter = RateLimiter(_limit_from_env("AUTH_RATE_LIMIT", 10), 300)
+chat_limiter = RateLimiter(_limit_from_env("CHAT_RATE_LIMIT", 20), 60)
+limit_auth = rate_limit(auth_limiter, "auth")
+limit_chat = rate_limit_user(chat_limiter, "chat")
+
+
 # ─── Startup timestamp ───────────────────────────────────────────────────────
 _startup_time: Optional[datetime] = None
 
 
 def _issue_token(db: Session, user_id: int, role: str, email: str, remember: bool = False) -> str:
     return create_auth_session(db, user_id, role, email, remember)
-
-
-def get_current_user(
-    authorization: Optional[str] = Header(None), db: Session = Depends(get_db)
-) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Vui lòng đăng nhập để tiếp tục")
-    session = get_auth_session(db, authorization.removeprefix("Bearer ").strip())
-    if not session:
-        raise HTTPException(status_code=401, detail="Phiên đăng nhập đã hết hạn; vui lòng đăng nhập lại")
-    return {"user_id": session.user_id, "role": session.user_role, "email": session.email}
-
-
-def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Chỉ quản trị viên được phép truy cập")
-    return current_user
 
 
 def _send_reset_email(email: str, token: str) -> None:
@@ -328,7 +327,7 @@ def health_check():
     }
 
 
-@app.post("/admin/login", tags=["admin"])
+@app.post("/admin/login", tags=["admin"], dependencies=[Depends(limit_auth)])
 def admin_login(
     request: LoginRequest,
     db: Session = Depends(get_db),
@@ -353,7 +352,7 @@ def admin_login(
     }
 
 
-@app.post("/auth/register", status_code=201, tags=["auth"])
+@app.post("/auth/register", status_code=201, tags=["auth"], dependencies=[Depends(limit_auth)])
 def register_student(request: RegisterRequest, db: Session = Depends(get_db)):
     """Đăng ký một tài khoản sinh viên mới."""
     email = request.email.lower().strip()
@@ -369,7 +368,7 @@ def register_student(request: RegisterRequest, db: Session = Depends(get_db)):
     }
 
 
-@app.post("/auth/login", tags=["auth"])
+@app.post("/auth/login", tags=["auth"], dependencies=[Depends(limit_auth)])
 def student_login(request: LoginRequest, db: Session = Depends(get_db)):
     """Xác thực tài khoản sinh viên đã đăng ký."""
     student = verify_student(db, request.username, request.password)
@@ -389,7 +388,7 @@ def auth_providers():
     return {"google": {"enabled": bool(client_id), "client_id": client_id}}
 
 
-@app.post("/auth/forgot-password", tags=["auth"])
+@app.post("/auth/forgot-password", tags=["auth"], dependencies=[Depends(limit_auth)])
 def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Tạo token một lần và gửi mail cho sinh viên nếu địa chỉ tồn tại."""
     if not os.getenv("SMTP_HOST") or not os.getenv("SMTP_FROM"):
@@ -406,14 +405,14 @@ def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db
     return {"success": True, "message": "Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi."}
 
 
-@app.post("/auth/reset-password", tags=["auth"])
+@app.post("/auth/reset-password", tags=["auth"], dependencies=[Depends(limit_auth)])
 def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
     if not consume_password_reset_token(db, request.token, request.new_password):
         raise HTTPException(status_code=400, detail="Liên kết không hợp lệ hoặc đã hết hạn")
     return {"success": True, "message": "Đặt lại mật khẩu thành công. Hãy đăng nhập lại."}
 
 
-@app.post("/auth/google", tags=["auth"])
+@app.post("/auth/google", tags=["auth"], dependencies=[Depends(limit_auth)])
 async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db)):
     """Xác minh Google ID token ở Google trước khi tạo/đăng nhập sinh viên."""
     client_id = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -552,7 +551,7 @@ def get_rag_refusals(
         "total": len(records),
     }
 
-@app.post("/chat", response_model=ChatResponse, tags=["chat"])
+@app.post("/chat", response_model=ChatResponse, tags=["chat"], dependencies=[Depends(limit_chat)])
 async def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
@@ -645,10 +644,11 @@ async def chat(
         )
 
     except Exception as e:
-        logger.error(f"Chat error: {e}")
+        # Chi tiết lỗi chỉ ghi log; không trả đường dẫn/lỗi nội bộ cho client.
+        logger.exception(f"Chat error: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Lỗi xử lý câu hỏi: {str(e)}",
+            detail="Hệ thống gặp lỗi khi xử lý câu hỏi. Vui lòng thử lại sau.",
         )
 
 

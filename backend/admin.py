@@ -13,13 +13,14 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
-from db import DocumentMetadata, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, get_auth_session, log_activity
+from db import DocumentMetadata, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity
+from auth import get_current_user, require_admin
 from document_ingestion import (
     DocumentIngestionError,
     DocumentIngestionResult,
@@ -36,18 +37,6 @@ MAX_BATCH_UPLOAD_BYTES = int(os.getenv("MAX_BATCH_UPLOAD_BYTES", str(100 * 1024 
 UPLOAD_CHUNK_BYTES = 1024 * 1024
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-def require_admin(
-    authorization: Optional[str] = Header(None), db: Session = Depends(get_db)
-) -> dict:
-    """Bảo vệ thao tác quản trị tài liệu và dùng actor cho nhật ký."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Vui lòng đăng nhập để tiếp tục")
-    session = get_auth_session(db, authorization.removeprefix("Bearer ").strip())
-    if not session or session.user_role != "admin":
-        raise HTTPException(status_code=403, detail="Chỉ quản trị viên được phép thực hiện")
-    return {"name": session.email, "role": session.user_role}
 
 
 class DocumentMetadataUpdate(BaseModel):
@@ -352,7 +341,7 @@ def safe_delete_file(file_path: Path) -> None:
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/documents")
-def get_documents(db: Session = Depends(get_db)):
+def get_documents(db: Session = Depends(get_db), _: dict = Depends(get_current_user)):
     """Liệt kê tất cả tài liệu đã nạp vào hệ thống."""
     docs = list_documents(db)
     return {

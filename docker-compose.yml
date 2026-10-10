@@ -63,6 +63,8 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_FROM=${SMTP_FROM:-}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - AUTH_RATE_LIMIT=${AUTH_RATE_LIMIT:-10}
+      - CHAT_RATE_LIMIT=${CHAT_RATE_LIMIT:-20}
     extra_hosts:
       # Cho phép container truy cập host machine (Ollama)
       - "host.docker.internal:host-gateway"

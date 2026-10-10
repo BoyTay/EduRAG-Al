@@ -104,7 +104,7 @@ class AdminUser(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     username = Column(String(50), nullable=False, unique=True, index=True)
-    password_hash = Column(String(64), nullable=False)  # SHA-256 hash
+    password_hash = Column(String(64), nullable=False)  # PBKDF2 (hash SHA-256 cũ được nâng cấp khi đăng nhập)
     display_name = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, nullable=True)
@@ -277,6 +277,9 @@ def verify_admin(db: Session, username: str, password: str) -> Optional[AdminUse
     if admin and not _verify_password(password, admin.password_hash):
         admin = None
     if admin:
+        # Nâng cấp hash SHA-256 không salt của admin cũ lên PBKDF2 ngay khi biết mật khẩu đúng.
+        if not admin.password_hash.startswith("pbkdf2_sha256$"):
+            admin.password_hash = _hash_password(password)
         # Cập nhật last_login
         admin.last_login = datetime.utcnow()
         db.commit()
