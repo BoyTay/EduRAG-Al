@@ -102,6 +102,7 @@ Các giá trị mẫu nằm trong `.env.example`; Compose chỉ truyền các bi
 
 - `LLM_MODEL=qwen3.5:9b`, `LLM_TEMPERATURE=0.3`, `LLM_AUDIT_TEMPERATURE=0.0`: model và nhiệt độ cho lượt trả lời/rà soát.
 - `RETRIEVAL_CANDIDATE_K=30`, `TOP_K=8`, `MIN_RELEVANCE_SCORE=0.30`: số candidate, số chunk đưa vào prompt và ngưỡng từ chối. Cần đánh giá trên tài liệu thật trước khi chỉnh ngưỡng.
+- `LLM_NUM_CTX=6144`, `LLM_KEEP_ALIVE=30m`: cửa sổ ngữ cảnh (vừa GPU 8 GB) và thời gian giữ model trong bộ nhớ Ollama.
 - `OCR_ENABLED=true`, `OCR_PROVIDER=tesseract`, `OCR_TESSERACT_PSM=6`, `OCR_DPI=300`: xử lý scan. `OCR_TESSERACT_REMOVE_COLORED_OVERLAYS=true` hỗ trợ nhận dạng chữ trên nền có lớp màu.
 - `OCR_PROVIDER=paddleocr`: dùng PaddleOCR; `OCR_DETECTION_MODEL` và `OCR_RECOGNITION_MODEL` chỉ áp dụng với lựa chọn này. Model thiếu ký tự tiếng Việt bị từ chối.
 - `CORS_ORIGINS`, `GOOGLE_CLIENT_ID`, `SMTP_*`, `FRONTEND_URL`: origin được phép gọi API và các tính năng đăng nhập/đặt lại mật khẩu tùy chọn.

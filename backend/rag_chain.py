@@ -6,10 +6,11 @@ dựa trên tài liệu được cung cấp.
 
 import os
 import re
+import threading
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Optional, Sequence
+from typing import AsyncIterator, Mapping, Optional, Sequence
 
 import torch
 from langchain_core.documents import Document
@@ -39,6 +40,11 @@ def _read_temperature(env_name: str, default: float) -> float:
 
 # Lượt trả lời được phép diễn đạt tự nhiên; lượt rà soát vẫn deterministic.
 LLM_TEMPERATURE = _read_temperature("LLM_TEMPERATURE", 0.3)
+# 6144 giúp qwen3.5:9b (Q4_K_M) nằm gọn trong GPU 8 GB; 8192 làm ~12% model tràn sang CPU
+# và chậm hơn khoảng 25%. Prompt lớn nhất (20 chunk) cỡ ~5,3k token nên vẫn đủ.
+LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX", "6144"))
+# Giữ model trong bộ nhớ để lượt hỏi đầu sau thời gian rảnh không phải nạp lại (~7 giây).
+LLM_KEEP_ALIVE = os.getenv("LLM_KEEP_ALIVE", "30m")
 LLM_AUDIT_TEMPERATURE = _read_temperature("LLM_AUDIT_TEMPERATURE", 0.0)
 # Model embedding tiếng Việt tốt nhất hiện tại:
 # - "AITeamVN/Vietnamese_Embedding" (~560MB, fine-tuned 300k VI triplets)
@@ -194,7 +200,7 @@ Quy tắc bắt buộc:
 13. Với số tiền, giữ nguyên giá trị số và đối tượng/điều kiện áp dụng trong nguồn. Phần trong ngoặc viết số tiền bằng chữ chỉ diễn giải cùng một số tiền; "đồng chẵn" không phải đơn vị tính hoặc mẫu số. Có thể bỏ phần viết bằng chữ khi đã nêu số tiền bằng số. Nếu OCR làm sai dấu ở phần viết bằng chữ, không sao chép lỗi đó thành đơn vị như "đồng/chãn", "đồng/chăn" hay "đồng/chẵn". Không tự thêm đơn vị theo người, tháng hoặc năm nếu nguồn không nêu; nếu số tiền bằng số và bằng chữ mâu thuẫn hoặc không đọc rõ thì nói rõ chưa xác định được, không tự sửa con số.
 14. TUYỆT ĐỐI không thêm câu kết mang tính tổng hợp, nhắc nhở, hoặc kêu gọi tuân thủ nếu phần nguồn dùng để trả lời không nêu rõ điều đó. Ví dụ: không được tự thêm 'Sinh viên cần tuân thủ đầy đủ các quy định trên' hay 'Đây là điều bắt buộc với mọi sinh viên.'
 15. Chỉ trả lời đúng thuộc tính, đối tượng và điều kiện được hỏi. Không ghép ngưỡng, phân loại hoặc điều kiện của đoạn lân cận vào câu trả lời. Nếu nhiều đoạn cùng trang nói về các tiêu chí khác nhau, chỉ dùng đoạn trực tiếp định nghĩa nội dung được hỏi.
-16. Với câu hỏi xác nhận như "đúng không", "phải không" hoặc "có phải", phải đánh giá mệnh đề trước khi trả lời. Nếu mệnh đề sai, mở đầu bằng "Không," và nêu thông tin đúng. Nếu mệnh đề đúng, mở đầu bằng "Đúng,". Không được mở đầu đồng tình rồi phủ định chính mệnh đề đó trong cùng câu trả lời.
+16. Cách mở đầu và kết luận của câu trả lời thực hiện theo [Yêu cầu trình bày cho câu hỏi này]. Không tự thêm lời đồng tình xã giao ở đầu câu trả lời.
 17. Với dữ liệu bảng, chỉ dùng giá trị nằm đúng hàng và cột tương ứng với đối tượng, chứng chỉ hoặc bậc được hỏi; không lấy số ở cột bên cạnh."""
 
 USER_PROMPT_TEMPLATE = """[Tài liệu tham khảo]
@@ -247,11 +253,15 @@ CONFIRMATION_REPAIR_PROMPT = ChatPromptTemplate.from_messages([
         "[Câu trả lời ban đầu]\n{existing_answer}\n\n"
         "Hãy tự đối chiếu mệnh đề với nguồn. Nếu mệnh đề sai, câu trả lời phải bắt đầu "
         "bằng 'Không,' rồi nêu thông tin đúng. Nếu mệnh đề đúng, câu trả lời phải bắt đầu "
-        "bằng 'Đúng,'. Không được vừa đồng ý vừa phủ định cùng một mệnh đề. Chỉ trả về "
+        "bằng 'Đúng,'. Không được vừa đồng ý vừa phủ định cùng một mệnh đề. Chỉ giữ câu kết "
+        "luận và đúng một căn cứ ngắn lấy từ nguồn; xóa mọi câu cung cấp thông tin ngoài mệnh "
+        "đề được hỏi và không nhắc số điều, khoản, mục hay tên văn bản. Chỉ trả về "
         "câu trả lời đã sửa bên trong cặp thẻ <FINAL> và </FINAL>.",
     ),
 ])
 
+# Khớp quy tắc 9 trong SYSTEM_PROMPT; 100 từ làm cụt câu trả lời nhiều điều kiện.
+DEFAULT_ANSWER_WORD_LIMIT = 150
 MAX_CONVERSATION_TURNS = 4
 MAX_CONVERSATION_CHARS = 3_500
 CLARIFICATION_MESSAGE = "Bạn muốn hỏi tiếp về nội dung nào? Vui lòng nêu rõ chủ đề hoặc tài liệu để tôi tra cứu chính xác."
@@ -453,6 +463,23 @@ def asks_for_confirmation(question: str) -> bool:
     )
 
 
+# Câu mở đầu của lời từ chối mà quy tắc 2 trong SYSTEM_PROMPT yêu cầu model dùng.
+MODEL_DECLINE_PREFIX = "Xin lỗi, tôi không tìm thấy"
+
+# Mẫu hình thức (không có nội dung thật để model không chép lại). Ví dụ cụ thể giúp
+# model giữ cùng bố cục giữa các lần hỏi mà không cần hạ nhiệt độ.
+OUTPUT_FORMAT_TEMPLATE = (
+    "Nếu [Tài liệu tham khảo] không có thông tin trả lời câu hỏi, KHÔNG dùng bố cục dưới đây và "
+    "không liệt kê nội dung gần giống để lấp chỗ: chỉ trả lời đúng câu từ chối ở quy tắc 2.\n"
+    "Bố cục bắt buộc khi có từ hai ý trở lên (chỉ là khuôn hình thức, không chép chữ trong khuôn):\n"
+    "<một câu mở đầu ngắn nêu đối tượng được hỏi, kết thúc bằng dấu hai chấm>\n"
+    "- <ý thứ nhất, một câu đầy đủ>\n"
+    "- <ý thứ hai, một câu đầy đủ>\n"
+    "Mỗi ý chiếm đúng một dòng bắt đầu bằng \"- \". Câu mở đầu không liệt kê nội dung các ý; "
+    "không dùng a), b), c) hay dấu chấm phẩy để nối nhiều ý trong một dòng."
+)
+
+
 def build_answer_guidance(question: str) -> str:
     if asks_for_enumeration(question):
         return (
@@ -460,16 +487,23 @@ def build_answer_guidance(question: str) -> str:
             "đọc hết các đoạn liên tiếp của mục rồi nêu mọi ý độc lập có trong nguồn; không "
             "dừng sau một số bullet tùy ý. Mở đầu bằng một câu trực tiếp và dùng bullet. "
             "Nếu có từ năm ý trở lên, nhóm thành 3–5 chủ đề để dễ đọc nhưng vẫn giữ đủ chi tiết. "
-            "Không lấy nội dung của mục hoặc đối tượng khác có từ khóa gần giống."
+            "Không lấy nội dung của mục hoặc đối tượng khác có từ khóa gần giống.\n"
+            + OUTPUT_FORMAT_TEMPLATE
         )
     if asks_for_confirmation(question):
         return (
             "Đây là câu hỏi xác nhận một mệnh đề. Đối chiếu toàn bộ mệnh đề với nguồn trước "
             "khi trả lời. Nếu sai, bắt đầu đúng bằng 'Không,' rồi sửa lại thông tin; nếu đúng, "
             "bắt đầu đúng bằng 'Đúng,'. Không đồng tình xã giao và không đưa ra hai kết luận "
-            "mâu thuẫn trong cùng câu trả lời."
+            "mâu thuẫn trong cùng câu trả lời. Chỉ viết một đến hai câu: kết luận rồi một căn cứ "
+            "ngắn lấy từ nguồn; không thêm thông tin ngoài mệnh đề được hỏi và không nhắc số điều, "
+            "khoản, mục hay tên văn bản."
         )
-    return "Trả lời trực tiếp, ngắn gọn theo các quy tắc hệ thống."
+    return (
+        "Trả lời trực tiếp, ngắn gọn theo các quy tắc hệ thống. Nếu có từ hai điều kiện/ý trở lên, "
+        "viết một câu mở đầu ngắn rồi mỗi điều kiện/ý một bullet riêng, không gộp thành một đoạn.\n"
+        + OUTPUT_FORMAT_TEMPLATE
+    )
 
 
 def infer_document_filename(
@@ -926,7 +960,7 @@ def extract_sources(
     return list(grouped_sources.values())
 
 
-def normalize_answer(answer: str, max_words: int = 100) -> str:
+def normalize_answer(answer: str, max_words: int = DEFAULT_ANSWER_WORD_LIMIT) -> str:
     """Dọn output local LLM và chặn câu trả lời dài vượt chuẩn UI."""
     cleaned = re.sub(r"[ \t]+", " ", answer or "").replace("**", "")
     # Restore the money-spelling suffix, including observed OCR errors,
@@ -942,7 +976,14 @@ def normalize_answer(answer: str, max_words: int = 100) -> str:
     # Some local-model outputs place list items inline after punctuation. Do
     # not split compound names such as "Đoàn - Hội" into a false new bullet.
     cleaned = re.sub(r"(?<=[.!?;])\s+-\s+", "\n- ", cleaned)
+    # Mô hình hay viết các ý "a) … b) … c) …" liền một đoạn: tách thành bullet,
+    # chỉ khi chuỗi bắt đầu bằng "a)" ngay sau dấu câu để không phá cụm như "(a)".
+    if re.search(r"(?m)(?:^|(?<=[:.;])[ \t]+)a\)[ \t]", cleaned):
+        cleaned = re.sub(r"(?m)(?:(?<=[:.;])[ \t]+|^)a\)[ \t]+(?=\S)", "\n- ", cleaned)
+        cleaned = re.sub(r"(?<=[.;])[ \t]+(?=[b-zđ]\)[ \t])", "\n", cleaned)
+        cleaned = re.sub(r"(?m)^[b-zđ]\)[ \t]+", "- ", cleaned)
     cleaned = re.sub(r"(?m)^\s*\d+[.)]\s+", "- ", cleaned)
+    cleaned = re.sub(r"(?m)^[ \t]*[*•][ \t]+", "- ", cleaned)
     cleaned = re.sub(r"\s*\n\s*", "\n", cleaned).strip()
     cleaned = re.sub(r"\s+([,.;:!?])", r"\1", cleaned)
     words = cleaned.split()
@@ -956,12 +997,77 @@ def normalize_answer(answer: str, max_words: int = 100) -> str:
     return shortened[:boundary + 1].strip() if boundary >= max_words // 2 else f"{shortened.rstrip(' ,;:')}…"
 
 
+# auto: chỉ chạy lượt rà soát liệt kê khi bản nháp trông thiếu/cụt; always/never để so sánh.
+ENUMERATION_REPAIR_MODE = os.getenv("ENUMERATION_REPAIR", "auto").strip().lower()
+
+
+def _count_list_items(text: str) -> int:
+    return len(re.findall(r"(?m)^[ \t]*(?:[-•*]|\d+[.)]|[a-zđ]\))[ \t]+\S", text or ""))
+
+
+def enumeration_needs_repair(draft: str) -> bool:
+    """Quyết định có gọi lượt LLM thứ hai để bổ sung ý cho câu trả lời liệt kê hay không.
+
+    Lượt này tốn thêm vài giây. Chỉ bỏ qua khi bản nháp đã có cấu trúc danh sách
+    (từ hai ý) và kết thúc trọn câu; kiểm tra này chỉ dựa trên hình thức, không đo độ
+    bao phủ nội dung, nên dùng ENUMERATION_REPAIR=always nếu cần so sánh.
+    """
+    if ENUMERATION_REPAIR_MODE == "always":
+        return True
+    if ENUMERATION_REPAIR_MODE == "never":
+        return False
+    text = (draft or "").strip()
+    if not text or _count_list_items(text) < 2:
+        return True
+    return text[-1] not in ".;!?)\""
+
+
+def strip_unrequested_legal_references(answer: str, question: str) -> str:
+    """Bỏ cụm "theo Điều N khoản M … của <văn bản>" khi người dùng không hỏi về điều/khoản cụ thể.
+
+    Quy tắc 10 cấm nhắc điều khoản trong nội dung vì nguồn đã hiển thị riêng, nhưng model
+    cục bộ hay vi phạm. Nếu câu hỏi tự nêu "Điều 17" thì giữ nguyên để câu trả lời khớp.
+    """
+    if re.search(r"\b(?:dieu|khoan|muc)\s+\d", _search_normalize(question)):
+        return answer
+    cleaned = re.sub(
+        r"\btheo\s+(?:Điều|khoản)\s+\d+[^,;.\n]*,?[ \t]*", "", answer or "", flags=re.IGNORECASE
+    )
+    if cleaned == (answer or ""):
+        return answer
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    # Cụm bị bỏ có thể đứng đầu câu; viết hoa lại chữ cái đầu câu.
+    return re.sub(
+        r"(^|[.!?:][ \t]+|\n- )([a-zà-ỹ])", lambda m: m.group(1) + m.group(2).upper(), cleaned
+    )
+
+
+def strip_unrequested_agreement(answer: str, question: str) -> str:
+    """Bỏ lời mở đầu "Đúng," khi người dùng không hỏi dạng xác nhận.
+
+    Mô hình cục bộ hay mở đầu đồng tình cho câu hỏi "…là gì?". "Không," được giữ
+    lại vì có thể là câu trả lời hợp lệ cho câu hỏi có/không thông thường.
+    """
+    if asks_for_confirmation(question):
+        return answer
+    stripped = re.sub(r"^\s*Đúng\s*[,.:]\s*", "", answer or "", count=1, flags=re.IGNORECASE)
+    if stripped == (answer or ""):
+        return answer
+    return stripped[:1].upper() + stripped[1:]
+
+
 def extract_final_answer(value: str) -> str:
     """Keep only the final answer when a coverage pass leaks its audit text."""
     text = (value or "").strip()
     tagged = re.search(r"<FINAL>\s*(.*?)\s*</FINAL>", text, flags=re.IGNORECASE | re.DOTALL)
     if tagged:
         content = tagged.group(1).strip()
+        if content.lower().rstrip(". ,") not in ("câu trả lời hoàn chỉnh", "final answer", "..."):
+            return content
+    # Model đôi khi quên thẻ đóng: lấy phần sau thẻ mở thay vì để thẻ lọt ra UI.
+    unclosed = re.search(r"<FINAL>\s*(.+)$", text, flags=re.IGNORECASE | re.DOTALL)
+    if unclosed:
+        content = re.sub(r"</?FINAL>", "", unclosed.group(1), flags=re.IGNORECASE).strip()
         if content.lower().rstrip(". ,") not in ("câu trả lời hoàn chỉnh", "final answer", "..."):
             return content
     marker = re.search(
@@ -1011,6 +1117,11 @@ def remove_embedded_citations(answer: str) -> str:
         if not is_bracket_citation and not is_label_citation:
             kept_lines.append(line)
     cleaned = "\n".join(kept_lines).strip()
+    # Nhãn "(Đoạn 3)" là số thứ tự chunk nội bộ trong prompt, không có nghĩa với người dùng.
+    cleaned = re.sub(
+        r"[ \t]*[(\[]\s*Đoạn\s*\d+(?:\s*[,;&-]\s*(?:Đoạn\s*)?\d+)*\s*[)\]]", "", cleaned,
+        flags=re.IGNORECASE,
+    )
     # Xử lý citation nằm cuối cùng một dòng, sau nội dung trả lời.
     cleaned = re.sub(
         r"\s*\[(?:[^\]]*)(?:trang\s*\d+|tr\.\s*\d+|nguồn\s*:[^\]]+)[^\]]*\]\s*$",
@@ -1020,6 +1131,22 @@ def remove_embedded_citations(answer: str) -> str:
 
 
 # ─── RAGChain Class ───────────────────────────────────────────────────────────
+
+ChatResult = tuple[str, list[dict], float, Optional[str]]
+
+
+@dataclass
+class _PreparedChat:
+    """Kết quả truy hồi + prompt đã dựng, dùng chung cho achat và achat_stream."""
+    question: str
+    messages: list
+    context: str
+    docs: list
+    scores: list
+    avg_score: float
+    best_evidence_score: float
+    candidate_count: int
+
 
 class RAGChain:
     """
@@ -1054,7 +1181,8 @@ class RAGChain:
             base_url=OLLAMA_BASE_URL,
             reasoning=False,
             temperature=LLM_TEMPERATURE,
-            num_ctx=8192,           # Đủ cho một mục nhiều chunk và lịch sử ngắn
+            num_ctx=LLM_NUM_CTX,    # Đủ cho một mục nhiều chunk và lịch sử ngắn
+            keep_alive=LLM_KEEP_ALIVE,
             num_predict=1000,       # Đủ cho câu trả lời liệt kê tối đa 320 từ
             top_p=0.9,
             repeat_penalty=1.1,
@@ -1066,11 +1194,15 @@ class RAGChain:
             base_url=OLLAMA_BASE_URL,
             reasoning=False,
             temperature=LLM_AUDIT_TEMPERATURE,
-            num_ctx=8192,
+            num_ctx=LLM_NUM_CTX,
+            keep_alive=LLM_KEEP_ALIVE,
             num_predict=1000,
             top_p=0.9,
             repeat_penalty=1.1,
         )
+
+        # Nạp model vào bộ nhớ ở nền để câu hỏi đầu tiên không phải chờ.
+        threading.Thread(target=self._warm_up_llm, name="llm-warmup", daemon=True).start()
 
         logger.info(
             "RAG Chain initialized: model={}, answer_temperature={}, "
@@ -1079,6 +1211,14 @@ class RAGChain:
             LLM_TEMPERATURE,
             LLM_AUDIT_TEMPERATURE,
         )
+
+    def _warm_up_llm(self) -> None:
+        """Gọi một lượt ngắn để Ollama nạp model; lỗi chỉ ghi log, không chặn khởi động."""
+        try:
+            self._llm.invoke("ok", num_predict=1)
+            logger.info("LLM warm-up completed")
+        except Exception as error:
+            logger.warning(f"LLM warm-up skipped: {error}")
 
     def _build_chain(self):
         """Xây dựng LangChain chain với retriever."""
@@ -1124,13 +1264,57 @@ class RAGChain:
         conversation_history: Optional[Sequence[Mapping[str, object]]] = None,
         document_filename: Optional[str] = None,
         active_filenames: Optional[Sequence[str]] = None,
-    ) -> tuple[str, list[dict], float, Optional[str]]:
+    ) -> "ChatResult":
         """
         Async chat: trả về (answer, sources, avg_score, refusal_reason).
 
         refusal_reason là None khi LLM trả lời bình thường, hoặc một chuỗi
         mô tả lý do từ chối để main.py ghi vào activity log.
         """
+        prep = await self._prepare(
+            question, source_labels, conversation_history, document_filename, active_filenames
+        )
+        if not isinstance(prep, _PreparedChat):
+            return prep
+        response = await self._llm.ainvoke(prep.messages)
+        raw = response.content if hasattr(response, "content") else str(response)
+        return await self._finalize(prep, raw)
+
+    async def achat_stream(
+        self,
+        question: str,
+        source_labels: Optional[Mapping[str, str]] = None,
+        conversation_history: Optional[Sequence[Mapping[str, object]]] = None,
+        document_filename: Optional[str] = None,
+        active_filenames: Optional[Sequence[str]] = None,
+    ) -> AsyncIterator[tuple[str, object]]:
+        """Như achat nhưng phát ("token", chuỗi) khi LLM sinh chữ, rồi ("final", ChatResult).
+
+        Chữ phát ra là bản nháp chưa chuẩn hóa; client phải thay bằng kết quả "final".
+        """
+        prep = await self._prepare(
+            question, source_labels, conversation_history, document_filename, active_filenames
+        )
+        if not isinstance(prep, _PreparedChat):
+            yield "final", prep
+            return
+        parts: list[str] = []
+        async for chunk in self._llm.astream(prep.messages):
+            text = chunk.content if hasattr(chunk, "content") else str(chunk)
+            if text:
+                parts.append(text)
+                yield "token", text
+        yield "final", await self._finalize(prep, "".join(parts))
+
+    async def _prepare(
+        self,
+        question: str,
+        source_labels: Optional[Mapping[str, str]],
+        conversation_history: Optional[Sequence[Mapping[str, object]]],
+        document_filename: Optional[str],
+        active_filenames: Optional[Sequence[str]],
+    ) -> "ChatResult | _PreparedChat":
+        """Truy hồi và dựng prompt. Trả về kết quả từ chối sớm hoặc _PreparedChat để gọi LLM."""
         if self._vector_store is None or self._llm is None:
             raise RuntimeError("RAG Chain chưa được khởi tạo. Gọi initialize() trước.")
 
@@ -1224,18 +1408,32 @@ class RAGChain:
         # Format context
         context = format_docs(docs, source_labels)
 
-        # Gọi LLM
         prompt_messages = RAG_PROMPT.format_messages(
             context=context,
             conversation_history=format_conversation_history(resolution.history),
             question=effective_question,
             answer_guidance=build_answer_guidance(question),
         )
+        return _PreparedChat(
+            question=question,
+            messages=prompt_messages,
+            context=context,
+            docs=docs,
+            scores=scores,
+            avg_score=avg_score,
+            best_evidence_score=best_evidence_score,
+            candidate_count=len(retriever_with_score),
+        )
+
+    async def _finalize(self, prep: "_PreparedChat", raw_answer: str) -> "ChatResult":
+        """Chuẩn hóa câu trả lời của LLM, chạy các lượt rà soát cần thiết và gắn nguồn."""
+        question, context = prep.question, prep.context
+        docs, scores = prep.docs, prep.scores
+        avg_score, best_evidence_score = prep.avg_score, prep.best_evidence_score
         is_enumeration = asks_for_enumeration(question)
         is_confirmation = asks_for_confirmation(question)
-        response = await self._llm.ainvoke(prompt_messages)
-        answer = response.content if hasattr(response, "content") else str(response)
-        answer_word_limit = _enumeration_answer_word_limit(question) if is_enumeration else 100
+        answer = raw_answer
+        answer_word_limit = _enumeration_answer_word_limit(question) if is_enumeration else DEFAULT_ANSWER_WORD_LIMIT
         draft_word_limit = answer_word_limit + 80 if is_enumeration else answer_word_limit
         # Repair pass cần không gian rộng hơn để viết đầy đủ trước khi trim
         repair_word_limit = answer_word_limit + 150 if is_enumeration else answer_word_limit
@@ -1266,7 +1464,8 @@ class RAGChain:
             if repair_answer:
                 answer = remove_embedded_citations(repair_answer)
 
-        if is_enumeration:
+        if is_enumeration and enumeration_needs_repair(answer):
+            draft_before_repair = answer
             # A second, domain-independent pass compares the draft with the
             # complete matching section. This avoids adding one hard-coded
             # checklist for every new wording or document topic.
@@ -1289,7 +1488,21 @@ class RAGChain:
             # Repair có thể tái sinh citation → cleanup sau cùng
             answer = remove_embedded_citations(answer)
             answer = normalize_answer(answer, max_words=answer_word_limit)
+            before_words, after_words = set(draft_before_repair.split()), set(answer.split())
+            logger.info(
+                "Enumeration repair ran: new_words={}, dropped_words={}",
+                len(after_words - before_words),
+                len(before_words - after_words),
+            )
+        elif is_enumeration:
+            logger.info("Enumeration repair skipped: draft already structured and complete")
 
+        answer = strip_unrequested_agreement(answer, question)
+        answer = strip_unrequested_legal_references(answer, question)
+        if answer.strip().startswith(MODEL_DECLINE_PREFIX):
+            # Model tự từ chối theo quy tắc 2: không gắn nguồn và ghi nhận như một lần từ chối.
+            logger.info("RAG refusal: model declined to answer from the retrieved context")
+            return answer, [], avg_score, "model_declined"
         if not answer.strip():
             logger.info("RAG refusal: model returned an empty answer")
             return NO_RELEVANT_DOCUMENTS_MESSAGE, [], avg_score, "empty_answer"
@@ -1299,7 +1512,7 @@ class RAGChain:
 
         logger.info(
             f"RAG query: '{question[:50]}...' → "
-            f"{len(retriever_with_score)} candidates, {len(docs)} context chunks, "
+            f"{prep.candidate_count} candidates, {len(docs)} context chunks, "
             f"avg_score={avg_score:.3f}, "
             f"best_evidence={best_evidence_score:.3f}"
         )

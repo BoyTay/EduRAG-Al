@@ -11,6 +11,10 @@ from rag_chain import (
     deduplicate_answer_lines,
     extract_sources,
     extract_final_answer,
+    remove_embedded_citations,
+    strip_unrequested_legal_references,
+    strip_unrequested_agreement,
+    DEFAULT_ANSWER_WORD_LIMIT,
     has_relevant_document,
     infer_document_filename,
     l2_distance_to_relevance,
@@ -470,6 +474,24 @@ class _FakeLlm:
 
 
 class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_model_decline_is_logged_as_refusal_without_sources(self):
+        grade = Document(
+            page_content="Điểm A tương ứng 4,0 trên thang điểm 4.",
+            metadata={"filename": "Quy_che_dao_tao.pdf", "source": "Quy_che_dao_tao.pdf", "page": 10},
+        )
+        chain = RAGChain()
+        chain._vector_store = _FakeVectorStore([(grade, 1.0)])
+        chain._llm = _FakeLlm(["Xin lỗi, tôi không tìm thấy thông tin về điểm A trong tài liệu hiện có."])
+
+        answer, sources, _score, reason = await chain.achat(
+            "Điểm A trên thang điểm 4 là bao nhiêu?",
+            active_filenames=["Quy_che_dao_tao.pdf"],
+        )
+
+        self.assertTrue(answer.startswith("Xin lỗi, tôi không tìm thấy"))
+        self.assertEqual(sources, [])
+        self.assertEqual(reason, "model_declined")
+
     async def test_discourse_marker_topic_switch_does_not_reach_prompt(self):
         grade = Document(
             page_content="Điểm A tương ứng 4,0 trên thang điểm 4.",
@@ -811,6 +833,100 @@ class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(answer_llm.calls, 1)
         self.assertEqual(audit_llm.calls, 1)
         self.assertEqual(answer, GROUPED_ORIENTATION_ANSWER)
+
+
+class AgreementOpeningTests(unittest.TestCase):
+    def test_system_prompt_does_not_prime_agreement_opening(self):
+        self.assertNotIn("Đúng,", SYSTEM_PROMPT)
+
+    def test_agreement_stripped_for_open_question(self):
+        answer = "Đúng, sinh viên được xét tốt nghiệp khi đủ tín chỉ."
+        self.assertEqual(
+            strip_unrequested_agreement(answer, "Điều kiện để được xét tốt nghiệp là gì?"),
+            "Sinh viên được xét tốt nghiệp khi đủ tín chỉ.",
+        )
+
+    def test_agreement_kept_for_confirmation_question(self):
+        answer = "Đúng, tên viết tắt là DLU."
+        self.assertEqual(
+            strip_unrequested_agreement(answer, "Tên viết tắt là DLU đúng không?"), answer
+        )
+
+    def test_negative_answer_to_plain_yes_no_question_is_kept(self):
+        answer = "Không, sinh viên không được thi lại."
+        self.assertEqual(
+            strip_unrequested_agreement(answer, "Sinh viên có được thi lại không?"), answer
+        )
+
+    def test_inline_lettered_items_become_bullets(self):
+        answer = (
+            "Sinh viên được xét tốt nghiệp khi đáp ứng các điều kiện sau: a) Tích lũy đủ tín chỉ; "
+            "đạt chuẩn đầu ra. b) Đạt chuẩn ngoại ngữ (trừ trường hợp miễn). c) Hoàn thành giáo dục thể chất."
+        )
+        self.assertEqual(
+            normalize_answer(answer),
+            "Sinh viên được xét tốt nghiệp khi đáp ứng các điều kiện sau:\n"
+            "- Tích lũy đủ tín chỉ; đạt chuẩn đầu ra.\n"
+            "- Đạt chuẩn ngoại ngữ (trừ trường hợp miễn).\n"
+            "- Hoàn thành giáo dục thể chất.",
+        )
+
+    def test_lettered_items_on_separate_lines_become_bullets(self):
+        self.assertEqual(normalize_answer("Các ý:\na) Một\nb) Hai"), "Các ý:\n- Một\n- Hai")
+
+    def test_list_guidance_includes_layout_template(self):
+        for question in ("Điều kiện để được xét tốt nghiệp là gì?", "Hãy liệt kê quyền của sinh viên."):
+            with self.subTest(question=question):
+                guidance = build_answer_guidance(question)
+                self.assertIn("\n- <ý thứ nhất", guidance)
+                self.assertIn("bắt đầu bằng \"- \"", guidance)
+
+    def test_confirmation_guidance_limits_answer_scope(self):
+        guidance = build_answer_guidance("Tên viết tắt là DLU đúng không?")
+        self.assertIn("không nhắc số điều", guidance)
+        self.assertNotIn("<ý thứ nhất", guidance)
+
+    def test_legal_references_removed_when_not_asked(self):
+        answer = "Không, sinh viên không được xét khi dưới 2.0; theo Điều 17 khoản 1 mục a) của Quy chế đào tạo, điều kiện là từ 2,00 trở lên."
+        self.assertEqual(
+            strip_unrequested_legal_references(answer, "Điểm dưới 2.0 có được xét tốt nghiệp không?"),
+            "Không, sinh viên không được xét khi dưới 2.0; điều kiện là từ 2,00 trở lên.",
+        )
+
+    def test_sentence_initial_legal_reference_keeps_capitalization(self):
+        self.assertEqual(
+            strip_unrequested_legal_references(
+                "Theo Điều 5 của Quy chế, sinh viên được thi lại.", "Có được thi lại không?"
+            ),
+            "Sinh viên được thi lại.",
+        )
+
+    def test_legal_references_kept_when_question_names_an_article(self):
+        answer = "Theo Điều 17 của Quy chế, điều kiện là 2,00."
+        self.assertEqual(strip_unrequested_legal_references(answer, "Điều 17 quy định gì?"), answer)
+
+    def test_unclosed_final_tag_does_not_leak(self):
+        self.assertEqual(
+            extract_final_answer("<FINAL>Sinh viên được xét khi:\n* Đủ tín chỉ"),
+            "Sinh viên được xét khi:\n* Đủ tín chỉ",
+        )
+
+    def test_asterisk_bullets_are_normalized(self):
+        self.assertEqual(normalize_answer("Các ý:\n* Một\n* Hai"), "Các ý:\n- Một\n- Hai")
+
+    def test_internal_chunk_labels_are_removed(self):
+        self.assertEqual(
+            remove_embedded_citations("Điều kiện là 2,00 trở lên (Đoạn 3)."),
+            "Điều kiện là 2,00 trở lên.",
+        )
+
+    def test_parenthetical_letter_is_not_split(self):
+        text = "Theo khoản (a) và (b) thì khác nhau. Kết thúc."
+        self.assertEqual(normalize_answer(text), text)
+
+    def test_default_word_limit_matches_system_prompt(self):
+        self.assertEqual(DEFAULT_ANSWER_WORD_LIMIT, 150)
+        self.assertIn("tối đa 150 từ", SYSTEM_PROMPT)
 
 
 if __name__ == "__main__":
