@@ -766,6 +766,18 @@ class RagChainRetrievalFlowTests(unittest.IsolatedAsyncioTestCase):
             [(handbook, 0.29)],
         ))
 
+    def test_how_many_phrase_is_not_a_required_topic_word(self):
+        # "bao nhiêu" là từ hỏi; trước đây "nhiều" bị coi là từ khóa chủ đề nên câu hỏi chỉ qua
+        # được khi tình cờ có đoạn nào chứa chữ "nhiều".
+        conversion = Document(
+            page_content="Từ 8,5 đến 10,0 Đạt A 4. Từ 7,0 đến 8,4 Đạt B 3.",
+            metadata={"filename": "So_tay_sinh_vien.pdf"},
+        )
+        self.assertTrue(has_relevant_document(
+            "điểm A bao nhiêu điểm",
+            [(conversion, 0.41)],
+        ))
+
     def test_cohort_identifier_matches_full_wording_in_document(self):
         plan = Document(
             page_content="Tuần định hướng dành cho tân sinh viên Khóa 50 bắt đầu ngày 24/8.",

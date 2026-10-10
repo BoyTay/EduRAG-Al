@@ -745,7 +745,7 @@ def has_relevant_document(
     # the retrieved document actually covers the subject being asked about.
     stopwords = {
         "ai", "bao", "cho", "co", "cua", "dai", "dien", "duoc", "gi",
-        "hoc", "hoi", "khi", "khong", "la", "lam", "nao", "nhung",
+        "hoc", "hoi", "khi", "khong", "la", "lam", "nao", "nhieu", "nhung",
         "phai", "ra", "sinh", "tai", "tan", "the", "theo", "trong",
         "truong", "tu", "ve", "vien", "vao",
     }
