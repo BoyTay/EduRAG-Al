@@ -1,0 +1,1041 @@
+[
+ {
+  "id": "S-01",
+  "category": "fact_direct",
+  "question": "Kế hoạch này tổ chức hoạt động gì cho đối tượng nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "Tuần định hướng"
+   ],
+   [
+    "Tân sinh viên"
+   ],
+   [
+    "khóa 50",
+    "K50"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-02",
+  "category": "fact_date",
+  "question": "Tuần định hướng diễn ra từ ngày nào đến ngày nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "24/8/2026",
+    "24/08/2026"
+   ],
+   [
+    "28/8/2026",
+    "28/08/2026"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-03",
+  "category": "fact_direct",
+  "question": "Đối tượng tham gia Tuần định hướng là ai?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "Tân sinh viên"
+   ],
+   [
+    "khóa 50"
+   ],
+   [
+    "2026"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-04",
+  "category": "fact_obligation",
+  "question": "Tân sinh viên khóa 50 có bắt buộc tham gia đầy đủ không?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "bắt buộc"
+   ],
+   [
+    "đầy đủ"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-05",
+  "category": "fact_list",
+  "question": "Mục đích của Tuần định hướng là gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "dấu ấn"
+   ],
+   [
+    "phương pháp",
+    "kỹ năng"
+   ],
+   [
+    "giới thiệu"
+   ],
+   [
+    "câu lạc bộ",
+    "gắn kết"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-06",
+  "category": "fact_direct",
+  "question": "Tuần định hướng được tổ chức ở đâu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "danh sách"
+   ]
+  ],
+  "min_sources": 1,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-07",
+  "category": "synthesis",
+  "question": "Trong Tuần định hướng, tân sinh viên được hướng dẫn những nội dung gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "giới thiệu về Khoa",
+    "Khoa"
+   ],
+   [
+    "thư viện"
+   ],
+   [
+    "đăng ký học phần"
+   ],
+   [
+    "quy chế"
+   ],
+   [
+    "kỹ năng"
+   ],
+   [
+    "câu lạc bộ",
+    "CLB"
+   ],
+   [
+    "nghề nghiệp"
+   ]
+  ],
+  "note": "Ground truth gốc có 35 ý nguyên tử, cần duyệt thêm thủ công.",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-08",
+  "category": "synthesis",
+  "question": "Phần giới thiệu về Khoa bao gồm những gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "tầm nhìn"
+   ],
+   [
+    "sứ mệnh"
+   ],
+   [
+    "giảng viên"
+   ],
+   [
+    "nghề nghiệp"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-09",
+  "category": "synthesis",
+  "question": "Sinh viên được hướng dẫn sử dụng các hệ thống và nguồn thông tin nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "thư viện"
+   ],
+   [
+    "truyền thông"
+   ],
+   [
+    "Internet",
+    "mạng xã hội"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-10",
+  "category": "synthesis",
+  "question": "Những chức năng học vụ và thủ tục nào được hướng dẫn?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "thời khóa biểu"
+   ],
+   [
+    "lịch thi"
+   ],
+   [
+    "đăng ký học phần"
+   ],
+   [
+    "hành chính"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-11",
+  "category": "synthesis",
+  "question": "Sinh viên được hướng dẫn liên hệ với những đơn vị nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "Khoa"
+   ],
+   [
+    "phòng"
+   ],
+   [
+    "Đoàn"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-12",
+  "category": "synthesis",
+  "question": "Những quy chế và quy định nào được phổ biến?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "quy chế đào tạo"
+   ],
+   [
+    "chất lượng"
+   ],
+   [
+    "công tác sinh viên"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-13",
+  "category": "synthesis",
+  "question": "Tân sinh viên được trang bị những kỹ năng nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "tự học"
+   ],
+   [
+    "thuyết trình"
+   ],
+   [
+    "giao tiếp"
+   ],
+   [
+    "nhóm"
+   ],
+   [
+    "thời gian"
+   ],
+   [
+    "thích nghi"
+   ],
+   [
+    "tự lập"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-14",
+  "category": "synthesis",
+  "question": "Quy tắc văn hóa nào được phổ biến?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "văn hóa ứng xử"
+   ]
+  ],
+  "forbidden_groups": [
+   [
+    "trang phục"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-15",
+  "category": "synthesis",
+  "question": "Có những hoạt động kết nối và hỗ trợ nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "ngoại khóa"
+   ],
+   [
+    "câu lạc bộ",
+    "CLB"
+   ],
+   [
+    "học bổng"
+   ],
+   [
+    "hội nhập"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-16",
+  "category": "synthesis",
+  "question": "Nội dung định hướng nghề nghiệp gồm những gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "nghề nghiệp"
+   ],
+   [
+    "thực tập"
+   ],
+   [
+    "việc làm"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-17",
+  "category": "synthesis",
+  "question": "Sinh viên cần xây dựng mục tiêu và kế hoạch gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "mục tiêu"
+   ],
+   [
+    "học kỳ I",
+    "học kì I"
+   ],
+   [
+    "cam kết"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-18",
+  "category": "synthesis",
+  "question": "Hoạt động giao lưu có thể có những đối tượng nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "cựu sinh viên"
+   ],
+   [
+    "doanh nhân"
+   ],
+   [
+    "nhà tuyển dụng"
+   ],
+   [
+    "chuyên gia"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-19",
+  "category": "synthesis",
+  "question": "Cuối phần nội dung, Khoa cần hỗ trợ giải quyết vấn đề gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "câu hỏi"
+   ],
+   [
+    "khó khăn"
+   ],
+   [
+    "vướng mắc"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-20",
+  "category": "fact_money",
+  "question": "Khoa có dưới 150 tân sinh viên được hỗ trợ bao nhiêu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "5.000.000"
+   ]
+  ],
+  "forbidden_groups": [
+   [
+    "đồng/chăn",
+    "đồng/chãn",
+    "/tháng",
+    "/người"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-21",
+  "category": "fact_money",
+  "question": "Khoa có đúng 150 tân sinh viên được hỗ trợ bao nhiêu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "7.000.000"
+   ],
+   [
+    "150"
+   ]
+  ],
+  "forbidden_groups": [
+   [
+    "đồng/chăn",
+    "đồng/chãn",
+    "/tháng",
+    "/người"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-22",
+  "category": "fact_money",
+  "question": "Khoa có 200 tân sinh viên được hỗ trợ bao nhiêu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "7.000.000"
+   ]
+  ],
+  "forbidden_groups": [
+   [
+    "đồng/chăn",
+    "đồng/chãn",
+    "/tháng",
+    "/người"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-23",
+  "category": "synthesis",
+  "question": "Khoản kinh phí hỗ trợ dùng cho những hạng mục nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "backdrop"
+   ],
+   [
+    "âm thanh"
+   ],
+   [
+    "ánh sáng"
+   ],
+   [
+    "văn nghệ"
+   ],
+   [
+    "in ấn"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-24",
+  "category": "responsibility",
+  "question": "Phòng Công tác sinh viên có trách nhiệm gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "tổ chức",
+    "theo dõi"
+   ],
+   [
+    "phối hợp",
+    "thông báo"
+   ],
+   [
+    "quy chế"
+   ],
+   [
+    "báo cáo"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-25",
+  "category": "responsibility",
+  "question": "Phòng Quản lý đào tạo hỗ trợ nội dung gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "quy chế đào tạo"
+   ],
+   [
+    "lịch"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-26",
+  "category": "responsibility",
+  "question": "Phòng Quản trị Cơ sở vật chất chuẩn bị gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3,
+   4
+  ],
+  "required_groups": [
+   [
+    "hội trường"
+   ],
+   [
+    "âm thanh"
+   ],
+   [
+    "ánh sáng"
+   ],
+   [
+    "máy chiếu",
+    "màn hình"
+   ],
+   [
+    "bàn ghế"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-27",
+  "category": "fact_date",
+  "question": "Các Khoa phải gửi phân công trước thời điểm nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   4
+  ],
+  "required_groups": [
+   [
+    "11h00",
+    "11:00",
+    "11 giờ"
+   ],
+   [
+    "20/8/2026",
+    "20/08/2026"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-28",
+  "category": "responsibility",
+  "question": "Đoàn Thanh niên – Hội sinh viên phụ trách nội dung gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   4
+  ],
+  "required_groups": [
+   [
+    "infographic",
+    "video"
+   ],
+   [
+    "câu lạc bộ",
+    "CLB",
+    "tổ chức"
+   ],
+   [
+    "đăng ký"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "S-29",
+  "category": "responsibility",
+  "question": "Tân sinh viên có trách nhiệm gì khi tham gia?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   4
+  ],
+  "required_groups": [
+   [
+    "thực hiện"
+   ],
+   [
+    "đầy đủ"
+   ],
+   [
+    "đúng giờ"
+   ],
+   [
+    "ghi chép"
+   ]
+  ],
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-01",
+  "category": "paraphrase_no_diacritics",
+  "question": "duoi 150 tan sinh vien duoc ho tro bao nhieu",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "5.000.000"
+   ]
+  ],
+  "forbidden_groups": [
+   [
+    "đồng/chăn",
+    "đồng/chãn",
+    "/tháng",
+    "/người"
+   ]
+  ],
+  "variant_of": "S-20",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-02",
+  "category": "paraphrase_reorder",
+  "question": "Mức 7 triệu áp dụng khi Khoa có bao nhiêu tân sinh viên?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "150"
+   ]
+  ],
+  "variant_of": "S-21",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-03",
+  "category": "paraphrase_synonym",
+  "question": "Khoa có 200 tân sinh viên thì được hỗ trợ tài chính bao nhiêu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "7.000.000"
+   ]
+  ],
+  "variant_of": "S-22",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-04",
+  "category": "paraphrase_synonym",
+  "question": "Sinh viên được hướng dẫn xem lịch học và lịch thi như thế nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "thời khóa biểu",
+    "lịch học"
+   ],
+   [
+    "lịch thi"
+   ]
+  ],
+  "variant_of": "S-10",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-05",
+  "category": "false_premise",
+  "question": "Tuần định hướng diễn ra ngày 20/8/2026 đúng không?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "24/8/2026",
+    "24/08/2026"
+   ]
+  ],
+  "variant_of": "S-02",
+  "note": "Phải đính chính, không đồng ý với tiền đề sai.",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-06",
+  "category": "paraphrase_full_list",
+  "question": "Hãy liệt kê đầy đủ, không bỏ sót nội dung Tuần định hướng.",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "Khoa"
+   ],
+   [
+    "thư viện"
+   ],
+   [
+    "quy chế"
+   ],
+   [
+    "kỹ năng"
+   ],
+   [
+    "nghề nghiệp"
+   ]
+  ],
+  "variant_of": "S-07",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-07",
+  "category": "paraphrase_no_diacritics",
+  "question": "tuan dinh huong dien ra tu ngay nao den ngay nao",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "24/8/2026",
+    "24/08/2026"
+   ],
+   [
+    "28/8/2026",
+    "28/08/2026"
+   ]
+  ],
+  "variant_of": "S-02",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-08",
+  "category": "paraphrase_synonym",
+  "question": "Hạn chót để các Khoa nộp phân công là khi nào?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   4
+  ],
+  "required_groups": [
+   [
+    "11h00",
+    "11:00",
+    "11 giờ"
+   ],
+   [
+    "20/8/2026",
+    "20/08/2026"
+   ]
+  ],
+  "variant_of": "S-27",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-09",
+  "category": "false_premise",
+  "question": "Tân sinh viên có thể vắng một số hoạt động của Tuần định hướng được không?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "bắt buộc"
+   ],
+   [
+    "đầy đủ"
+   ]
+  ],
+  "variant_of": "S-04",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "P-10",
+  "category": "paraphrase_synonym",
+  "question": "Khoa chỉ có 100 tân sinh viên thì kinh phí hỗ trợ là bao nhiêu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "5.000.000"
+   ]
+  ],
+  "variant_of": "S-20",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "M-01",
+  "category": "multi_turn",
+  "question": "Đối tượng đó có bắt buộc tham gia đầy đủ không?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   1
+  ],
+  "required_groups": [
+   [
+    "Tân sinh viên"
+   ],
+   [
+    "bắt buộc"
+   ]
+  ],
+  "prior_turns": [
+   "Đối tượng tham gia là ai?"
+  ],
+  "isolation_check": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "M-02",
+  "category": "multi_turn",
+  "question": "Mức đó áp dụng từ bao nhiêu sinh viên?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   3
+  ],
+  "required_groups": [
+   [
+    "7.000.000"
+   ],
+   [
+    "150"
+   ]
+  ],
+  "prior_turns": [
+   "Khoa có 200 sinh viên được bao nhiêu?"
+  ],
+  "isolation_check": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "M-03",
+  "category": "multi_turn",
+  "question": "Các em cần làm gì khi tham gia?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   4
+  ],
+  "required_groups": [
+   [
+    "đúng giờ"
+   ],
+   [
+    "ghi chép"
+   ]
+  ],
+  "prior_turns": [
+   "Tuần định hướng diễn ra khi nào?"
+  ],
+  "forbidden_groups": [
+   [
+    "Phòng Công tác sinh viên"
+   ]
+  ],
+  "isolation_check": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "G-01",
+  "category": "scope_locked",
+  "question": "Trong Tuần định hướng, tân sinh viên được hướng dẫn những nội dung gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "thư viện"
+   ],
+   [
+    "quy chế"
+   ]
+  ],
+  "expected_only_document": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "G-02",
+  "category": "scope_all_documents",
+  "question": "Trong Tuần định hướng, tân sinh viên được hướng dẫn những nội dung gì?",
+  "document_filename": null,
+  "expected_pages": [
+   2
+  ],
+  "required_groups": [
+   [
+    "thư viện"
+   ],
+   [
+    "quy chế"
+   ]
+  ],
+  "expected_document": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "G-03",
+  "category": "out_of_scope",
+  "question": "Học phí học kỳ I của khóa 50 là bao nhiêu?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [],
+  "required_groups": [],
+  "expect_refusal": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "G-04",
+  "category": "out_of_scope",
+  "question": "Hiệu trưởng hiện tại tên gì?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [],
+  "required_groups": [],
+  "expect_refusal": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "G-05",
+  "category": "false_premise_refuse",
+  "question": "Mỗi sinh viên được nhận 7.000.000 đồng đúng không?",
+  "document_filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "expected_pages": [],
+  "required_groups": [
+   [
+    "Khoa"
+   ]
+  ],
+  "expect_refusal": false,
+  "forbidden_groups": [
+   [
+    "đúng, mỗi sinh viên",
+    "mỗi sinh viên được nhận 7.000.000"
+   ]
+  ],
+  "note": "Chấp nhận từ chối hoặc đính chính (kinh phí cấp cho Khoa); chấm tay.",
+  "refusal_optional": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ },
+ {
+  "id": "G-06",
+  "category": "scope_other_document",
+  "question": "Mức kinh phí hỗ trợ cho Khoa tổ chức Tuần định hướng là bao nhiêu?",
+  "document_filename": "So_tay_sinh_vien.pdf",
+  "expected_pages": [],
+  "required_groups": [],
+  "expect_refusal": true,
+  "ground_truth_status": "draft_from_plan_needs_pdf_review"
+ }
+]
