@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Thanh bên thu gọn</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+.ib{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:#aab6c8;cursor:pointer;transition:background .15s,color .15s;text-decoration:none}
+.ib:hover{background:rgba(148,163,184,.14);color:#fff}
+.ib.active{background:rgba(16,185,129,.15);color:#6ee7b7}
+.ib.danger:hover{background:rgba(244,63,94,.16);color:#fda4af}
+.ib.primary{background:#10b981;color:#04261b}
+.ib.primary:hover{background:#34d399;color:#04261b}
+a:focus-visible,button:focus-visible{outline:2px solid #34d399;outline-offset:2px}
+</style>
+</helmet>
+<aside style="width:72px;height:900px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;background:#0b1329;font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:16px 0 14px;border-right:1px solid rgba(148,163,184,.14)">
+
+<a href="Main.dc.html" aria-label="Mở rộng thanh bên" title="Mở rộng thanh bên" style="width:40px;height:40px;border-radius:12px;background:#10b981;color:#04261b;display:flex;align-items:center;justify-content:center;text-decoration:none">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5L2 9z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/></svg>
+</a>
+
+<div style="height:10px"></div>
+
+<button type="button" class="ib primary" aria-label="Đoạn chat mới" title="Đoạn chat mới">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div style="height:1px;width:32px;background:rgba(148,163,184,.14);margin:8px 0"></div>
+
+<a class="ib active" href="#chat" aria-label="Trang chat" title="Trang chat" aria-current="page">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+</a>
+<a class="ib" href="#library" aria-label="Thư viện tài liệu" title="Thư viện tài liệu">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+</a>
+<a class="ib" href="#admin" aria-label="Quản trị hệ thống" title="Quản trị hệ thống">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+</a>
+<a class="ib" href="Main.dc.html" aria-label="Lịch sử hội thoại" title="Lịch sử hội thoại">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+</a>
+
+<div style="flex:1"></div>
+
+<a class="ib" href="#settings" aria-label="Cài đặt tài khoản" title="Cài đặt tài khoản">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+</a>
+<button type="button" class="ib danger" aria-label="Đăng xuất" title="Đăng xuất">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 8l4 4-4 4M20 12H9"/></svg>
+</button>
+<div style="position:relative;margin-top:6px" title="Quản trị viên">
+<div style="width:40px;height:40px;border-radius:12px;background:rgba(16,185,129,.16);color:#6ee7b7;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px">Q</div>
+<span style="position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #0b1329"></span>
+</div>
+
+</aside>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":72,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
