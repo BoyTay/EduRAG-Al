@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarBlank,
   CaretDown,
-  CaretUp,
   ChatCircleDots,
   Check,
   Copy,
   DotsThreeVertical,
-  FileText,
   MagnifyingGlass,
   Trash,
   X,
@@ -153,86 +150,64 @@ export function ConversationHistory() {
 
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Search Input matching reference image */}
-      <div className="relative mb-3 shrink-0">
-        <MagnifyingGlass
-          size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-        />
+      {/* Ô tìm kiếm */}
+      <label className="flex h-[38px] shrink-0 items-center gap-2 rounded-[10px] border border-[rgba(148,163,184,.14)] bg-[rgba(148,163,184,.08)] px-3 text-[#8d9bb0] focus-within:border-[#34d399] focus-within:text-[#d1fae5]">
+        <MagnifyingGlass size={16} aria-hidden="true" className="shrink-0" />
         <input
-          type="text"
+          type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Tìm lịch sử hội thoại..."
-          className="w-full rounded-xl border border-slate-700/60 bg-[#0d1c31]/80 py-2 pl-9 pr-8 text-xs text-slate-200 placeholder-slate-400 transition-colors focus:border-teal-500/50 focus:bg-[#0e2038] focus:outline-none focus:ring-1 focus:ring-teal-500/30"
+          placeholder="Tìm lịch sử hội thoại…"
+          aria-label="Tìm lịch sử hội thoại"
+          className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-[#e6edf6] outline-none placeholder:text-[#8d9bb0] [&::-webkit-search-cancel-button]:appearance-none"
         />
         {searchQuery && (
           <button
+            type="button"
             onClick={() => setSearchQuery("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+            aria-label="Xóa tìm kiếm"
             title="Xóa tìm kiếm"
+            className="shrink-0 rounded text-[#8d9bb0] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#34d399]"
           >
-            <X size={13} />
+            <X size={13} aria-hidden="true" />
           </button>
         )}
-      </div>
+      </label>
 
-      {/* Scrollable Conversation List */}
-      <div className="custom-history-scrollbar min-h-0 flex-1 space-y-3.5 overflow-y-auto pr-1">
+      {/* Danh sách hội thoại */}
+      <div className="custom-history-scrollbar -mr-1.5 mt-2.5 min-h-0 flex-1 overflow-y-auto pr-1.5">
         {isLoading ? (
-          <div className="space-y-2 px-1 py-1">
-            <span className="block h-10 animate-pulse rounded-xl bg-slate-800/60" />
-            <span className="block h-9 animate-pulse rounded-xl bg-slate-800/60" />
-            <span className="block h-9 animate-pulse rounded-xl bg-slate-800/60" />
-            <span className="block h-9 animate-pulse rounded-xl bg-slate-800/60" />
+          <div className="space-y-1 py-1" aria-busy="true">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className="block h-[38px] animate-pulse rounded-[10px] bg-[rgba(148,163,184,.08)]" />
+            ))}
           </div>
         ) : filteredSessions.length > 0 ? (
           groups.map(([label, sessions]) => {
             const isCollapsed = Boolean(collapsedGroups[label]);
-            const isToday = label === "HÔM NAY";
 
             return (
-              <div key={label} className="space-y-1.5">
-                {/* Accordion Group Header Card matching mockup */}
+              <div key={label} className="mb-1.5">
                 <button
                   type="button"
                   onClick={() => toggleGroup(label)}
-                  className="flex w-full items-center justify-between rounded-xl border border-slate-700/50 bg-[#0e1f38]/90 px-3 py-2 text-left transition-colors hover:bg-[#112644] active:scale-[0.99]"
+                  aria-expanded={!isCollapsed}
+                  className="flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[11px] font-bold uppercase tracking-[.08em] text-[#8d9bb0] transition-colors hover:bg-[rgba(148,163,184,.08)] hover:text-[#dbe4f0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#34d399]"
                 >
-                  {/* Left: Calendar Icon + Group Label */}
-                  <div className="flex items-center gap-2.5">
-                    <CalendarBlank
-                      size={17}
-                      weight="fill"
-                      className="text-emerald-400"
-                    />
-                    <span className="text-xs font-bold tracking-wider text-slate-100">
-                      {label}
-                    </span>
-                  </div>
-
-                  {/* Right: Badge Count + Accordion Chevron */}
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`min-w-5 rounded-full px-2 py-0.5 text-center text-[11px] font-bold ${
-                        isToday
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "border border-slate-700/60 bg-slate-800 text-slate-300 font-semibold"
-                      }`}
-                    >
-                      {sessions.length}
-                    </span>
-                    {isCollapsed ? (
-                      <CaretDown size={14} className="text-slate-400" />
-                    ) : (
-                      <CaretUp size={14} className="text-slate-400" />
-                    )}
-                  </div>
+                  <CaretDown
+                    size={14}
+                    weight="bold"
+                    aria-hidden="true"
+                    className={`shrink-0 transition-transform duration-150 ${isCollapsed ? "-rotate-90" : ""}`}
+                  />
+                  <span className="flex-1 text-left">{label}</span>
+                  <span className="text-[11px] font-bold tracking-normal text-[#8d9bb0]">
+                    {sessions.length}
+                  </span>
                 </button>
 
-                {/* Session Items List */}
                 {!isCollapsed && (
-                  <div className="space-y-1 pt-0.5">
+                  <div className="mt-0.5 flex flex-col gap-px">
                     {sessions.map((session) => {
                       const active = current === session.session_id;
                       const displayTitle =
@@ -241,106 +216,79 @@ export function ConversationHistory() {
                       const isMenuOpen = activeMenuId === session.session_id;
 
                       return (
-                        <div
-                          key={session.session_id}
-                          className="relative flex items-center"
-                        >
-                          {/* Left Glowing Indicator Bar (for Active item) */}
-                          <div
-                            className={`w-1.5 shrink-0 transition-all ${
-                              active
-                                ? "mr-1.5 h-7 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)] opacity-100"
-                                : "mr-1.5 h-7 opacity-0 pointer-events-none"
-                            }`}
-                            aria-hidden="true"
-                          />
-
-                          {/* Session Item Card */}
-                          <div
+                        <div key={session.session_id} className="group relative">
+                          <button
+                            type="button"
                             onClick={() => void open(session.session_id)}
-                            className={`group relative flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 transition duration-150 select-none ${
+                            aria-current={active ? "true" : undefined}
+                            title={displayTitle}
+                            className={`flex h-[38px] w-full items-center gap-2 rounded-[10px] px-2.5 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#34d399] ${
                               active
-                                ? "border border-emerald-500/40 bg-[#082b2b] text-white shadow-sm"
-                                : "border border-transparent text-slate-300 hover:border-slate-750 hover:bg-slate-850/70 hover:text-white"
+                                ? "bg-[rgba(148,163,184,.16)] font-semibold text-white"
+                                : "font-medium text-[#c3cddb] hover:bg-[rgba(148,163,184,.10)] hover:text-white"
                             }`}
                           >
-                            {/* File/Document Icon in Squircle */}
-                            <div
-                              className={`flex size-7 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                                active
-                                  ? "border-emerald-500/40 bg-emerald-500/25 text-emerald-300"
-                                  : "border-slate-700/60 bg-slate-800/90 text-slate-400 group-hover:border-slate-600 group-hover:text-slate-200"
-                              }`}
-                            >
-                              <FileText size={15} weight="regular" />
-                            </div>
-
-                            {/* Session Title */}
-                            <span
-                              className={`min-w-0 flex-1 truncate text-xs ${
-                                active ? "font-semibold text-white" : "font-medium text-slate-200"
-                              }`}
-                              title={displayTitle}
-                            >
-                              {displayTitle}
-                            </span>
-
-                            {/* Timestamp (e.g. 14:32) */}
+                            <span className="min-w-0 flex-1 truncate">{displayTitle}</span>
                             {timeString && (
-                              <span className="shrink-0 font-mono text-[11px] text-slate-400">
+                              <span className="shrink-0 font-['JetBrains_Mono',ui-monospace,monospace] text-[11px] font-normal text-[#8d9bb0] group-hover:hidden group-focus-within:hidden">
                                 {timeString}
                               </span>
                             )}
+                          </button>
 
-                            {/* 3-Dots Action Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuId(isMenuOpen ? null : session.session_id);
-                              }}
-                              className="shrink-0 rounded p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
-                              title="Tùy chọn"
-                            >
-                              <DotsThreeVertical size={16} weight="bold" />
-                            </button>
-                          </div>
+                          {/* Nút tùy chọn: thay giờ khi hover/focus */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(isMenuOpen ? null : session.session_id);
+                            }}
+                            aria-label="Tùy chọn hội thoại"
+                            aria-haspopup="menu"
+                            aria-expanded={isMenuOpen}
+                            title="Tùy chọn"
+                            className={`absolute right-1 top-1/2 size-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#c3cddb] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#34d399] group-hover:flex group-focus-within:flex ${
+                              isMenuOpen ? "flex" : "hidden"
+                            }`}
+                          >
+                            <DotsThreeVertical size={16} weight="bold" aria-hidden="true" />
+                          </button>
 
-                          {/* Floating Action Menu for 3-Dots */}
                           {isMenuOpen && (
                             <div
                               ref={menuRef}
-                              className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-slate-700/80 bg-[#0f1d33] p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+                              role="menu"
+                              className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-[rgba(148,163,184,.2)] bg-[#0f1d33] p-1.5 shadow-2xl"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {/* Copy Title */}
                               <button
                                 type="button"
+                                role="menuitem"
                                 onClick={() => handleCopyTitle(session)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-[#c3cddb] transition hover:bg-[rgba(148,163,184,.12)] hover:text-white"
                               >
                                 {copiedId === session.session_id ? (
                                   <>
-                                    <Check size={14} className="text-emerald-400" />
-                                    <span className="text-emerald-300 font-medium">Đã sao chép</span>
+                                    <Check size={14} className="text-[#34d399]" aria-hidden="true" />
+                                    <span className="font-medium text-[#6ee7b7]">Đã sao chép</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Copy size={14} className="text-slate-400" />
+                                    <Copy size={14} className="text-[#8d9bb0]" aria-hidden="true" />
                                     <span>Sao chép câu hỏi</span>
                                   </>
                                 )}
                               </button>
 
-                              <div className="my-1 border-t border-slate-800" />
+                              <div className="my-1 border-t border-[rgba(148,163,184,.14)]" />
 
-                              {/* Delete Session */}
                               <button
                                 type="button"
+                                role="menuitem"
                                 onClick={() => void handleDelete(session.session_id)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-rose-400 transition hover:bg-rose-950/40 hover:text-rose-300"
+                                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-[#fda4af] transition hover:bg-[rgba(244,63,94,.16)]"
                               >
-                                <Trash size={14} />
+                                <Trash size={14} aria-hidden="true" />
                                 <span>Xóa đoạn chat này</span>
                               </button>
                             </div>
@@ -354,21 +302,15 @@ export function ConversationHistory() {
             );
           })
         ) : searchQuery ? (
-          <div className="px-3 py-6 text-center text-xs text-slate-400">
-            <p className="font-medium text-slate-300">Không tìm thấy</p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Không có hội thoại nào khớp với "{searchQuery}"
-            </p>
+          <div className="px-3 py-6 text-center text-xs text-[#8d9bb0]">
+            <p className="font-medium text-[#c3cddb]">Không tìm thấy</p>
+            <p className="mt-1 text-[11px]">Không có hội thoại nào khớp với "{searchQuery}"</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center px-3 py-8 text-center text-slate-400">
-            <ChatCircleDots size={28} className="mb-2 text-slate-600" />
-            <p className="text-xs font-medium text-slate-300">
-              Chưa có lịch sử hội thoại
-            </p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Bắt đầu đặt câu hỏi để lưu vào đây.
-            </p>
+          <div className="flex flex-col items-center justify-center px-3 py-8 text-center text-[#8d9bb0]">
+            <ChatCircleDots size={28} aria-hidden="true" className="mb-2 text-[#64748b]" />
+            <p className="text-xs font-medium text-[#c3cddb]">Chưa có lịch sử hội thoại</p>
+            <p className="mt-1 text-[11px]">Bắt đầu đặt câu hỏi để lưu vào đây.</p>
           </div>
         )}
       </div>
