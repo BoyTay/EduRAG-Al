@@ -80,31 +80,47 @@ Chạy ngày 2026-11-08 trên chỉ mục đang hoạt động (`edurag_rebuild_
 
 ## Kết quả trước/sau
 
-Model `qwen3.5:9b`, 28 câu, chạy trên máy cục bộ (GPU 8 GB). Tiêu chí chấm được giữ cố định từ trước khi chạy lần đầu, không nới ra sau khi thấy kết quả.
+Model `qwen3.5:9b` (nhiệt độ 0,3), 28 câu, mỗi câu chạy **3 lần** trên cùng máy cục bộ (GPU 8 GB), tổng 84 lượt mỗi bên. Tiêu chí chấm được giữ cố định từ trước khi chạy lần đầu, không nới ra sau khi thấy kết quả.
 
-| Chỉ số | Trước (2026-11-08) | Sau |
+- **Trước:** chỉ mục `edurag_rebuild_ad7ea27c…` (bộ đọc bảng cũ), file `results_before_x3.json`.
+- **Sau:** chỉ mục `edurag_rebuild_edead44a…` (bộ đọc bảng mới, PyMuPDF 1.28 trong Docker), file `results_after_x3.json`.
+
+| Chỉ số | Trước | Sau |
 |---|---|---|
-| Đúng giá trị | 78,6% (22/28) | |
-| Đúng nguồn/trang | 100% | |
-| Từ chối sai | 0% | |
-| Bỏ sót từ chối | 0% | |
-| Thời gian p50 / p95 | 6,8 s / 10,6 s | |
-| simple_table | 88% (7/8) | |
-| wrapped_rows | 67% (2/3) | |
-| page_continuation | 67% (2/3) | |
-| prose_layout | 100% (3/3) | |
-| labels | 67% (2/3) | |
-| ocr_scan | 50% (2/4) | |
-| refusal | 100% (4/4) | |
+| **Đúng giá trị** | **78,6% (66/84)** | **85,7% (72/84)** |
+| Đúng nguồn/trang (cả 28 câu) | 98,8% | 100% |
+| Đúng nguồn/trang (24 câu có đáp án) | 100% | 100% |
+| Từ chối sai (câu có đáp án mà từ chối) | 0% | 0% |
+| Bỏ sót từ chối (câu không có đáp án mà vẫn trả lời) | 8,3% | 0% |
+| Thời gian p50 / p95 | 5,3 s / 7,4 s | 5,6 s / 8,7 s |
+| simple_table | 83% | 75% |
+| wrapped_rows | 56% | 89% |
+| page_continuation | 78% | 100% |
+| prose_layout | 78% | 89% |
+| labels | 67% | 100% |
+| ocr_scan | 83% | 67% |
+| refusal | 92% | 100% |
 
-Các câu sai ở lần "trước":
+Chunk nghi lỗi của Sổ tay sinh viên (đếm bằng `dump_chunks.py`): **95/435 → 6/338**.
 
-| Case | Câu trả lời | Nguyên nhân |
-|---|---|---|
-| `poor_ethnic_cost_docs` | Liệt kê hồ sơ của *hỗ trợ học tập* (phụ lục 3) thay vì *hỗ trợ chi phí học tập* (phụ lục 2) | Đọc bảng: ô hồ sơ bị vỡ thành nhiều đoạn, mất liên kết với đối tượng |
-| `highland_allowance` | "140 đồng mỗi tháng" (đúng là 140.000) | Mất số khi diễn đạt; cần xem lại sau khi sửa nhãn cột |
-| `master_math_duration` | "2 hoặc 4 năm" | Mô hình trộn dòng của bảng ngành đại học |
-| `orphan_social_allowance` | Đúng 100.000 nhưng nêu thêm mức 140.000 của đối tượng khác | Mô hình thêm dòng lân cận (chấm sai theo tiêu chí `forbidden`) |
-| `orientation_budget_small`, `orientation_budget_large` | Nêu cả hai mức 5 và 7 triệu | Mô hình liệt kê cả mục thay vì trả lời đúng mức được hỏi |
+Thay đổi theo từng câu (số lần đúng trên 3 lần chạy):
 
-Lưu ý khi đọc số: tiêu chí `forbidden` chấm sai cả khi câu trả lời nêu thêm giá trị của dòng hoặc đối tượng khác, kể cả khi giá trị được hỏi là đúng. Nghĩa là bộ đo này đo cả **độ chính xác** (không lẫn thông tin), không chỉ "có nhắc tới đáp án".
+| Case | Trước | Sau | Ghi chú |
+|---|---|---|---|
+| `poor_ethnic_cost_docs` | 0 | 3 | Ô hồ sơ không còn vỡ dòng nên không lẫn với *hỗ trợ học tập* |
+| `highland_allowance` | 0 | 3 | Trước trả lời "140 đồng"; nay nhãn "Mức hỗ trợ (đ/tháng)" đi kèm giá trị |
+| `poor_household_review` | 1 | 3 | Bảng trợ cấp xã hội tr. 51 không còn vỡ thành 26 mảnh |
+| `dorm_capacity` | 1 | 2 | Trang giới thiệu khu nội trú trở lại thành văn xuôi |
+| `refuse_ielts_exam_schedule` | 2 | 3 | |
+| `gpa_excellent` | 2 | 0 | Bảng xếp loại **không đổi** và nguồn giống hệt; câu trả lời "từ 3,60 trở lên" đúng ý nhưng thiếu cận trên "4,00" nên bị chấm sai theo tiêu chí |
+| `orientation_budget_small` / `_large` | 2 / 3 | 1 / 2 | File scan 1340 không bị thay đổi (OCR); dao động do mô hình liệt kê cả hai mức |
+| `master_math_duration` | 0 | 0 | Mô hình vẫn trộn "2 hoặc 4 năm" từ bảng ngành đại học: lỗi diễn đạt, không phải lỗi đọc bảng |
+
+**Cách đọc số liệu:**
+- Chênh lệch ở `simple_table` và `ocr_scan` nằm ở các bảng và trang **không bị thay đổi** (đã đối chiếu: output nạp của các bảng này giống hệt bản cũ). Đây là dao động của LLM ở nhiệt độ 0,3, không phải hệ quả của việc sửa bộ đọc bảng. Vì vậy phải chạy lặp, một lượt đo đơn lẻ không đủ để kết luận.
+- Các nhóm mà bộ đọc bảng nhắm tới (`wrapped_rows`, `page_continuation`, `labels`, `prose_layout`) đều tăng.
+- Tiêu chí `forbidden` chấm sai cả khi câu trả lời nêu thêm giá trị của dòng hoặc đối tượng khác, kể cả khi giá trị được hỏi là đúng. Bộ đo này đo cả **độ chính xác** (không lẫn thông tin), không chỉ "có nhắc tới đáp án".
+- `source_accuracy` của câu cần từ chối được tính là đúng khi hệ thống từ chối, vì vậy có thêm dòng "24 câu có đáp án" để đọc riêng.
+- Lượt đo "sau" đầu tiên (chạy 1 lần) bị bỏ: image Docker khi đó dùng PyMuPDF 2.1, bản này tách chữ tiếng Việt trong ô bảng ("Si nh viên"). Image hiện đã ghim PyMuPDF < 2.0 (`Dockerfile.backend`), có test `test_pymupdf_major_version_is_below_2` chặn tái diễn. `backend/requirements.txt` vẫn ghi `pymupdf>=1.24.0`; khi cài ngoài Docker phải tự giữ bản 1.x.
+
+Lượt đo đơn lẻ đầu tiên của bộ đọc bảng cũ (`results_before.json`) cho 78,6% (22/28), khớp với kết quả chạy lặp.

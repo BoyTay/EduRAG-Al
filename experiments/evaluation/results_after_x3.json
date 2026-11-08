@@ -1,0 +1,2519 @@
+{
+  "started_at": "2026-11-08T09:48:57.419991+00:00",
+  "model": "qwen3.5:9b",
+  "cases_file": "C:\\Data\\DoAnChuyenNganh\\EduRAG Al\\experiments\\evaluation\\table_cases.json",
+  "results": [
+    {
+      "case_id": "ielts_level4",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.427,
+      "repeat": 1,
+      "question": "Điểm IELTS bao nhiêu thì được tính tương đương bậc 4?",
+      "answer": "Điểm IELTS tương đương bậc 4 là từ 5,5 đến 6,5:\n- Điểm IELTS cần đạt tối thiểu 5,5 và cao nhất không quá 6,5 để được công nhận tương đương bậc 4 cho tất cả các ngành.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "toefl_level5",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.261,
+      "repeat": 1,
+      "question": "TOEFL iBT cần bao nhiêu điểm để tương đương bậc 5?",
+      "answer": "TOEFL iBT cần từ 94 đến 110 điểm để tương đương bậc 5:\n- Điểm TOEFL iBT phải nằm trong khoảng 94-110 mới được công nhận là tương đương Bậc 5.\n- Yêu cầu này áp dụng cho tất cả các ngành đào tạo với ngôn ngữ Tiếng Anh.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "english_major_output",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.259,
+      "repeat": 1,
+      "question": "Sinh viên ngành Ngôn ngữ Anh phải đạt chuẩn đầu ra ngoại ngữ bậc mấy?",
+      "answer": "Sinh viên ngành Ngôn ngữ Anh tốt nghiệp của Trường phải đạt chuẩn đầu ra ngoại ngữ bậc 5/6:\n- Sinh viên các ngành Sư phạm tiếng Anh, Ngôn ngữ Anh và ngôn ngữ nước ngoài khác phải đạt mức tối thiểu này theo quy định chung cho nhóm ngành.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "bachelor_other_output",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.845,
+      "repeat": 1,
+      "question": "Sinh viên hệ cử nhân các ngành không chuyên ngoại ngữ cần chuẩn đầu ra ngoại ngữ bậc mấy?",
+      "answer": "Sinh viên hệ cử nhân các ngành không chuyên ngoại ngữ cần đạt chuẩn đầu ra ngoại ngữ tối thiểu bậc 3:\n- Sinh viên tốt nghiệp các ngành đào tạo khác, hệ cử nhân phải đạt chuẩn đầu ra ngoại ngữ là 3/6.\n- Đối với chứng chỉ IELTS tương đương Bậc 3 sinh viên cần có điểm từ 4.0 đến 5.0.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "gpa_good",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.435,
+      "repeat": 1,
+      "question": "Điểm trung bình tích lũy thang 4 bao nhiêu thì được xếp loại giỏi?",
+      "answer": "Xếp loại Đạt - Giỏi tương ứng với điểm trung bình tích lũy từ 3,20 đến 3,59 trên thang điểm 4:\n- Điểm trung bình chung tích lũy phải nằm trong khoảng từ 3,20 đến 3,59.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "case_id": "gpa_excellent",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [
+        [
+          "4,00",
+          "4.00",
+          "4,0",
+          "4.0"
+        ]
+      ],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.854,
+      "repeat": 1,
+      "question": "Muốn được xếp loại xuất sắc thì điểm trung bình theo thang 4 phải đạt bao nhiêu?",
+      "answer": "Để xếp loại xuất sắc thì điểm trung bình chung tích lũy theo thang 4 phải từ 3,60 trở lên và sinh viên cũng cần có xếp loại rèn luyện đạt mức xuất sắc:\n- Điểm học tập từ 3,60 đến trên hoặc bằng 3,60 (thang điểm 4).\n- Xếp loại rèn luyện của sinh viên phải ở mức xuất sắc.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 42
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10
+        }
+      ]
+    },
+    {
+      "case_id": "year_two_credits",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.411,
+      "repeat": 1,
+      "question": "Tích lũy bao nhiêu tín chỉ thì sinh viên được xếp trình độ năm hai?",
+      "answer": "Sinh viên được xếp hạng trình độ năm hai khi đáp ứng một trong các tiêu chí sau:\n- Theo quy định về xếp loại học lực, sinh viên có số tín chỉ tích lũy từ 30 đến dưới 60 tín chỉ sẽ thuộc nhóm này.\n- Ngoài ra, theo bảng xếp hạng cụ thể khác, sinh viên được xếp là năm hai khi đã tích lũy từ 35 đến dưới 70 tín chỉ tính từ đầu khóa học.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13
+        }
+      ]
+    },
+    {
+      "case_id": "master_math_duration",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [],
+      "forbidden_found": [
+        [
+          "4 năm"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.258,
+      "repeat": 1,
+      "question": "Chương trình thạc sĩ chuyên ngành Toán giải tích đào tạo trong mấy năm?",
+      "answer": "Chương trình thạc sĩ chuyên ngành Toán giải tích đào tạo trong hai trường hợp:\n- Số năm đào tạo là 4 năm cho chương trình Thạc sĩ các chuyên ngành Toán giải tích STT số 1.\n- Số năm đào tạo là 2 năm cho chương trình Thạc sĩ các chuyên ngành Toán giải tích STT số 1 khác.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 12
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 11
+        }
+      ]
+    },
+    {
+      "case_id": "poor_ethnic_cost_support",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.243,
+      "repeat": 1,
+      "question": "Sinh viên dân tộc thiểu số thuộc hộ nghèo được hỗ trợ chi phí học tập mức bao nhiêu?",
+      "answer": "Sinh viên dân tộc thiểu số thuộc hộ nghèo và hộ cận nghèo được hỗ trợ 60% mức lương cơ sở, không quá 10 tháng/năm học:\n- Mức hỗ trợ này áp dụng cho sinh viên là người dân tộc thiểu số thuộc hộ nghèo hoặc hộ cận nghèo theo quy định của Thủ tướng Chính phủ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "case_id": "poor_ethnic_cost_docs",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.178,
+      "repeat": 1,
+      "question": "Hồ sơ xin hỗ trợ chi phí học tập cho sinh viên dân tộc thiểu số hộ nghèo gồm những giấy tờ gì?",
+      "answer": "Hồ sơ xin hỗ trợ chi phí học tập cho sinh viên dân tộc thiểu số thuộc hộ nghèo bao gồm các giấy tờ sau:\n- Đơn đề nghị hỗ trợ chi phí học tập theo mẫu quy định của nhà trường.\n- Bản sao Giấy khai sinh để xác nhận thông tin cá nhân và nguồn gốc dân tộc.\n- Giấy chứng nhận hộ nghèo hoặc hộ cận nghèo do Ủy ban nhân dân cấp xã, phường, thị trấn cấp hoặc giấy chứng nhận dành riêng cho học sinh, sinh viên thuộc diện này theo mẫu phụ lục 5.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 52
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 53
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "case_id": "minority_tiny_support",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [
+        [
+          "12 tháng"
+        ]
+      ],
+      "forbidden_found": [
+        [
+          "60%"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.883,
+      "repeat": 1,
+      "question": "Sinh viên thuộc dân tộc thiểu số rất ít người được hỗ trợ học tập bao nhiêu?",
+      "answer": "Sinh viên dân tộc thiểu số rất ít người thuộc các trường hợp sau đây:\n- Nếu là sinh viên học đủ 9 tháng/năm trở thì mức hỗ trợ bằng 100% mức lương cơ sở mỗi tháng, được xét một lần cho cả khóa học.\n- Đối với sinh viên có cha hoặc mẹ thuộc hộ nghèo và hộ cận nghèo thì mức hỗ trợ bằng 60% mức lương cơ sở, không quá 10 tháng/năm học theo thời gian đào tạo chính thức.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "case_id": "orphan_social_allowance",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.389,
+      "repeat": 1,
+      "question": "Sinh viên mồ côi cả cha lẫn mẹ không nơi nương tựa được trợ cấp xã hội bao nhiêu mỗi tháng?",
+      "answer": "Sinh viên mồ côi cả cha lẫn mẹ không nơi nương tựa được trợ cấp xã hội 100.000 đồng mỗi tháng:\n- Mức hỗ trợ này áp dụng cho sinh viên từ 16 tuổi đến 22 tuổi đang học giáo dục đại học văn bằng thứ nhất thuộc đối tượng bảo trợ xã hội.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 46
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "case_id": "poor_household_review",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.591,
+      "repeat": 1,
+      "question": "Trợ cấp xã hội cho sinh viên thuộc hộ nghèo được xét theo chu kỳ nào?",
+      "answer": "Trợ cấp xã hội cho sinh viên thuộc hộ nghèo được xét theo từng học kỳ:\n- Đối tượng là những người mà gia đình họ thuộc diện khó khăn về kinh tế, vượt khó học tập và có hoàn cảnh đặc biệt khó khăn sẽ nhận mức hỗ trợ 100.000 đồng mỗi tháng.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "case_id": "fee_ethnic_poor_review",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.085,
+      "repeat": 1,
+      "question": "Miễn giảm học phí cho sinh viên dân tộc thiểu số thuộc hộ nghèo, cận nghèo được xét bao lâu một lần?",
+      "answer": "Miễn giảm học phí cho sinh viên dân tộc thiểu số thuộc hộ nghèo, cận nghèo:\n- Được xét mỗi học kỳ một lần đối với trường hợp cha hoặc mẹ (hoặc cả hai) là người dân tộc thiểu số có giấy chứng nhận hộ nghèo/hộ cận nghèo.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 59
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "case_id": "youth_union_branches",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.983,
+      "repeat": 1,
+      "question": "Đoàn Thanh niên Trường Đại học Đà Lạt có bao nhiêu chi đoàn cơ sở?",
+      "answer": "Đoàn Thanh niên Trường Đại học Đà Lạt hiện có 159 chi đoàn cơ sở trực thuộc:\n- Các đơn vị này là các Chi đoàn cơ sở trực thuộc Đoàn DLU.\n- Tổng số lượng đạt con số cụ thể là 159 đơn vị trên địa bàn trường đại học.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "case_id": "dorm_capacity",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [],
+      "forbidden_found": [
+        [
+          "10.000"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.737,
+      "repeat": 1,
+      "question": "Khu nội trú sinh viên của trường có quy mô bao nhiêu chỗ ở?",
+      "answer": "Khu nội trú sinh viên của trường Đại học Đà Lạt hiện nay có quy mô 1000 chỗ:\n- Khu này thuộc khu B của Trường, được xây dựng nhằm tạo môi trường giáo dục lành mạnh và giúp phụ huynh yên tâm cho khoảng 10.000 sinh viên đang theo học tại nhà trường.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 58
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 14
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 3
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7
+        }
+      ]
+    },
+    {
+      "case_id": "dorm_room_capacity",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.65,
+      "repeat": 1,
+      "question": "Mỗi phòng ở khu nội trú bố trí cho bao nhiêu sinh viên?",
+      "answer": "Mỗi phòng ở khu nội trú bố trí cho 6 sinh viên:\n- Kích thước mỗi phòng trên 30 m2, thoáng mát và tiện nghi.\n- Nam và nữ được bố trí ở riêng biệt trong các phòng này.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "case_id": "finance_phone",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.961,
+      "repeat": 1,
+      "question": "Số điện thoại của Phòng Tài chính là bao nhiêu?",
+      "answer": "Số điện thoại của Phòng Tài chính là 0263. 3820566:\n- Số điện thoại liên hệ trực tiếp về thắc mắc học phí là 0263. 3820566.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "case_id": "it_faculty_email",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.324,
+      "repeat": 1,
+      "question": "Email liên hệ của Khoa Công nghệ thông tin là gì?",
+      "answer": "Email liên hệ của Khoa Công nghệ thông tin là it@dlu.edu.vn:\n- Địa chỉ email để liên hệ với khoa này là it@dlu.edu.vn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "case_id": "highland_allowance",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.462,
+      "repeat": 1,
+      "question": "Sinh viên dân tộc thiểu số ở vùng cao được trợ cấp xã hội bao nhiêu mỗi tháng?",
+      "answer": "Sinh viên dân tộc thiểu số ở vùng cao được trợ cấp xã hội 140.000 đồng mỗi tháng:\n- Mức hỗ trợ này áp dụng cho sinh viên là người dân tộc ít người liên tục sống hoặc có hộ khẩu thường trú tại vùng cao từ 3 năm trở lên tính đến thời điểm vào học.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_dates",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.676,
+      "repeat": 1,
+      "question": "Tuần định hướng cho tân sinh viên khóa 50 diễn ra từ ngày nào đến ngày nào?",
+      "answer": "Tuần định hướng cho tân sinh viên khóa 50 diễn ra từ ngày 24/8/2026 đến hết ngày 28/8/2026:\n- Thời gian tổ chức bắt đầu vào ngày 24 tháng 8 năm 2026.\n- Hoạt động kết thúc vào ngày 28 tháng 8 năm 2026.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 1
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_budget_small",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [],
+      "forbidden_found": [
+        [
+          "7.000.000",
+          "7 triệu"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.506,
+      "repeat": 1,
+      "question": "Khoa có dưới 150 tân sinh viên được nhà trường hỗ trợ bao nhiêu kinh phí tổ chức tuần định hướng?",
+      "answer": "Khoa nhận hỗ trợ kinh phí tổ chức tuần định hướng cho Tân sinh viên khóa 50 như sau:\n- Nếu số lượng Tân sinh viên nhập học của Khoa từ 1 đến dưới 150, mức hỗ trợ là 5.000.000 đồng chẵn (Năm triệu đồng).\n- Nếu số lượng Tân sinh viên nhập học của Khoa từ 150 trở lên, mức hỗ trợ là 7.000.000 đồng chẵn (Bảy triệu đồng).",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_budget_large",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.634,
+      "repeat": 1,
+      "question": "Khoa có từ 150 tân sinh viên trở lên được hỗ trợ kinh phí tuần định hướng bao nhiêu?",
+      "answer": "Khoa nhận hỗ trợ kinh phí tổ chức tuần định hướng cho Tân sinh viên khóa 50 như sau:\n- Nếu số lượng Tân sinh viên nhập học từ 150 trở lên thì mức hỗ trợ là bảy triệu đồng chẵn.\n- Trường hợp số lượng Tân sinh viên dưới 150 thì mức hỗ trợ là năm triệu đồng chẵn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_deadline",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [
+        [
+          "20/8/2026",
+          "20/08/2026",
+          "20/8"
+        ]
+      ],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.73,
+      "repeat": 1,
+      "question": "Các khoa phải gửi phân công giảng viên tham gia tuần định hướng về phòng Công tác sinh viên trước thời hạn nào?",
+      "answer": "Các Khoa cần phân công lãnh đạo và giảng viên tham gia Tuần định hướng gửi về phòng Công tác sinh viên trước 11 giờ ngày 20 tháng 8 năm 2026:\n- Các Khoa tổ chức thực hiện tuần định hướng theo đúng lịch chung của Nhà trường.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 4
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "refuse_medicine_fee",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.485,
+      "repeat": 1,
+      "question": "Học phí ngành Y đa khoa của trường là bao nhiêu một tín chỉ?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_ielts_exam_schedule",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.694,
+      "repeat": 1,
+      "question": "Lịch thi IELTS tổ chức tại trường vào tháng 12 năm nay là ngày nào?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_canteen_menu",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 0.067,
+      "repeat": 1,
+      "question": "Căng tin trường hôm nay bán những món gì?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng diễn đạt cụ thể hơn hoặc liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "low_score=0.249",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_admission_cutoff",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.497,
+      "repeat": 1,
+      "question": "Điểm chuẩn ngành Công nghệ thông tin năm 2025 là bao nhiêu?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "ielts_level4",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.853,
+      "repeat": 2,
+      "question": "Điểm IELTS bao nhiêu thì được tính tương đương bậc 4?",
+      "answer": "Điểm IELTS tương đương bậc 4 là từ 5,5 đến 6,5:\n- Điểm IELTS cần đạt tối thiểu 5,5 và cao nhất 6,5 để được tính tương đương bậc 4 cho tất cả các ngành học.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "toefl_level5",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.929,
+      "repeat": 2,
+      "question": "TOEFL iBT cần bao nhiêu điểm để tương đương bậc 5?",
+      "answer": "TOEFL iBT cần từ 94 đến 110 điểm để tương đương bậc 5:\n- Điểm TOEFL iBT phải nằm trong khoảng 94-110.\n- Quy định này áp dụng cho tất cả các ngành đào tạo.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "english_major_output",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.48,
+      "repeat": 2,
+      "question": "Sinh viên ngành Ngôn ngữ Anh phải đạt chuẩn đầu ra ngoại ngữ bậc mấy?",
+      "answer": "Sinh viên ngành Ngôn ngữ Anh tốt nghiệp của Trường phải đạt chuẩn đầu ra ngoại ngữ bậc 5/6:\n- Sinh viên các ngành đào tạo Sư phạm tiếng Anh, Ngôn ngữ Anh và các ngành ngôn ngữ nước ngoài khác thuộc hệ cử nhân phải đạt chuẩn tối thiểu là Bậc 5.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "bachelor_other_output",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.065,
+      "repeat": 2,
+      "question": "Sinh viên hệ cử nhân các ngành không chuyên ngoại ngữ cần chuẩn đầu ra ngoại ngữ bậc mấy?",
+      "answer": "Sinh viên hệ cử nhân các ngành không chuyên ngoại ngữ cần đạt chuẩn đầu ra ngoại ngữ tối thiểu bậc 3:\n- Sinh viên tốt nghiệp các ngành đào tạo khác, hệ cử nhân phải đạt chuẩn đầu ra ngoại ngữ là 3/6.\n- Các chứng chỉ quốc tế hoặc theo khung châu Âu có điểm quy đổi tương đương Bậc 3 từ 4.0 đến 5.0 được công nhận thay thế cho yêu cầu này.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "gpa_good",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.361,
+      "repeat": 2,
+      "question": "Điểm trung bình tích lũy thang 4 bao nhiêu thì được xếp loại giỏi?",
+      "answer": "Xếp loại học tập Giỏi với thang điểm 4 yêu cầu đạt từ 3,20 đến 3,59:\n- Điểm trung bình tích lũy phải nằm trong khoảng từ 3,20 đến 3,59 trên thang điểm 4.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "case_id": "gpa_excellent",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [
+        [
+          "4,00",
+          "4.00",
+          "4,0",
+          "4.0"
+        ]
+      ],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.884,
+      "repeat": 2,
+      "question": "Muốn được xếp loại xuất sắc thì điểm trung bình theo thang 4 phải đạt bao nhiêu?",
+      "answer": "Để xếp loại xuất sắc thì điểm trung bình chung tích lũy theo thang 4 phải đạt từ 3,60 trở lên: đồng thời sinh viên cũng cần có kết quả rèn luyện ở mức xuất sắc. Sinh viên bị kỷ luật hoặc có điểm học phần nào đó dưới mức trung bình sẽ không được xét khen thưởng này.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 42
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10
+        }
+      ]
+    },
+    {
+      "case_id": "year_two_credits",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.326,
+      "repeat": 2,
+      "question": "Tích lũy bao nhiêu tín chỉ thì sinh viên được xếp trình độ năm hai?",
+      "answer": "Sinh viên được xếp hạng trình độ năm hai khi tích lũy số tín chỉ từ 35 đến dưới 70 hoặc từ 30 đến dưới 60 tùy theo quy chế áp dụng:\n- Căn cứ vào So_tay_sinh_vien, sinh viên có số tín chỉ đã tích lũy từ 35 đến dưới 70 được xếp là sinh viên năm hai.\n- Theo Quy_che_dao_tao_theo_tin_chi, khối lượng kiến thức tích lũy từ 30 tín chỉ đến dưới 60 tín chỉ cũng tương ứng với trình độ của sinh viên năm thứ hai.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13
+        }
+      ]
+    },
+    {
+      "case_id": "master_math_duration",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [
+        [
+          "2 năm",
+          "hai năm"
+        ]
+      ],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.33,
+      "repeat": 2,
+      "question": "Chương trình thạc sĩ chuyên ngành Toán giải tích đào tạo trong mấy năm?",
+      "answer": "Chương trình thạc sĩ chuyên ngành Toán giải tích đào tạo trong hai trường hợp:\n- Số năm đào tạo là 4 đối với chương trình này theo STT 1 trên trang 12 của tài liệu So_tay_sinh_vien.pdf.\n- Số năm đào tạo là 2 đối với chương trình này cũng được ghi nhận tại cùng vị trí đó.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 12
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 11
+        }
+      ]
+    },
+    {
+      "case_id": "poor_ethnic_cost_support",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 7.196,
+      "repeat": 2,
+      "question": "Sinh viên dân tộc thiểu số thuộc hộ nghèo được hỗ trợ chi phí học tập mức bao nhiêu?",
+      "answer": "Sinh viên dân tộc thiểu số thuộc hộ nghèo và hộ cận nghèo được hỗ trợ 60% mức lương cơ sở:\n- Mức này không quá 10 tháng mỗi năm học cho sinh viên là người dân tộc thiểu số ở vùng có điều kiện kinh tế - xã hội khó khăn.\n- Đối với trường hợp cha hoặc mẹ cũng thuộc hộ nghèo, hồ sơ xét theo từng học kỳ và được hỗ trợ tương ứng quy định tại văn bản liên quan.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "case_id": "poor_ethnic_cost_docs",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.365,
+      "repeat": 2,
+      "question": "Hồ sơ xin hỗ trợ chi phí học tập cho sinh viên dân tộc thiểu số hộ nghèo gồm những giấy tờ gì?",
+      "answer": "Hồ sơ xin hỗ trợ chi phí học tập cho sinh viên dân tộc thiểu số thuộc hộ nghèo và cận nghèo bao gồm các giấy tờ sau:\n- Đơn đề nghị hỗ trợ chi phí học tập theo mẫu quy định của nhà trường.\n- Bản sao Giấy khai sinh để xác nhận thông tin cá nhân.\n- Giấy chứng nhận hộ nghèo hoặc hộ cận cấp do Ủy ban nhân dân xã, phường, thị trấn hoặc bản ghi chú trong hồ sơ xét tuyển đào tạo địa chỉ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 52
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 53
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "case_id": "minority_tiny_support",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 7.61,
+      "repeat": 2,
+      "question": "Sinh viên thuộc dân tộc thiểu số rất ít người được hỗ trợ học tập bao nhiêu?",
+      "answer": "Sinh viên là người dân tộc thiểu số rất ít người thuộc các nhóm sau đây: Cống, Mảng, Pu Péo, Si La, Cờ Lao, Bố Y, La Ha, Ngái, Chứt, Ơ Đu, Brâu, Rơ Măm, Lô Lô, Lự, Pà Thẻn và La Hủ; được hỗ trợ học tập bằng mức lương cơ sở tương ứng với số tháng thực tế nếu đạt yêu cầu.\n- Mức hỗ trợ cụ thể là 100% mức lương cơ sở cho mỗi sinh viên trong một năm học.\n- Thời gian được hưởng hỗ trợ tối đa là 12 tháng/năm học đối với những sinh viên có thời gian học đủ từ 9 tháng trở lên trong năm đó.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "case_id": "orphan_social_allowance",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.411,
+      "repeat": 2,
+      "question": "Sinh viên mồ côi cả cha lẫn mẹ không nơi nương tựa được trợ cấp xã hội bao nhiêu mỗi tháng?",
+      "answer": "Sinh viên mồ côi cả cha lẫn mẹ không nơi nương tựa được trợ cấp xã hội 100.000 đồng mỗi tháng:\n- Mức hỗ trợ này áp dụng cho sinh viên từ 16 tuổi đến 22 tuổi đang học giáo dục đại học văn bằng thứ nhất thuộc đối tượng bảo trợ xã hội, xét một lần hưởng cả khóa học tính từ thời điểm nộp hồ sơ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 46
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "case_id": "poor_household_review",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.726,
+      "repeat": 2,
+      "question": "Trợ cấp xã hội cho sinh viên thuộc hộ nghèo được xét theo chu kỳ nào?",
+      "answer": "Trợ cấp xã hội cho sinh viên thuộc hộ nghèo được xét theo từng học kỳ:\n- Sinh viên là người dân tộc thiểu số có cha hoặc mẹ hoặc cả cha và mẹ hoặc ông bà (trong trường hợp ở với ông bà) thuộc hộ nghèo và hộ cận nghèo.\n- Sinh viên có hoàn cảnh đặc biệt khó khăn về kinh tế, vượt khó học tập mà gia đình thuộc diện hộ nghèo được xác nhận bởi Uỷ ban nhân dân cấp xã.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "case_id": "fee_ethnic_poor_review",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.049,
+      "repeat": 2,
+      "question": "Miễn giảm học phí cho sinh viên dân tộc thiểu số thuộc hộ nghèo, cận nghèo được xét bao lâu một lần?",
+      "answer": "Miễn giảm học phí cho sinh viên dân tộc thiểu số thuộc hộ nghèo, cận nghèo được xét theo mỗi học kỳ:\n- Đối tượng là người dân tộc thiểu số có cha hoặc mẹ hoặc cả cha và mẹ hoặc ông bà (trong trường hợp ở với ông bà) thuộc hộ nghèo và hộ cận nghèo.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 59
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "case_id": "youth_union_branches",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.945,
+      "repeat": 2,
+      "question": "Đoàn Thanh niên Trường Đại học Đà Lạt có bao nhiêu chi đoàn cơ sở?",
+      "answer": "Đoàn Thanh niên Trường Đại học Đà Lạt hiện có 159 chi đoàn cơ sở:\n- Tổng số chi đoàn cơ sở trực thuộc là 159 đơn vị với quy mô gồm 11.670 đoàn viên.\n- Các chi đoàn này được quản lý bởi Đoàn DLU, một trong những cơ sở Đoàn mạnh trên địa bàn tỉnh Lâm Đồng và có 14 Đoàn khoa.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "case_id": "dorm_capacity",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.043,
+      "repeat": 2,
+      "question": "Khu nội trú sinh viên của trường có quy mô bao nhiêu chỗ ở?",
+      "answer": "Khu nội trú sinh viên của trường Đại học Đà Lạt hiện nay có quy mô 1000 chỗ:\n- Khu này thuộc khu B của nhà trường, nằm trên địa bàn phường 8 thành phố Đà Lạt.\n- Quy chế tổ chức và hoạt động được xây dựng theo đúng quy định chung của Trường Đại học Đà Lạt cùng với sự phối hợp từ cơ quan công an phường 8.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 58
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 14
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 3
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7
+        }
+      ]
+    },
+    {
+      "case_id": "dorm_room_capacity",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.026,
+      "repeat": 2,
+      "question": "Mỗi phòng ở khu nội trú bố trí cho bao nhiêu sinh viên?",
+      "answer": "Mỗi phòng ở khu nội trú bố trí cho 6 sinh viên:\n- Các phòng ở được thiết kế với kích thước trên 30 m2 và có thể chứa tối đa 6 sinh viên cùng lúc.\n- Nam, nữ được bố trí ở riêng biệt trong các phòng này.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "case_id": "finance_phone",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.077,
+      "repeat": 2,
+      "question": "Số điện thoại của Phòng Tài chính là bao nhiêu?",
+      "answer": "Số điện thoại của Phòng Tài chính là 0263. 3820566:\n- Số điện thoại liên hệ trực tiếp về thắc mắc học phí là 0263. 3820566.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "case_id": "it_faculty_email",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.483,
+      "repeat": 2,
+      "question": "Email liên hệ của Khoa Công nghệ thông tin là gì?",
+      "answer": "Email liên hệ của Khoa Công nghệ thông tin là it@dlu.edu.vn:\n- Địa chỉ email để liên hệ với khoa này là it@dlu.edu.vn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "case_id": "highland_allowance",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.83,
+      "repeat": 2,
+      "question": "Sinh viên dân tộc thiểu số ở vùng cao được trợ cấp xã hội bao nhiêu mỗi tháng?",
+      "answer": "Sinh viên dân tộc thiểu số ở vùng cao được trợ cấp xã hội 140.000 đồng mỗi tháng:\n- Mức hỗ trợ là 140.000 đồng/tháng cho sinh viên thuộc đối tượng này.\n- Hỗ trợ chỉ xét một lần hưởng cả khóa học tính từ thời điểm nộp hồ sơ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_dates",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.369,
+      "repeat": 2,
+      "question": "Tuần định hướng cho tân sinh viên khóa 50 diễn ra từ ngày nào đến ngày nào?",
+      "answer": "Tuần định hướng cho tân sinh viên khóa 50 diễn ra từ ngày 24/8/2026 đến hết ngày 28/8/2026:",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 1
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_budget_small",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.278,
+      "repeat": 2,
+      "question": "Khoa có dưới 150 tân sinh viên được nhà trường hỗ trợ bao nhiêu kinh phí tổ chức tuần định hướng?",
+      "answer": "Khoa nhận hỗ trợ 5.000.000 đồng cho các trường hợp số lượng tân sinh viên nhập học từ 1 đến dưới 150 người:\n- Trường hợp có dưới 150 Tân sinh viên thì được hỗ trợ kinh phí tổ chức là năm triệu đồng chẵn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_budget_large",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.632,
+      "repeat": 2,
+      "question": "Khoa có từ 150 tân sinh viên trở lên được hỗ trợ kinh phí tuần định hướng bao nhiêu?",
+      "answer": "Khoa nhận hỗ trợ kinh phí tổ chức tuần định hướng cho tân sinh viên khóa 50 như sau:\n- Nếu số lượng Tân sinh viên nhập học từ 150 trở lên, mức hỗ trợ là bảy triệu đồng chẵn (7.000.000).",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_deadline",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.404,
+      "repeat": 2,
+      "question": "Các khoa phải gửi phân công giảng viên tham gia tuần định hướng về phòng Công tác sinh viên trước thời hạn nào?",
+      "answer": "Các khoa cần gửi phân công lãnh đạo và giảng viên tham gia tuần định hướng về phòng Công tác sinh viên trước 11h00 ngày 20/8/2026:\n- Xây dựng kế hoạch, kịch bản cho tuần định hướng về ngành nghề đào tạo.\n- Phân công lãnh đạo, giảng viên tham gia chương trình gửi về phòng CTSV đúng thời hạn nêu trên.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 4
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "refuse_medicine_fee",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.662,
+      "repeat": 2,
+      "question": "Học phí ngành Y đa khoa của trường là bao nhiêu một tín chỉ?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_ielts_exam_schedule",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.969,
+      "repeat": 2,
+      "question": "Lịch thi IELTS tổ chức tại trường vào tháng 12 năm nay là ngày nào?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_canteen_menu",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 0.069,
+      "repeat": 2,
+      "question": "Căng tin trường hôm nay bán những món gì?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng diễn đạt cụ thể hơn hoặc liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "low_score=0.249",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_admission_cutoff",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.674,
+      "repeat": 2,
+      "question": "Điểm chuẩn ngành Công nghệ thông tin năm 2025 là bao nhiêu?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "ielts_level4",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.172,
+      "repeat": 3,
+      "question": "Điểm IELTS bao nhiêu thì được tính tương đương bậc 4?",
+      "answer": "Điểm IELTS tương đương bậc 4 là từ 5,5 đến 6,5:\n- Điểm IELTS cần đạt tối thiểu 5,5 và cao nhất 6,5 để tính tương đương bậc 4 cho tất cả các ngành học bằng chứng chỉ Tiếng Anh.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "toefl_level5",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.949,
+      "repeat": 3,
+      "question": "TOEFL iBT cần bao nhiêu điểm để tương đương bậc 5?",
+      "answer": "TOEFL iBT cần từ 94 đến 110 điểm để tương đương bậc 5:\n- Điểm TOEFL iBT phải nằm trong khoảng 94-110 mới được công nhận là tương đương Bậc 5 cho tất cả các ngành.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "english_major_output",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.567,
+      "repeat": 3,
+      "question": "Sinh viên ngành Ngôn ngữ Anh phải đạt chuẩn đầu ra ngoại ngữ bậc mấy?",
+      "answer": "Sinh viên ngành Ngôn ngữ Anh thuộc nhóm các ngành đào tạo Sư phạm tiếng Anh, Ngôn ngữ Anh và ngôn ngữ nước ngoài khác:\n- Sinh viên tốt nghiệp phải đạt chuẩn đầu ra ngoại ngữ tối thiểu bậc 5/6.\n- Sinh viên có văn bằng phổ thông quốc tế, cử nhân, thạc sĩ hoặc tiến sĩ trong/nước ngoài ngành này cũng như các chứng chỉ tương đương được công nhận là đã đạt chuẩn đầu ra ngoại ngữ mà không cần xét điểm cụ thể theo bảng quy đổi chung cho hệ kỹ sư hay cử nhân khác.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "bachelor_other_output",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.091,
+      "repeat": 3,
+      "question": "Sinh viên hệ cử nhân các ngành không chuyên ngoại ngữ cần chuẩn đầu ra ngoại ngữ bậc mấy?",
+      "answer": "Sinh viên hệ cử nhân các ngành không chuyên ngoại ngữ cần đạt chuẩn đầu ra ngoại ngữ bậc 3:\n- Sinh viên tốt nghiệp các ngành đào tạo khác thuộc hệ cử nhân phải đạt mức tối thiểu tương đương Bậc 3 với điểm IELTS từ 4.0 đến 5.0 hoặc TOEFL iBT từ 94 đến 110 tùy theo quy đổi của chứng chỉ quốc tế được công nhận.\n- Các trường hợp có văn bằng phổ thông quốc tế, cử nhân trong nước ngành Ngôn ngữ Anh hoặc các bằng cấp liên quan khác cũng được xem là đã đạt chuẩn đầu ra ngoại ngữ này mà không cần thi thêm.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 2
+        },
+        {
+          "filename": "Chuan_dau_ra_ngoai_ngu_tin_hoc.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "gpa_good",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.614,
+      "repeat": 3,
+      "question": "Điểm trung bình tích lũy thang 4 bao nhiêu thì được xếp loại giỏi?",
+      "answer": "Sinh viên được xếp loại Giỏi khi điểm trung bình tích lũy từ 3,20 đến 3,59 trên thang điểm 4:\n- Xếp loại Đạt - Giỏi tương ứng với khoảng điểm từ 3,20 đến 3,59.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 42
+        }
+      ]
+    },
+    {
+      "case_id": "gpa_excellent",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [
+        [
+          "4,00",
+          "4.00",
+          "4,0",
+          "4.0"
+        ]
+      ],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.004,
+      "repeat": 3,
+      "question": "Muốn được xếp loại xuất sắc thì điểm trung bình theo thang 4 phải đạt bao nhiêu?",
+      "answer": "Để xếp loại xuất sắc thì điểm trung bình chung tích lũy theo thang 4 phải từ 3,60 trở lên: đồng thời sinh viên cũng cần đạt kết quả rèn luyện ở mức xuất sắc. Sinh viên bị kỷ luật hoặc có điểm kết thúc học phần dưới mức trung bình sẽ không được xét khen thưởng danh hiệu này.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 29
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 42
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 10
+        }
+      ]
+    },
+    {
+      "case_id": "year_two_credits",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.001,
+      "repeat": 3,
+      "question": "Tích lũy bao nhiêu tín chỉ thì sinh viên được xếp trình độ năm hai?",
+      "answer": "Sinh viên được xếp hạng trình độ năm hai khi số tín chỉ tích lũy từ đầu khóa học đạt các mức sau:\n- Từ 30 đến dưới 60 tín chỉ theo quy chế đào tạo theo tín chỉ.\n- Từ 35 đến dưới 70 tín chỉ theo bảng xếp hạng trong tài liệu tham khảo khác.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 30
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 6
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 32
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 13
+        }
+      ]
+    },
+    {
+      "case_id": "master_math_duration",
+      "category": "simple_table",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [],
+      "forbidden_found": [
+        [
+          "4 năm"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 3.015,
+      "repeat": 3,
+      "question": "Chương trình thạc sĩ chuyên ngành Toán giải tích đào tạo trong mấy năm?",
+      "answer": "Chương trình thạc sĩ chuyên ngành Toán giải tích đào tạo trong 2 hoặc 4 năm:\n- Số năm đào tạo là 2 năm cho chương trình này.\n- Số năm đào tạo là 4 năm cho chương trình này.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 12
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 11
+        }
+      ]
+    },
+    {
+      "case_id": "poor_ethnic_cost_support",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.728,
+      "repeat": 3,
+      "question": "Sinh viên dân tộc thiểu số thuộc hộ nghèo được hỗ trợ chi phí học tập mức bao nhiêu?",
+      "answer": "Sinh viên dân tộc thiểu số thuộc hộ nghèo và hộ cận nghèo được hỗ trợ 60% mức lương cơ sở, không quá 10 tháng/năm học:\n- Mức hỗ trợ này áp dụng cho sinh viên là người dân tộc thiểu số thuộc hộ nghèo hoặc hộ cận nghèo theo quy định của Thủ tướng Chính phủ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 59
+        }
+      ]
+    },
+    {
+      "case_id": "poor_ethnic_cost_docs",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.576,
+      "repeat": 3,
+      "question": "Hồ sơ xin hỗ trợ chi phí học tập cho sinh viên dân tộc thiểu số hộ nghèo gồm những giấy tờ gì?",
+      "answer": "Hồ sơ xin hỗ trợ chi phí học tập cho sinh viên dân tộc thiểu số thuộc hộ nghèo và cận nghèo bao gồm các giấy tờ sau:\n- Đơn đề nghị hỗ trợ chi phí học tập theo mẫu quy định của Khoa.\n- Bản sao chứng thực Giấy khai sinh để xác nhận thông tin cá nhân.\n- Giấy chứng nhận hộ nghèo hoặc hộ cận mức do Ủy ban nhân dân cấp xã, phường, thị trấn cấp; trường hợp có giấy chứng nhận riêng cho học sinh/sinh viên thuộc diện này thì cũng được chấp thuận theo mẫu phụ lục 5.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 52
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 53
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 54
+        }
+      ]
+    },
+    {
+      "case_id": "minority_tiny_support",
+      "category": "wrapped_rows",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 7.239,
+      "repeat": 3,
+      "question": "Sinh viên thuộc dân tộc thiểu số rất ít người được hỗ trợ học tập bao nhiêu?",
+      "answer": "Sinh viên là người dân tộc thiểu số rất ít người thuộc các nhóm sau đây: Cống, Mảng, Pu Péo, Si La, Cờ Lao, Bố Y, La Ha, Ngái, Chứt, Ơ Đu, Brâu, Rơ Măm, Lô Lô, Lự, Pà Thẻn và La Hủ.\n- Mức hỗ trợ là 100% mức lương cơ sở cho mỗi sinh viên trong một tháng.\n- Thời gian được hưởng hỗ trợ tối đa là 12 tháng/năm học đối với những sinh viên có thời gian học thực tế từ đủ 9 tháng trở lên, hoặc xét 1 lần duy nhất cho cả khóa học tính từ ngày nộp hồ sơ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "case_id": "orphan_social_allowance",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 7.199,
+      "repeat": 3,
+      "question": "Sinh viên mồ côi cả cha lẫn mẹ không nơi nương tựa được trợ cấp xã hội bao nhiêu mỗi tháng?",
+      "answer": "Sinh viên mồ côi cả cha lẫn mẹ không nơi nương tựa được trợ cấp xã hội 100.000 đồng mỗi tháng:\n- Đối tượng là sinh viên từ 16 tuổi đến 22 tuổi đang học giáo dục đại học văn bằng thứ nhất, mồ côi và không có nguồn nuôi dưỡng thuộc đối tượng bảo trợ xã hội hưởng trợ cấp hàng tháng theo quy định tại Điều 5 Nghị định 20/2021/NĐ-CP.\n- Mức hỗ trợ được xét một lần hưởng cả khóa học tính từ thời điểm nộp hồ sơ hoặc xét duyệt, tùy trường hợp cụ thể trong tài liệu tham khảo.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 46
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        }
+      ]
+    },
+    {
+      "case_id": "poor_household_review",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.289,
+      "repeat": 3,
+      "question": "Trợ cấp xã hội cho sinh viên thuộc hộ nghèo được xét theo chu kỳ nào?",
+      "answer": "Trợ cấp xã hội cho sinh viên thuộc hộ nghèo được xét theo từng học kỳ:\n- Đối tượng là sinh viên năm thứ 2 đến năm thứ 5 có hoàn cảnh đặc biệt khó khăn về kinh tế, vượt khó học tập sẽ nhận trợ cấp này mỗi học kỳ.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "case_id": "fee_ethnic_poor_review",
+      "category": "page_continuation",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.884,
+      "repeat": 3,
+      "question": "Miễn giảm học phí cho sinh viên dân tộc thiểu số thuộc hộ nghèo, cận nghèo được xét bao lâu một lần?",
+      "answer": "Miễn giảm học phí cho sinh viên dân tộc thiểu số thuộc hộ nghèo, cận nghèo:\n- Được xét theo mỗi học kỳ đối với trường hợp cha mẹ hoặc ông bà là người dân tộc thiểu số có điều kiện kinh tế - xã hội khó khăn (.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 59
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "case_id": "youth_union_branches",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.966,
+      "repeat": 3,
+      "question": "Đoàn Thanh niên Trường Đại học Đà Lạt có bao nhiêu chi đoàn cơ sở?",
+      "answer": "Đoàn Thanh niên Trường Đại học Đà Lạt hiện nay có 159 chi đoàn cơ sở trực thuộc:\n- Các Chi đoàn này là thành phần của Đoàn DLU, một trong những cơ sở Đoàn mạnh trên địa bàn tỉnh Lâm Đồng.\n- Tổng số lượng bao gồm các đơn vị dưới sự quản lý của 14 Đoàn khoa đang hoạt động tại trường.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 52
+        }
+      ]
+    },
+    {
+      "case_id": "dorm_capacity",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 5.592,
+      "repeat": 3,
+      "question": "Khu nội trú sinh viên của trường có quy mô bao nhiêu chỗ ở?",
+      "answer": "Khu nội trú sinh viên của trường Đại học Đà Lạt hiện nay quy mô 1000 chỗ ở:\n- Khu này thuộc khu B của nhà trường, nằm trên địa bàn phường 8 thành phố Đà Lạt.\n- Quy chế tổ chức và hoạt động được thực hiện theo đúng quy định của Trường Đại học Đà Lạt cùng phương châm an toàn văn minh không có tội phạm tệ nạn xã hội.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 58
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 14
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 3
+        },
+        {
+          "filename": "Quy_che_dao_tao_theo_tin_chi.pdf",
+          "page": 7
+        }
+      ]
+    },
+    {
+      "case_id": "dorm_room_capacity",
+      "category": "prose_layout",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.49,
+      "repeat": 3,
+      "question": "Mỗi phòng ở khu nội trú bố trí cho bao nhiêu sinh viên?",
+      "answer": "Mỗi phòng ở khu nội trú bố trí cho 6 sinh viên:\n- Kích thước mỗi phòng trên 30 m2, thoáng mát và tiện nghi.\n- Nam, nữ được bố trí ở riêng biệt trong khuôn viên có sân thể thao.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 58
+        }
+      ]
+    },
+    {
+      "case_id": "finance_phone",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 2.837,
+      "repeat": 3,
+      "question": "Số điện thoại của Phòng Tài chính là bao nhiêu?",
+      "answer": "Số điện thoại của Phòng Tài chính là 0263. 3820566: liên hệ trực tiếp về thắc mắc học phí qua email phongtaichinh@dlu.edu.vn hoặc số trên nếu cần hỗ trợ khác.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 60
+        }
+      ]
+    },
+    {
+      "case_id": "it_faculty_email",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 4.077,
+      "repeat": 3,
+      "question": "Email liên hệ của Khoa Công nghệ thông tin là gì?",
+      "answer": "Email liên hệ của Khoa Công nghệ thông tin là it@dlu.edu.vn:\n- Địa chỉ email để liên hệ với khoa này là it@dlu.edu.vn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 61
+        }
+      ]
+    },
+    {
+      "case_id": "highland_allowance",
+      "category": "labels",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 10.196,
+      "repeat": 3,
+      "question": "Sinh viên dân tộc thiểu số ở vùng cao được trợ cấp xã hội bao nhiêu mỗi tháng?",
+      "answer": "Sinh viên dân tộc thiểu số ở vùng cao nhận trợ cấp xã hội 140.000 đồng mỗi tháng:\n- Mức hỗ trợ này áp dụng cho sinh viên là người dân tộc ít người liên tục sống hoặc có hộ khẩu thường trú tại vùng cao từ 3 năm trở lên tính đến thời điểm vào học, được xét hưởng một lần trong cả khóa học.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 50
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 49
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 48
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 47
+        },
+        {
+          "filename": "So_tay_sinh_vien.pdf",
+          "page": 51
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_dates",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 8.877,
+      "repeat": 3,
+      "question": "Tuần định hướng cho tân sinh viên khóa 50 diễn ra từ ngày nào đến ngày nào?",
+      "answer": "Tuần định hướng cho tân sinh viên khóa 50 diễn ra từ ngày 24 tháng 8 năm 2026 đến hết ngày 28 tháng 8 năm 2026:\n- Thời gian bắt đầu là vào ngày 24/8/2026.\n- Thời gian kết thúc là vào ngày 28/8/2026.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 1
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 4
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_budget_small",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [],
+      "forbidden_found": [
+        [
+          "7.000.000",
+          "7 triệu"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 8.98,
+      "repeat": 3,
+      "question": "Khoa có dưới 150 tân sinh viên được nhà trường hỗ trợ bao nhiêu kinh phí tổ chức tuần định hướng?",
+      "answer": "Khoa nhận hỗ trợ kinh phí tổ chức tuần định hướng cho các tân sinh viên như sau:\n- Khi số lượng Tân sinh viên nhập học của Khoa dưới 150 người, mức hỗ trợ là 5.000.000 đồng chẵn.\n- Khi số lượng Tân sinh viên nhập học từ 150 người trở lên, mức hỗ trợ tăng lên 7.000.000 đồng chẵn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_budget_large",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": false,
+      "missing_values": [],
+      "forbidden_found": [
+        [
+          "5.000.000",
+          "5 triệu"
+        ]
+      ],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 8.982,
+      "repeat": 3,
+      "question": "Khoa có từ 150 tân sinh viên trở lên được hỗ trợ kinh phí tuần định hướng bao nhiêu?",
+      "answer": "Khoa nhận hỗ trợ kinh phí tổ chức tuần định hướng cho tân sinh viên như sau:\n- Dưới 150 Tân sinh viên: 5.000.000 đồng chẵn.\n- Từ 150 Tân sinh viên trở lên: 7.000.000 đồng chẵn.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "orientation_deadline",
+      "category": "ocr_scan",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": false,
+      "should_refuse": false,
+      "refusal_ok": true,
+      "elapsed_seconds": 8.861,
+      "repeat": 3,
+      "question": "Các khoa phải gửi phân công giảng viên tham gia tuần định hướng về phòng Công tác sinh viên trước thời hạn nào?",
+      "answer": "Các Khoa cần phân công lãnh đạo và giảng viên tham gia Tuần định hướng gửi về Phòng Công tác sinh viên trước 11h00 ngày 20/8/2026:\n- Các Khoa phải xây dựng kế hoạch, kịch bản cho chương trình.\n- Việc này bao gồm nội dung định hướng chuyên ngành và nghề nghiệp cho Tân sinh viên.",
+      "refusal_reason": null,
+      "sources": [
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 4
+        },
+        {
+          "filename": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+          "page": 3
+        }
+      ]
+    },
+    {
+      "case_id": "refuse_medicine_fee",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 7.472,
+      "repeat": 3,
+      "question": "Học phí ngành Y đa khoa của trường là bao nhiêu một tín chỉ?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_ielts_exam_schedule",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 7.746,
+      "repeat": 3,
+      "question": "Lịch thi IELTS tổ chức tại trường vào tháng 12 năm nay là ngày nào?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_canteen_menu",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 0.12,
+      "repeat": 3,
+      "question": "Căng tin trường hôm nay bán những món gì?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng diễn đạt cụ thể hơn hoặc liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "low_score=0.249",
+      "sources": []
+    },
+    {
+      "case_id": "refuse_admission_cutoff",
+      "category": "refusal",
+      "status": "ok",
+      "value_ok": true,
+      "missing_values": [],
+      "forbidden_found": [],
+      "source_ok": true,
+      "refusal_detected": true,
+      "should_refuse": true,
+      "refusal_ok": true,
+      "elapsed_seconds": 6.965,
+      "repeat": 3,
+      "question": "Điểm chuẩn ngành Công nghệ thông tin năm 2025 là bao nhiêu?",
+      "answer": "Xin lỗi, tôi không tìm thấy thông tin phù hợp trong tài liệu hiện có. Vui lòng liên hệ trực tiếp với Khoa để được hỗ trợ.",
+      "refusal_reason": "model_declined",
+      "sources": []
+    }
+  ],
+  "repeats": 3,
+  "summary": {
+    "total": 84,
+    "errors": 0,
+    "value_accuracy": 0.8571,
+    "source_accuracy": 1.0,
+    "false_refusal_rate": 0.0,
+    "missed_refusal_rate": 0.0,
+    "p50_seconds": 5.579,
+    "p95_seconds": 8.694,
+    "by_category": {
+      "labels": 1.0,
+      "ocr_scan": 0.6667,
+      "page_continuation": 1.0,
+      "prose_layout": 0.8889,
+      "refusal": 1.0,
+      "simple_table": 0.75,
+      "wrapped_rows": 0.8889
+    }
+  },
+  "finished_at": "2026-11-08T09:56:19.574149+00:00"
+}
