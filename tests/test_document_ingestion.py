@@ -322,6 +322,53 @@ class DocumentIngestionTests(unittest.TestCase):
         self.assertEqual(len(texts), 2, texts)
         self.assertIn("Xep loai: Dat; Muc: Kha", texts[1])
 
+    SUPPORT_XS = (40, 80, 300, 460)
+
+    def test_headerless_table_continues_even_if_previous_ends_mid_page(self):
+        result = self._table_pdf("continue_mid.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (200, 225, 250),
+             "rows": (("TT", "Doi tuong", "Muc ho tro"), ("1", "Sinh vien mo coi", "100.000"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55),
+             "rows": (("2", "Sinh vien vung cao", "140.000"),)},
+        ])
+        chunk = next(c for c in result.chunks if "vung cao" in c.page_content)
+        self.assertIn("Doi tuong: Sinh vien vung cao; Muc ho tro: 140.000", chunk.page_content)
+        self.assertTrue(chunk.metadata.get("table_continued"))
+        self.assertFalse(any("Sinh vien vung cao:" in text for text in self._table_texts(result)))
+
+    def test_three_page_table_keeps_first_header(self):
+        result = self._table_pdf("three_pages.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (330, 355, 380),
+             "rows": (("TT", "Doi tuong", "Muc ho tro"), ("1", "Nhom mot", "100.000"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55), "rows": (("2", "Nhom hai", "120.000"),)},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55), "rows": (("3", "Nhom ba", "140.000"),)},
+        ])
+        third = next(c for c in result.chunks if "Nhom ba" in c.page_content)
+        self.assertEqual(third.metadata["page"], 2)
+        self.assertIn("Doi tuong: Nhom ba; Muc ho tro: 140.000", third.page_content)
+
+    def test_unmatched_headerless_table_uses_generic_labels_not_data(self):
+        result = self._table_pdf("headerless.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (60, 85, 110),
+             "rows": (("5", "Alpha", "Mot"), ("6", "Beta", "Hai"))},
+        ])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertTrue(any("Cột 2: Alpha" in text for text in texts), texts)
+        self.assertFalse(any("Alpha:" in text for text in texts), texts)
+
+    def test_continued_row_without_number_takes_previous_number(self):
+        result = self._table_pdf("row_split.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (330, 355, 380),
+             "rows": (("TT", "Doi tuong", "Ho so"), ("3", "Sinh vien ho ngheo", "Don de nghi"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55, 80),
+             "rows": (("", "", "Giay chung nhan ho ngheo"), ("4", "Sinh vien khuyet tat", "Giay xac nhan"))},
+        ])
+        part = next(c for c in result.chunks if "Giay chung nhan ho ngheo" in c.page_content)
+        self.assertIn("TT: 3", part.page_content)
+        self.assertTrue(part.metadata.get("table_row_continued"))
+        self.assertTrue(any("TT: 4; Doi tuong: Sinh vien khuyet tat" in t for t in self._table_texts(result)))
+
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])
         fake = FakeOCR()

@@ -379,13 +379,22 @@ def _table_caption(
     return sentence if len(sentence) <= _CAPTION_MAX_CHARS else ""
 
 
+_NUMBER_HEADERS = {"tt", "stt"}
+
+
 def _is_table_continuation(
     page: fitz.Page, table: "fitz.table.Table", rows: list, previous: dict | None, page_index: int
 ) -> bool:
     """Bảng đầu trang tiếp nối bảng cuối trang trước: cùng số cột và không lặp lại dòng tiêu đề."""
     if not previous or previous["page"] != page_index - 1 or table.col_count != previous["columns"]:
         return False
-    if not previous["ends_low"] or table.bbox[1] > _CONTINUATION_TOP_PT:
+    if table.bbox[1] > _CONTINUATION_TOP_PT:
+        return False
+    # Dòng đầu bắt đầu bằng số thứ tự là dữ liệu, không phải tiêu đề: đủ chắc là phần tiếp
+    # dù bảng trước không chạm đáy trang (vd. trang trước còn chữ chú thích bên dưới).
+    if _starts_with_row_number(rows):
+        return True
+    if not previous["ends_low"]:
         return False
     first_row = [normalize_text(cell) for cell in rows[0]]
     if first_row and first_row[0].lower() in {"tt", "stt"}:
@@ -394,7 +403,10 @@ def _is_table_continuation(
     return [cell.lower() for cell in first_row] != repeated_header
 
 
-_NUMBER_HEADERS = {"tt", "stt"}
+def _starts_with_row_number(rows: list) -> bool:
+    """Dòng đầu là một dòng dữ liệu đánh số ("2", "12.") nên bảng không có dòng tiêu đề."""
+    first = normalize_text(rows[0][0]) if rows and rows[0] else ""
+    return bool(re.fullmatch(r"\d{1,3}\.?", first))
 
 
 def _is_numbered_table(raw_headers: list[str]) -> bool:
@@ -455,6 +467,15 @@ def _native_table_documents(
             caption = previous["caption"]
             carried_first = previous["carried_first"]
             header_end = 0
+        elif _starts_with_row_number(rows):
+            # Bảng không có dòng tiêu đề và không nối được với bảng trước: dùng nhãn chung
+            # thay vì biến dòng dữ liệu đầu tiên thành tiêu đề cột.
+            caption = _table_caption(
+                page, table.bbox, [other.bbox for other in tables if other is not table]
+            )
+            carried_first = ""
+            header_end = 0
+            raw_headers = [""] * column_count
         else:
             caption = _table_caption(
                 page, table.bbox, [other.bbox for other in tables if other is not table]
@@ -512,8 +533,15 @@ def _native_table_documents(
             ])
             for row_index, row in enumerate(rows[header_end:], start=header_end)
         ]
-        if _is_numbered_table(raw_headers):
+        numbered = _is_numbered_table(raw_headers)
+        continued_row_index = None
+        last_number = previous.get("last_number", "") if continuation else ""
+        if numbered:
             data_rows = _merge_wrapped_rows(data_rows)
+            # Dòng đầu phần tiếp không có số: đó là phần còn lại của dòng cuối trang trước.
+            if continuation and data_rows and not data_rows[0][1][0] and last_number:
+                data_rows[0][1][0] = last_number
+                continued_row_index = data_rows[0][0]
         for row_index, values in data_rows:
             if not any(values):
                 continue
@@ -523,6 +551,8 @@ def _native_table_documents(
             for column in context_columns:
                 if values[column]:
                     carried[column] = values[column]
+            if numbered and values[0]:
+                last_number = values[0]
             if separate_levels:
                 context = [
                     f"{headers[column]}: {carried[column]}"
@@ -558,6 +588,8 @@ def _native_table_documents(
                     doc.metadata["table_caption"] = caption
                 if continuation:
                     doc.metadata["table_continued"] = True
+                if row_index == continued_row_index:
+                    doc.metadata["table_row_continued"] = True
                 table_documents.append(doc)
         if table_documents:
             documents.extend(table_documents)
@@ -568,6 +600,7 @@ def _native_table_documents(
                 "raw_headers": raw_headers,
                 "caption": caption,
                 "carried_first": carried[0],
+                "last_number": last_number,
                 "ends_low": table.bbox[3] >= page.rect.height - _CONTINUATION_BOTTOM_PT,
             }
     if last_on_this_page is not None:
