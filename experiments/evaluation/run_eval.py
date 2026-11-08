@@ -62,8 +62,10 @@ async def _run(args: argparse.Namespace) -> int:
         "cases_file": str(args.cases),
         "results": [],
     }
-    for index, case in enumerate(cases, start=1):
-        print(f"[{index}/{len(cases)}] {case['id']}", flush=True)
+    runs = [(repeat, index, case) for repeat in range(1, args.repeats + 1) for index, case in enumerate(cases, start=1)]
+    payload["repeats"] = args.repeats
+    for repeat, index, case in runs:
+        print(f"[lần {repeat}/{args.repeats} | {index}/{len(cases)}] {case['id']}", flush=True)
         started = time.perf_counter()
         try:
             answer, sources, _score, refusal_reason = await asyncio.wait_for(
@@ -71,12 +73,12 @@ async def _run(args: argparse.Namespace) -> int:
                 timeout=args.timeout,
             )
             record = score_case(case, answer, sources, refusal_reason, time.perf_counter() - started)
-            record.update({"question": case["question"], "answer": answer, "refusal_reason": refusal_reason,
+            record.update({"repeat": repeat, "question": case["question"], "answer": answer, "refusal_reason": refusal_reason,
                            "sources": [{"filename": s.get("filename"), "page": s.get("page")} for s in sources]})
             print(f"  {record['elapsed_seconds']:.1f}s value={record['value_ok']} "
                   f"source={record['source_ok']} refusal_ok={record['refusal_ok']}", flush=True)
         except Exception as exc:  # noqa: BLE001 - một case lỗi không được dừng cả lượt đo
-            record = {"case_id": case["id"], "category": case["category"], "status": "case_error",
+            record = {"case_id": case["id"], "category": case["category"], "status": "case_error", "repeat": repeat,
                       "error": repr(exc), "elapsed_seconds": round(time.perf_counter() - started, 3)}
             print(f"  ERROR: {exc!r}", flush=True)
         payload["results"].append(record)
@@ -101,6 +103,7 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--case-id", action="append")
     parser.add_argument("--timeout", type=float, default=180.0)
+    parser.add_argument("--repeats", type=int, default=1, help="Chạy cả bộ nhiều lần để đo độ dao động của LLM")
     return asyncio.run(_run(parser.parse_args()))
 
 

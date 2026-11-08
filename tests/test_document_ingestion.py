@@ -38,6 +38,13 @@ class FakeOCR:
         return OCRPageResult(line.text, line.confidence, [line], "fake-small")
 
 
+class PyMuPDFVersionTests(unittest.TestCase):
+    def test_pymupdf_major_version_is_below_2(self):
+        # PyMuPDF 2.x tách chữ tiếng Việt trong ô bảng ("Si nh viên"); xem Dockerfile.backend.
+        major = int(fitz.__version__.split(".")[0])
+        self.assertLess(major, 2, f"PyMuPDF {fitz.__version__} làm vỡ chữ trong bảng; dùng bản 1.x")
+
+
 class DocumentIngestionTests(unittest.TestCase):
     def test_invalid_ocr_alphabet_rejects_scan_with_page_number(self):
         class InvalidOCR(FakeOCR):

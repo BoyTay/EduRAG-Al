@@ -34,6 +34,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr tesseract-ocr-vie \
     && rm -rf /var/lib/apt/lists/*
 
+# PyMuPDF 2.x tách chữ tiếng Việt trong ô bảng ("Si nh viên"), làm hỏng chỉ mục.
+# Ghim ở tầng riêng sau các tầng cài thư viện nặng để không phải tải lại Paddle/torch.
+# pymupdf4llm/pymupdf-layout chỉ do PyMuPDF 2.x kéo theo; backend không dùng.
+RUN pip uninstall -y pymupdf4llm pymupdf-layout \
+    && pip install --no-cache-dir "pymupdf>=1.24.0,<2.0" \
+    && pip check
+
 # Copy source code
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
