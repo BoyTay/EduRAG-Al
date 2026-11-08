@@ -92,6 +92,10 @@ async def _run(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    # Console Windows mặc định cp1252 không in được tiếng Việt.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Đánh giá EduRAG trên bộ câu hỏi kiểm thử")
     parser.add_argument("--cases", default=str(DEFAULT_CASES))
     parser.add_argument("--output", required=True)
