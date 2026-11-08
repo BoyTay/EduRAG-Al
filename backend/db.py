@@ -96,6 +96,9 @@ class DocumentMetadata(Base):
     document_year = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)
     status = Column(String(30), nullable=True, default="active")
+    # Admin đã đối chiếu các đoạn trích ra với PDF gốc (trang kiểm tra dữ liệu nạp).
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(String(100), nullable=True)
 
 
 class AdminUser(Base):
@@ -213,6 +216,8 @@ def init_db() -> None:
                 "document_year": "ALTER TABLE document_metadata ADD COLUMN document_year INTEGER",
                 "summary": "ALTER TABLE document_metadata ADD COLUMN summary TEXT",
                 "status": "ALTER TABLE document_metadata ADD COLUMN status VARCHAR(30) DEFAULT 'active'",
+                "reviewed_at": "ALTER TABLE document_metadata ADD COLUMN reviewed_at DATETIME",
+                "reviewed_by": "ALTER TABLE document_metadata ADD COLUMN reviewed_by VARCHAR(100)",
             }
             for column, statement in document_migrations.items():
                 if column not in document_columns:
@@ -595,6 +600,9 @@ def add_document_metadata(
         existing.document_year = document_year or existing.document_year
         existing.summary = summary or existing.summary
         existing.status = status or existing.status
+        # Nội dung vừa được nạp lại nên lần kiểm tra trước không còn đúng.
+        existing.reviewed_at = None
+        existing.reviewed_by = None
         if commit:
             db.commit()
         else:

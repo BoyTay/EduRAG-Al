@@ -2,9 +2,11 @@ import {
   CaretDown,
   CaretLeft,
   CaretRight,
+  CheckCircle,
   FileDoc,
   FilePdf,
   FileText,
+  ListMagnifyingGlass,
   MagnifyingGlass,
   PencilSimple,
   Trash,
@@ -17,6 +19,7 @@ interface DocumentTableProps {
   documents: Document[];
   onEdit: (document: Document) => void;
   onDelete: (document: Document) => void;
+  onInspect: (document: Document) => void;
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -34,7 +37,7 @@ function formatDate(dateStr?: string) {
   }
 }
 
-export function DocumentTable({ documents, onEdit, onDelete }: DocumentTableProps) {
+export function DocumentTable({ documents, onEdit, onDelete, onInspect }: DocumentTableProps) {
   const [keyword, setKeyword] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "name" | "chunks">("newest");
@@ -254,6 +257,15 @@ export function DocumentTable({ documents, onEdit, onDelete }: DocumentTableProp
                         <span className="size-1.5 rounded-full bg-emerald-500" />
                         <span>Hoạt động</span>
                       </span>
+                      {doc.reviewed_at && (
+                        <span
+                          className="mt-1 flex items-center justify-center gap-1 text-[11px] font-medium text-sky-700"
+                          title={doc.reviewed_by ? `Đã kiểm tra bởi ${doc.reviewed_by}` : "Đã kiểm tra dữ liệu nạp"}
+                        >
+                          <CheckCircle size={12} weight="fill" />
+                          Đã kiểm tra
+                        </span>
+                      )}
                     </td>
 
                     {/* Updated At */}
@@ -264,6 +276,15 @@ export function DocumentTable({ documents, onEdit, onDelete }: DocumentTableProp
                     {/* Action Buttons */}
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onInspect(doc)}
+                          className="flex size-7 items-center justify-center rounded-lg text-slate-400 hover:bg-sky-50 hover:text-sky-700 transition"
+                          title="Kiểm tra dữ liệu đã nạp"
+                          aria-label={`Kiểm tra dữ liệu đã nạp của ${doc.display_name || doc.filename}`}
+                        >
+                          <ListMagnifyingGlass size={15} />
+                        </button>
                         <button
                           type="button"
                           onClick={() => onEdit(doc)}

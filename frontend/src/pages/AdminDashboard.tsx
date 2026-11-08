@@ -10,6 +10,7 @@ import { useState } from "react";
 import { CategoryChart } from "../components/admin/CategoryChart";
 import { DeleteConfirmModal } from "../components/admin/DeleteConfirmModal";
 import { DocumentModal } from "../components/admin/DocumentModal";
+import { ChunkInspector } from "../components/admin/ChunkInspector";
 import { DocumentTable } from "../components/admin/DocumentTable";
 import { RecentActivities } from "../components/admin/RecentActivities";
 // import { RagRefusalPanel } from "../components/admin/RagRefusalPanel";
@@ -46,6 +47,7 @@ export function AdminDashboard() {
   const [modalMode, setModalMode] = useState<"upload" | "edit" | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [deletingDoc, setDeletingDoc] = useState<Document | null>(null);
+  const [inspectingDoc, setInspectingDoc] = useState<Document | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
   const [rebuildNotice, setRebuildNotice] = useState<{ text: string; error: boolean } | null>(null);
 
@@ -226,6 +228,7 @@ export function AdminDashboard() {
             setModalMode("edit");
           }}
           onDelete={(doc) => setDeletingDoc(doc)}
+          onInspect={(doc) => setInspectingDoc(doc)}
         />
 
         {/* Bottom Grid: Recent Activities & Category Distribution */}
@@ -252,6 +255,11 @@ export function AdminDashboard() {
             setSelectedDoc(null);
           }}
         />
+      )}
+
+      {/* Kiểm tra dữ liệu nạp: PDF gốc bên cạnh các đoạn đã lập chỉ mục */}
+      {inspectingDoc && (
+        <ChunkInspector document={inspectingDoc} onClose={() => setInspectingDoc(null)} />
       )}
 
       {/* Delete Confirmation Dialog */}

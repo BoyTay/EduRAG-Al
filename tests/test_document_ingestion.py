@@ -38,6 +38,13 @@ class FakeOCR:
         return OCRPageResult(line.text, line.confidence, [line], "fake-small")
 
 
+class PyMuPDFVersionTests(unittest.TestCase):
+    def test_pymupdf_major_version_is_below_2(self):
+        # PyMuPDF 2.x tách chữ tiếng Việt trong ô bảng ("Si nh viên"); xem Dockerfile.backend.
+        major = int(fitz.__version__.split(".")[0])
+        self.assertLess(major, 2, f"PyMuPDF {fitz.__version__} làm vỡ chữ trong bảng; dùng bản 1.x")
+
+
 class DocumentIngestionTests(unittest.TestCase):
     def test_invalid_ocr_alphabet_rejects_scan_with_page_number(self):
         class InvalidOCR(FakeOCR):
@@ -271,6 +278,314 @@ class DocumentIngestionTests(unittest.TestCase):
         rows = [c for c in result.chunks if c.metadata["extraction_method"] == "native_table"]
         self.assertTrue(rows)
         self.assertFalse(any("table_caption" in c.metadata for c in rows))
+
+    FILLER = "Van ban noi dung de trang co du chu native khong can nhan dang OCR."
+
+    def _table_pdf(self, name, pages):
+        """Mỗi phần tử của `pages` là dict(xs, ys, rows, height=420, top_text=None)."""
+        path = self.root / name
+        with fitz.open() as document:
+            for spec in pages:
+                page = document.new_page(width=spec.get("width", 520), height=spec.get("height", 420))
+                page.insert_text((40, spec.get("filler_y", 400)), self.FILLER, fontsize=8)
+                if spec.get("top_text"):
+                    page.insert_text((40, spec["ys"][0] - 8), spec["top_text"], fontsize=9)
+                self._grid(page, spec["xs"], spec["ys"], spec.get("skip_vertical"))
+                self._write_cells(page, spec["xs"], spec["ys"], spec["rows"])
+            document.save(path)
+        return load_and_chunk_document(path, settings=self.settings, cache=self.cache)
+
+    @staticmethod
+    def _table_texts(result):
+        return [c.page_content for c in result.chunks if c.metadata["extraction_method"] == "native_table"]
+
+    def test_wrapped_cell_lines_are_merged_into_their_numbered_row(self):
+        result = self._table_pdf("wrapped.pdf", [{
+            "xs": (20, 50, 190, 360, 500),
+            "ys": (40, 65, 90, 115, 140),
+            "rows": (
+                ("TT", "Doi tuong", "Ho so", "Ghi chu"),
+                ("1", "Sinh vien khuyet tat", "1. Don de nghi", "Xet 1 lan"),
+                ("", "", "(theo mau phu luc 1)", ""),
+                ("", "", "2. Ban sao giay khai sinh", ""),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 1, texts)
+        self.assertIn("Ho so: 1. Don de nghi (theo mau phu luc 1) 2. Ban sao giay khai sinh", texts[0])
+        self.assertIn("Doi tuong: Sinh vien khuyet tat", texts[0])
+
+    def test_full_sub_rows_under_vertically_merged_number_are_not_merged(self):
+        result = self._table_pdf("sub_rows.pdf", [{
+            "xs": (20, 50, 190, 330, 500),
+            "ys": (40, 65, 90, 115),
+            "rows": (
+                ("TT", "Ngon ngu", "Chung chi", "Diem"),
+                ("1", "Tieng Anh", "TOEFL iBT", "46-93"),
+                ("", "", "IELTS", "5.5-6.5"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("Chung chi: IELTS; Diem: 5.5-6.5", texts[1])
+        self.assertNotIn("TOEFL", texts[1])
+
+    def test_wrapped_rows_in_headerless_numbered_table_are_merged(self):
+        result = self._table_pdf("headerless_wrapped.pdf", [{
+            "xs": (20, 50, 190, 360, 500),
+            "ys": (60, 85, 110, 135),
+            "rows": (
+                ("2", "Sinh vien khuyet tat", "1. Don xin nhan tro cap xa", "100.000"),
+                ("", "", "hoi (theo mau phu luc 4)", ""),
+                ("3", "Sinh vien ho ngheo", "Giay chung nhan ho ngheo", "100.000"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("1. Don xin nhan tro cap xa hoi (theo mau phu luc 4)", texts[0])
+
+    def test_full_rows_with_blank_first_cell_in_unnumbered_table_are_not_merged(self):
+        result = self._table_pdf("vertical_merge.pdf", [{
+            "xs": (40, 160, 300, 460),
+            "ys": (40, 65, 90, 115),
+            "rows": (
+                ("Xep loai", "Muc", "Thang diem 4"),
+                ("Dat", "Gioi", "Tu 3,20 den 3,59"),
+                ("", "Kha", "Tu 2,50 den 3,19"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("Xep loai: Dat; Muc: Kha", texts[1])
+
+    SUPPORT_XS = (40, 80, 300, 460)
+
+    def test_headerless_table_continues_even_if_previous_ends_mid_page(self):
+        result = self._table_pdf("continue_mid.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (200, 225, 250),
+             "rows": (("TT", "Doi tuong", "Muc ho tro"), ("1", "Sinh vien mo coi", "100.000"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55),
+             "rows": (("2", "Sinh vien vung cao", "140.000"),)},
+        ])
+        chunk = next(c for c in result.chunks if "vung cao" in c.page_content)
+        self.assertIn("Doi tuong: Sinh vien vung cao; Muc ho tro: 140.000", chunk.page_content)
+        self.assertTrue(chunk.metadata.get("table_continued"))
+        self.assertFalse(any("Sinh vien vung cao:" in text for text in self._table_texts(result)))
+
+    def test_three_page_table_keeps_first_header(self):
+        result = self._table_pdf("three_pages.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (330, 355, 380),
+             "rows": (("TT", "Doi tuong", "Muc ho tro"), ("1", "Nhom mot", "100.000"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55), "rows": (("2", "Nhom hai", "120.000"),)},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55), "rows": (("3", "Nhom ba", "140.000"),)},
+        ])
+        third = next(c for c in result.chunks if "Nhom ba" in c.page_content)
+        self.assertEqual(third.metadata["page"], 2)
+        self.assertIn("Doi tuong: Nhom ba; Muc ho tro: 140.000", third.page_content)
+
+    def test_unmatched_headerless_table_uses_generic_labels_not_data(self):
+        result = self._table_pdf("headerless.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (60, 85, 110),
+             "rows": (("5", "Alpha", "Mot"), ("6", "Beta", "Hai"))},
+        ])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertTrue(any("Cột 2: Alpha" in text for text in texts), texts)
+        self.assertFalse(any("Alpha:" in text for text in texts), texts)
+
+    def test_continued_row_without_number_takes_previous_number(self):
+        result = self._table_pdf("row_split.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (330, 355, 380),
+             "rows": (("TT", "Doi tuong", "Ho so"), ("3", "Sinh vien ho ngheo", "Don de nghi"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55, 80),
+             "rows": (("", "", "Giay chung nhan ho ngheo"), ("4", "Sinh vien khuyet tat", "Giay xac nhan"))},
+        ])
+        part = next(c for c in result.chunks if "Giay chung nhan ho ngheo" in c.page_content)
+        self.assertIn("TT: 3", part.page_content)
+        self.assertTrue(part.metadata.get("table_row_continued"))
+        self.assertTrue(any("TT: 4; Doi tuong: Sinh vien khuyet tat" in t for t in self._table_texts(result)))
+
+    def test_two_column_text_layout_stays_as_prose(self):
+        lines = (
+            "Doan truong la co so Doan", "tuong duong cap huyen truc thuoc",
+            "tinh doan Lam Dong va co", "14 Doan khoa voi 159 Chi doan",
+            "co so truc thuoc voi quy mo", "11.670 doan vien",
+        )
+        result = self._table_pdf("prose_layout.pdf", [{
+            "xs": (40, 300, 480),
+            "ys": (40, 65, 90, 115, 140, 165, 190),
+            "rows": tuple((line, "") for line in lines),
+        }])
+        self.assertEqual(self._table_texts(result), [])
+        prose = " ".join(c.page_content for c in result.chunks if c.metadata["extraction_method"] == "native")
+        self.assertIn("Doan truong la co so Doan tuong duong cap huyen", prose)
+        self.assertIn("159 Chi doan", prose)
+
+    def test_real_two_column_table_is_kept(self):
+        result = self._table_pdf("two_columns.pdf", [{
+            "xs": (40, 300, 480),
+            "ys": (40, 65, 90, 115, 140),
+            "rows": (
+                ("Nganh dao tao", "Chuan dau ra"),
+                ("Ngon ngu Anh", "5/6"),
+                ("Cac nganh khac, he ky su", "4/6"),
+                ("Cac nganh khac, he cu nhan", "3/6"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 3, texts)
+        self.assertIn("Nganh dao tao: Ngon ngu Anh; Chuan dau ra: 5/6", texts[0])
+
+    CONTACT_XS = (20, 60, 230, 360, 600, 780)
+    CONTACT_HEADER = ("STT", "Ten phong", "So dien thoai", "Email", "Ghi chu")
+
+    @staticmethod
+    def _merged_rows(*rows):
+        """Ô gộp ngang toàn dòng (dòng tên bảng): bỏ các đường kẻ dọc bên trong."""
+        return {(column, row) for row in rows for column in range(1, 5)}
+
+    def test_full_width_title_row_becomes_caption_and_next_row_is_header(self):
+        result = self._table_pdf("contacts.pdf", [{
+            "width": 800, "xs": self.CONTACT_XS, "ys": (40, 65, 90, 115),
+            "skip_vertical": self._merged_rows(0),
+            "rows": (
+                ("CAC PHONG BAN CAN LIEN HE", "", "", "", ""),
+                self.CONTACT_HEADER,
+                ("3", "Phong Tai chinh", "0263. 3820566", "phongtaichinh@dlu.edu.vn", "Hoc phi"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 1, texts)
+        self.assertIn("[CAC PHONG BAN CAN LIEN HE]", texts[0])
+        self.assertIn("So dien thoai: 0263. 3820566", texts[0])
+        self.assertIn("Email: phongtaichinh@dlu.edu.vn", texts[0])
+        self.assertNotIn(" - ", texts[0])
+
+    def test_mid_table_title_row_starts_new_header_group(self):
+        result = self._table_pdf("contacts_groups.pdf", [{
+            "width": 800, "xs": self.CONTACT_XS, "ys": (40, 65, 90, 115, 140, 165, 190),
+            "skip_vertical": self._merged_rows(0, 3),
+            "rows": (
+                ("CAC PHONG BAN CAN LIEN HE", "", "", "", ""),
+                self.CONTACT_HEADER,
+                ("3", "Phong Tai chinh", "0263. 3820566", "phongtaichinh@dlu.edu.vn", "Hoc phi"),
+                ("KHOA CAN LIEN HE", "", "", "", ""),
+                ("STT", "Khoa", "So dien thoai", "Email", "Ghi chu"),
+                ("2", "Cong nghe thong tin", "0263. 3552540", "it@dlu.edu.vn", ""),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        it = next(text for text in texts if "it@dlu.edu.vn" in text)
+        self.assertIn("[KHOA CAN LIEN HE]", it)
+        self.assertIn("Khoa: Cong nghe thong tin", it)
+        self.assertIn("So dien thoai: 0263. 3552540", it)
+
+    def test_long_row_is_split_with_identity_on_every_part(self):
+        self.settings = IngestionSettings(**{**self.settings.__dict__, "chunk_size": 120})
+        record = "Ban sao giay chung nhan nguoi co cong voi cach mang"
+        result = self._table_pdf("long_row.pdf", [{
+            "width": 800, "xs": (20, 60, 250, 640, 780), "ys": (40, 65, 90),
+            "rows": (
+                ("TT", "Doi tuong", "Ho so", "Ghi chu"),
+                ("2", "Nguoi co cong voi cach mang", f"1. Don de nghi; 2. {record}", "Xet mot lan"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertGreater(len(texts), 1, texts)
+        for text in texts:
+            self.assertLessEqual(len(text), 120, text)
+            self.assertIn("TT: 2", text)
+            self.assertIn("Doi tuong: Nguoi co cong voi cach mang", text)
+        joined = " ".join(texts)
+        self.assertIn("Ghi chu: Xet mot lan", joined)
+        squashed = joined.replace(" ", "")
+        for word in record.split():
+            self.assertIn(word, squashed)
+
+    def test_split_long_row_keeps_all_text_within_limit(self):
+        from document_ingestion import _split_long_row
+        identity = "TT: 2; Doi tuong: Sinh vien"
+        value = " ".join(f"giay{i}" for i in range(120))
+        pieces = _split_long_row(identity, [f"Ho so: {value}", "Ghi chu: Xet mot lan"], 200)
+        self.assertTrue(all(len(piece) <= 200 and piece.startswith(identity) for piece in pieces), pieces)
+        joined = " ".join(pieces)
+        for i in range(120):
+            self.assertRegex(joined, rf"\bgiay{i}\b")
+        self.assertIn("Ho so (tiếp):", joined)
+        self.assertIn("Ghi chu: Xet mot lan", joined)
+
+    def test_split_long_row_terminates_when_identity_exceeds_limit(self):
+        import threading
+
+        from document_ingestion import _split_long_row
+        identity = "[" + "Ghi chu rat dai " * 44 + "] TT: 2; Doi tuong: Sinh vien"
+        self.assertGreater(len(identity), 700)
+        result = {}
+        worker = threading.Thread(
+            target=lambda: result.update(pieces=_split_long_row(identity, ["Ho so: " + "giay " * 200], 700)),
+            daemon=True,
+        )
+        worker.start()
+        worker.join(timeout=5)
+        self.assertFalse(worker.is_alive(), "_split_long_row không dừng khi identity dài hơn max_chars")
+        self.assertTrue(all(len(piece) <= 700 for piece in result["pieces"]), [len(p) for p in result["pieces"]])
+        self.assertEqual(" ".join(result["pieces"]).count("giay"), 200)
+
+    def test_first_cell_only_row_in_vertical_merge_table_is_data_not_title(self):
+        result = self._table_pdf("vertical_label_row.pdf", [{
+            "xs": (40, 160, 300, 460),
+            "ys": (40, 65, 90, 115, 140),
+            "rows": (
+                ("Xep loai", "Muc", "Thang diem 4"),
+                ("Dat", "Gioi", "Tu 3,20 den 3,59"),
+                ("Khong dat", "", ""),
+                ("", "Yeu", "Tu 1,00 den 1,99"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        yeu = next(text for text in texts if "Yeu" in text)
+        self.assertIn("Xep loai: Khong dat; Muc: Yeu", yeu)
+        self.assertFalse(any("[Khong dat]" in text for text in texts), texts)
+
+    def test_partial_level_sub_row_is_not_merged_into_row_above(self):
+        result = self._table_pdf("levels_partial.pdf", [{
+            "width": 600, "xs": (20, 50, 140, 240, 340, 440, 560),
+            "ys": (40, 65, 90, 115),
+            "rows": (
+                ("TT", "Language", "Certificate", "Bac 3", "Bac 4", "Bac 5"),
+                ("1", "English", "TOEIC", "275-399", "400-489", "490-495"),
+                ("", "", "VSTEP", "Bac 3", "", ""),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertTrue(any("Certificate: VSTEP" in text for text in texts), texts)
+        self.assertFalse(any("TOEIC VSTEP" in text for text in texts), texts)
+
+    def test_wrapped_rows_on_headerless_continuation_page_are_merged(self):
+        result = self._table_pdf("headerless_cont.pdf", [
+            {"xs": self.SUPPORT_XS, "ys": (330, 355, 380),
+             "rows": (("2", "Nhom hai", "Ho so hai"), ("3", "Nhom ba", "Ho so ba"))},
+            {"xs": self.SUPPORT_XS, "ys": (30, 55, 80, 105),
+             "rows": (("", "", "tiep a"), ("", "", "tiep b"), ("4", "Nhom bon", "Ho so bon"))},
+        ])
+        texts = [c.page_content for c in result.chunks
+                 if c.metadata["extraction_method"] == "native_table" and c.metadata["page"] == 1]
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("tiep a tiep b", texts[0])
+        self.assertIn("Cột 1: 3", texts[0])
+
+    def test_two_column_table_with_vertically_merged_group_is_kept(self):
+        rows = [("Khoa", "Nganh"), ("Cong nghe thong tin", "Ky thuat phan mem")]
+        rows += [("", f"Nganh con {i}") for i in range(5)]
+        result = self._table_pdf("merged_two_columns.pdf", [{
+            "xs": (40, 260, 480),
+            "ys": tuple(40 + 25 * i for i in range(len(rows) + 1)),
+            "rows": tuple(rows),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 6, texts)
+        self.assertIn("Khoa: Cong nghe thong tin; Nganh: Nganh con 4", texts[-1])
 
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])

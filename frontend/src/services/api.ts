@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Activity, Document, DocumentMetadataInput, Message, RagRefusal, SessionInfo, Source, User } from "../types";
+import type { Activity, Document, DocumentChunk, DocumentMetadataInput, Message, RagRefusal, SessionInfo, Source, User } from "../types";
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000", headers: { "Content-Type": "application/json" } });
 api.interceptors.request.use((config) => {
@@ -112,6 +112,8 @@ export async function getDocumentPreview(filename: string): Promise<Blob> { cons
 export async function getStats() { const { data } = await api.get("/admin/stats"); return data; }
 export async function getActivities(): Promise<Activity[]> { const { data } = await api.get("/admin/activities?limit=20"); return data.activities; }
 export async function uploadDocument(file: File, metadata: DocumentMetadataInput = {}) { const form = new FormData(); form.append("file", file); Object.entries(metadata).forEach(([key, value]) => { if (value !== undefined && value !== "") form.append(key, String(value)); }); const { data } = await api.post("/admin/upload", form, { headers: { "Content-Type": "multipart/form-data" } }); return data; }
+export async function getDocumentChunks(filename: string): Promise<{ chunks: DocumentChunk[]; total: number; flagged: number }> { const { data } = await api.get(`/admin/documents/${encodeURIComponent(filename)}/chunks`); return data; }
+export async function setDocumentReview(filename: string, reviewed: boolean): Promise<{ reviewed_at: string | null; reviewed_by: string | null }> { const { data } = await api.post(`/admin/documents/${encodeURIComponent(filename)}/review`, { reviewed }); return data; }
 export async function updateDocumentMetadata(filename: string, metadata: DocumentMetadataInput) { const { data } = await api.patch(`/admin/documents/${encodeURIComponent(filename)}`, metadata); return data; }
 export async function deleteDocument(filename: string) { await api.delete(`/admin/delete/${encodeURIComponent(filename)}`); }
 export async function rebuildIndex(): Promise<{ message: string; processed_files: string[]; total_chunks: number; previous_collection: string }> {
