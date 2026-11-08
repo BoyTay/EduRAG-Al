@@ -60,7 +60,12 @@ python experiments/evaluation/run_eval.py --output tmp/one.json --case-id fee_di
 
 ## Kiểm chứng chunk thật
 
-_(điền sau khi chạy `dump_chunks.py`)_
+Chạy ngày 2026-11-08 trên chỉ mục đang hoạt động (`edurag_rebuild_ad7ea27c…`):
+
+- **Sổ tay sinh viên:** 435 chunk, trong đó 237 chunk bảng và **95 chunk bị gắn cờ nghi lỗi**. Chunk đang lưu khớp đúng với output của code nạp hiện tại, nên lỗi ở tr. 45–61 (dòng vỡ, nhãn cột lấy từ dòng dữ liệu, danh bạ không nhãn) có thật trong chỉ mục. Ví dụ tr. 51: `1. Đơn xin nhận trợ cấp xã hội 2. Bản sao chứng thực giấy giám định sức khỏe của hội: đồng Y khoa (có ghi rõ tỷ lệ`.
+- **Kế hoạch 1340 (PDF scan, Tesseract):** 20 chunk.
+  - Trang 1–4 (văn bản) đọc tốt. Có lỗi dấu nhỏ như `Tư do`, `KÉ HOẠCH`, `ĐÓI TƯỢNG`, `Tô chức`, nhưng ngày tháng và số tiền giữ đúng (24/8/2026–28/8/2026; 5.000.000 và 7.000.000 đồng; hạn 11h00 ngày 20/8/2026).
+  - **Trang 5 là bảng phân bổ, OCR ra chữ rác hoàn toàn** (`š|š|š|…`). Mọi câu hỏi về bảng này hiện không thể trả lời đúng. Đây là giới hạn của OCR trên bảng scan, nằm ngoài phạm vi sửa bộ đọc bảng PDF gốc.
 
 ## Kết quả trước/sau
 
