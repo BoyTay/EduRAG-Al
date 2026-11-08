@@ -283,7 +283,7 @@ class DocumentIngestionTests(unittest.TestCase):
                 page.insert_text((40, spec.get("filler_y", 400)), self.FILLER, fontsize=8)
                 if spec.get("top_text"):
                     page.insert_text((40, spec["ys"][0] - 8), spec["top_text"], fontsize=9)
-                self._grid(page, spec["xs"], spec["ys"])
+                self._grid(page, spec["xs"], spec["ys"], spec.get("skip_vertical"))
                 self._write_cells(page, spec["xs"], spec["ys"], spec["rows"])
             document.save(path)
         return load_and_chunk_document(path, settings=self.settings, cache=self.cache)
@@ -399,6 +399,85 @@ class DocumentIngestionTests(unittest.TestCase):
         texts = self._table_texts(result)
         self.assertEqual(len(texts), 3, texts)
         self.assertIn("Nganh dao tao: Ngon ngu Anh; Chuan dau ra: 5/6", texts[0])
+
+    CONTACT_XS = (20, 60, 230, 360, 600, 780)
+    CONTACT_HEADER = ("STT", "Ten phong", "So dien thoai", "Email", "Ghi chu")
+
+    @staticmethod
+    def _merged_rows(*rows):
+        """Ô gộp ngang toàn dòng (dòng tên bảng): bỏ các đường kẻ dọc bên trong."""
+        return {(column, row) for row in rows for column in range(1, 5)}
+
+    def test_full_width_title_row_becomes_caption_and_next_row_is_header(self):
+        result = self._table_pdf("contacts.pdf", [{
+            "width": 800, "xs": self.CONTACT_XS, "ys": (40, 65, 90, 115),
+            "skip_vertical": self._merged_rows(0),
+            "rows": (
+                ("CAC PHONG BAN CAN LIEN HE", "", "", "", ""),
+                self.CONTACT_HEADER,
+                ("3", "Phong Tai chinh", "0263. 3820566", "phongtaichinh@dlu.edu.vn", "Hoc phi"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 1, texts)
+        self.assertIn("[CAC PHONG BAN CAN LIEN HE]", texts[0])
+        self.assertIn("So dien thoai: 0263. 3820566", texts[0])
+        self.assertIn("Email: phongtaichinh@dlu.edu.vn", texts[0])
+        self.assertNotIn(" - ", texts[0])
+
+    def test_mid_table_title_row_starts_new_header_group(self):
+        result = self._table_pdf("contacts_groups.pdf", [{
+            "width": 800, "xs": self.CONTACT_XS, "ys": (40, 65, 90, 115, 140, 165, 190),
+            "skip_vertical": self._merged_rows(0, 3),
+            "rows": (
+                ("CAC PHONG BAN CAN LIEN HE", "", "", "", ""),
+                self.CONTACT_HEADER,
+                ("3", "Phong Tai chinh", "0263. 3820566", "phongtaichinh@dlu.edu.vn", "Hoc phi"),
+                ("KHOA CAN LIEN HE", "", "", "", ""),
+                ("STT", "Khoa", "So dien thoai", "Email", "Ghi chu"),
+                ("2", "Cong nghe thong tin", "0263. 3552540", "it@dlu.edu.vn", ""),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        it = next(text for text in texts if "it@dlu.edu.vn" in text)
+        self.assertIn("[KHOA CAN LIEN HE]", it)
+        self.assertIn("Khoa: Cong nghe thong tin", it)
+        self.assertIn("So dien thoai: 0263. 3552540", it)
+
+    def test_long_row_is_split_with_identity_on_every_part(self):
+        self.settings = IngestionSettings(**{**self.settings.__dict__, "chunk_size": 120})
+        record = "Ban sao giay chung nhan nguoi co cong voi cach mang"
+        result = self._table_pdf("long_row.pdf", [{
+            "width": 800, "xs": (20, 60, 250, 640, 780), "ys": (40, 65, 90),
+            "rows": (
+                ("TT", "Doi tuong", "Ho so", "Ghi chu"),
+                ("2", "Nguoi co cong voi cach mang", f"1. Don de nghi; 2. {record}", "Xet mot lan"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertGreater(len(texts), 1, texts)
+        for text in texts:
+            self.assertLessEqual(len(text), 120, text)
+            self.assertIn("TT: 2", text)
+            self.assertIn("Doi tuong: Nguoi co cong voi cach mang", text)
+        joined = " ".join(texts)
+        self.assertIn("Ghi chu: Xet mot lan", joined)
+        squashed = joined.replace(" ", "")
+        for word in record.split():
+            self.assertIn(word, squashed)
+
+    def test_split_long_row_keeps_all_text_within_limit(self):
+        from document_ingestion import _split_long_row
+        identity = "TT: 2; Doi tuong: Sinh vien"
+        value = " ".join(f"giay{i}" for i in range(120))
+        pieces = _split_long_row(identity, [f"Ho so: {value}", "Ghi chu: Xet mot lan"], 200)
+        self.assertTrue(all(len(piece) <= 200 and piece.startswith(identity) for piece in pieces), pieces)
+        joined = " ".join(pieces)
+        for i in range(120):
+            self.assertRegex(joined, rf"\bgiay{i}\b")
+        self.assertIn("Ho so (tiếp):", joined)
+        self.assertIn("Ghi chu: Xet mot lan", joined)
 
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])

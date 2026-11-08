@@ -451,8 +451,77 @@ def _merge_wrapped_rows(rows: list[tuple[int, list[str]]]) -> list[tuple[int, li
     return merged
 
 
+_IDENTITY_PART_CHARS = 120
+_CONTINUED_LABEL = "(tiếp)"
+
+
+def _title_row_text(row: list, column_count: int) -> str:
+    """Dòng tên bảng: một ô gộp ngang toàn dòng, chỉ ô đầu có chữ và không phải số thứ tự."""
+    if column_count < 3 or not row:
+        return ""
+    cells = [normalize_text(cell) for cell in row]
+    first = cells[0]
+    if not first or any(cells[1:]) or first.lower() in _NUMBER_HEADERS:
+        return ""
+    if re.fullmatch(r"\d{1,3}\.?", first):
+        return ""
+    return first
+
+
+def _split_long_row(identity: str, parts: list[str], max_chars: int) -> list[str]:
+    """Chia một dòng bảng dài thành nhiều đoạn <= max_chars, mỗi đoạn đều mở đầu bằng `identity`.
+
+    Các phần "nhãn: giá trị" được xếp lần lượt; một phần dài hơn chỗ trống được cắt tại
+    khoảng trắng và phần sau mang nhãn "<nhãn> (tiếp)".
+    """
+    pieces: list[str] = []
+    current = identity
+    for part in parts:
+        candidate = f"{current}; {part}"
+        if len(candidate) <= max_chars:
+            current = candidate
+            continue
+        if current != identity:
+            pieces.append(current)
+            current = identity
+        label, _, value = part.partition(": ")
+        base_label = label
+        while len(f"{identity}; {label}: {value}") > max_chars:
+            room = max(20, max_chars - len(identity) - len(label) - 4)
+            cut = value.rfind(" ", 0, room)
+            if cut <= 0:
+                cut = room
+            pieces.append(f"{identity}; {label}: {value[:cut].strip()}")
+            value = value[cut:].strip()
+            label = f"{base_label} {_CONTINUED_LABEL}"
+        current = f"{identity}; {label}: {value}"
+    pieces.append(current)
+    return pieces
+
+
+def _row_pieces(prefix: str, parts: list[str], max_chars: int) -> list[str]:
+    """Một dòng bảng thành một hoặc nhiều đoạn văn; dòng dài giữ định danh (2 cột đầu) ở mọi đoạn."""
+    text = prefix + "; ".join(parts)
+    if len(text) <= max_chars or len(parts) < 2:
+        return [text]
+    identity_parts: list[str] = []
+    remaining: list[str] = []
+    for part in parts[:2]:
+        if len(part) > _IDENTITY_PART_CHARS:
+            identity_parts.append(part[:_IDENTITY_PART_CHARS].rstrip() + "…")
+            remaining.append(part)
+        else:
+            identity_parts.append(part)
+    remaining.extend(parts[2:])
+    return _split_long_row(prefix + "; ".join(identity_parts), remaining, max_chars)
+
+
 def _native_table_documents(
-    page: fitz.Page, file_path: Path, page_index: int, state: dict | None = None
+    page: fitz.Page,
+    file_path: Path,
+    page_index: int,
+    state: dict | None = None,
+    max_chars: int = 700,
 ) -> tuple[list[Document], list[fitz.Rect]]:
     """Keep native PDF table headers attached to their individual cells.
 
@@ -499,7 +568,10 @@ def _native_table_documents(
             header_end = 0
             raw_headers = [""] * column_count
         else:
-            caption = _table_caption(
+            title = _title_row_text(rows[0], column_count)
+            if title:
+                rows = rows[1:]
+            caption = title or _table_caption(
                 page, table.bbox, [other.bbox for other in tables if other is not table]
             )
             carried_first = ""
@@ -564,9 +636,24 @@ def _native_table_documents(
             if continuation and data_rows and not data_rows[0][1][0] and last_number:
                 data_rows[0][1][0] = last_number
                 continued_row_index = data_rows[0][0]
+        expect_header = False
         for row_index, values in data_rows:
             if not any(values):
                 continue
+            # Dòng tên nhóm giữa bảng (vd. "KHOA CHUYÊN MÔN CẦN LIÊN HỆ") theo sau là một
+            # dòng tiêu đề mới: đổi caption và nhãn cột cho các dòng phía dưới.
+            group_title = _title_row_text(values, column_count)
+            if group_title:
+                caption, prefix, expect_header = group_title, f"[{group_title}] ", True
+                continue
+            if expect_header:
+                expect_header = False
+                if values[0].lower() in _NUMBER_HEADERS:
+                    raw_headers = list(values)
+                    headers = [heading or f"Cột {column + 1}" for column, heading in enumerate(raw_headers)]
+                    group_of = list(range(column_count))
+                    grouped = False
+                    continue
             # Ô gộp dọc ở cột đầu (vd. "Đạt" bao trùm nhiều dòng) chỉ có giá trị ở dòng đầu tiên.
             if not values[0] and raw_headers[0].lower() not in {"tt", "stt"} and carried[0]:
                 values[0] = carried[0]
@@ -604,15 +691,19 @@ def _native_table_documents(
                         f"{headers[column]}: {values[column]}"
                         for column in range(column_count) if values[column]
                     ]
-                doc = _page_document(file_path, page_index, prefix + "; ".join(parts), "native_table")
-                doc.metadata.update(table_index=table_index, table_row=row_index)
-                if caption:
-                    doc.metadata["table_caption"] = caption
-                if continuation:
-                    doc.metadata["table_continued"] = True
-                if row_index == continued_row_index:
-                    doc.metadata["table_row_continued"] = True
-                table_documents.append(doc)
+                pieces = _row_pieces(prefix, parts, max_chars)
+                for part_number, piece in enumerate(pieces, start=1):
+                    doc = _page_document(file_path, page_index, piece, "native_table")
+                    doc.metadata.update(table_index=table_index, table_row=row_index)
+                    if len(pieces) > 1:
+                        doc.metadata["table_row_part"] = part_number
+                    if caption:
+                        doc.metadata["table_caption"] = caption
+                    if continuation:
+                        doc.metadata["table_continued"] = True
+                    if row_index == continued_row_index:
+                        doc.metadata["table_row_continued"] = True
+                    table_documents.append(doc)
         if table_documents:
             documents.extend(table_documents)
             bounds.append(fitz.Rect(table.bbox))
@@ -666,7 +757,7 @@ def _load_pdf_pages(
                 native_text = normalize_text(page.get_text("text"))
                 if len(native_text) >= settings.native_text_threshold:
                     table_documents, table_bounds = _native_table_documents(
-                        page, file_path, page_index, table_state
+                        page, file_path, page_index, table_state, settings.chunk_size
                     )
                     if table_documents:
                         prose = _native_text_outside_tables(page, table_bounds)
