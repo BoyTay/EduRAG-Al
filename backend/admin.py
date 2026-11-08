@@ -9,6 +9,7 @@ import threading
 import uuid
 import zipfile
 from dataclasses import dataclass
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Any, Optional
@@ -19,7 +20,8 @@ from sqlalchemy.orm import Session
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
-from db import DocumentMetadata, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity
+from chunk_inspection import list_document_chunks
+from db import DocumentMetadata, as_utc_iso, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity
 from auth import get_current_user, require_admin
 from document_ingestion import (
     DocumentIngestionError,
@@ -46,6 +48,10 @@ class DocumentMetadataUpdate(BaseModel):
     document_year: Optional[int] = Field(None, ge=1900, le=2100)
     summary: Optional[str] = Field(None, max_length=2000)
     status: Optional[str] = Field(None, max_length=30)
+
+
+class DocumentReviewRequest(BaseModel):
+    reviewed: bool
 
 # Import rag_chain_instance sẽ được inject sau
 _rag_chain = None
@@ -360,6 +366,8 @@ def get_documents(db: Session = Depends(get_db), _: dict = Depends(get_current_u
                 "document_year": doc.document_year,
                 "summary": doc.summary,
                 "status": doc.status or "active",
+                "reviewed_at": as_utc_iso(doc.reviewed_at) or None,
+                "reviewed_by": doc.reviewed_by,
             }
             for doc in docs
         ],
@@ -471,6 +479,52 @@ def update_document(
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu")
     log_activity(db, "document_updated", "document", document.display_name or document.filename, current_user["name"], current_user["role"])
     return {"success": True, "filename": document.filename}
+
+
+def _get_document_or_404(db: Session, filename: str) -> DocumentMetadata:
+    safe_filename = normalize_document_filename(filename)
+    document = db.query(DocumentMetadata).filter(DocumentMetadata.filename == safe_filename).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu")
+    return document
+
+
+@router.get("/documents/{filename}/chunks")
+def get_document_chunks(
+    filename: str,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """Các đoạn đã lập chỉ mục của một tài liệu, theo thứ tự nạp, kèm cờ nghi lỗi."""
+    document = _get_document_or_404(db, filename)
+    if _rag_chain is None or _rag_chain.vector_store is None:
+        raise HTTPException(status_code=503, detail="Chỉ mục chưa sẵn sàng")
+    chunks = list_document_chunks(_rag_chain.vector_store._collection, document.filename)
+    return {
+        "filename": document.filename,
+        "chunks": chunks,
+        "total": len(chunks),
+        "flagged": sum(bool(chunk["flags"]) for chunk in chunks),
+    }
+
+
+@router.post("/documents/{filename}/review")
+def set_document_review(
+    filename: str,
+    request: DocumentReviewRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Đánh dấu (hoặc bỏ đánh dấu) tài liệu đã được admin đối chiếu với PDF gốc."""
+    document = _get_document_or_404(db, filename)
+    document.reviewed_at = datetime.utcnow() if request.reviewed else None
+    document.reviewed_by = current_user["email"] if request.reviewed else None
+    db.commit()
+    return {
+        "filename": document.filename,
+        "reviewed_at": as_utc_iso(document.reviewed_at) or None,
+        "reviewed_by": document.reviewed_by,
+    }
 
 
 @router.post("/upload-multiple")
