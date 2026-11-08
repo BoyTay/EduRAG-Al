@@ -23,6 +23,7 @@ os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from resources import ResourceMonitor, process_sampler, read_ollama_model, system_info  # noqa: E402
 from scoring import load_cases, score_case, summarize  # noqa: E402
 
 DEFAULT_CASES = Path(__file__).resolve().parent / "table_cases.json"
@@ -45,6 +46,21 @@ def _print_summary(summary: dict[str, Any]) -> None:
         print(f"  {category:<20}{accuracy:.0%}")
 
 
+def _print_resources(resources: dict[str, Any]) -> None:
+    print("\n=== Tài nguyên ===")
+    system = resources["system"]
+    print(f"Máy: {system['cpu']} ({system['cpu_logical_cores']} luồng), RAM {system['ram_total_mb']} MB, "
+          f"GPU {system['gpu_name']} {system['gpu_mem_total_mb']} MB")
+    print(f"RAM tiến trình RAG sau khi nạp model: {resources['rss_after_init_mb']} MB")
+    usage = resources["during_run"]
+    print(f"Trong lúc chạy: RAM đỉnh {usage['peak_rss_mb']} MB, CPU trung bình {usage['mean_cpu_percent']}% "
+          f"(đỉnh {usage['peak_cpu_percent']}%), VRAM GPU đỉnh {usage['peak_gpu_mem_used_mb']} MB")
+    llm = resources["ollama_model"]
+    if llm:
+        print(f"LLM {llm['model']} ({llm['parameter_size']}, {llm['quantization']}, ctx {llm['context_length']}): "
+              f"{llm['size_mb']} MB, trên GPU {llm['vram_mb']} MB ({llm['gpu_share']:.0%})")
+
+
 async def _run(args: argparse.Namespace) -> int:
     from rag_chain import LLM_MODEL, RAGChain
 
@@ -53,8 +69,10 @@ async def _run(args: argparse.Namespace) -> int:
         selected = set(args.case_id)
         cases = [case for case in cases if case["id"] in selected]
 
+    sampler = process_sampler()
     chain = RAGChain()
     chain.initialize()
+    rss_after_init = sampler()["rss_mb"]
     output = Path(args.output)
     payload: dict[str, Any] = {
         "started_at": datetime.now(timezone.utc).isoformat(),
@@ -64,6 +82,7 @@ async def _run(args: argparse.Namespace) -> int:
     }
     runs = [(repeat, index, case) for repeat in range(1, args.repeats + 1) for index, case in enumerate(cases, start=1)]
     payload["repeats"] = args.repeats
+    monitor = ResourceMonitor(interval=args.sample_interval, sample_fn=sampler).__enter__()
     for repeat, index, case in runs:
         print(f"[lần {repeat}/{args.repeats} | {index}/{len(cases)}] {case['id']}", flush=True)
         started = time.perf_counter()
@@ -85,10 +104,20 @@ async def _run(args: argparse.Namespace) -> int:
         payload["summary"] = summarize(payload["results"])
         _write(output, payload)
 
+    monitor.__exit__(None, None, None)
+    from rag_chain import OLLAMA_BASE_URL
+
+    payload["resources"] = {
+        "system": system_info(),
+        "rss_after_init_mb": rss_after_init,
+        "during_run": monitor.summary(),
+        "ollama_model": read_ollama_model(OLLAMA_BASE_URL, LLM_MODEL),
+    }
     payload["finished_at"] = datetime.now(timezone.utc).isoformat()
     payload["summary"] = summarize(payload["results"])
     _write(output, payload)
     _print_summary(payload["summary"])
+    _print_resources(payload["resources"])
     print(f"\nKết quả: {output}")
     return 0
 
@@ -104,6 +133,7 @@ def main() -> int:
     parser.add_argument("--case-id", action="append")
     parser.add_argument("--timeout", type=float, default=180.0)
     parser.add_argument("--repeats", type=int, default=1, help="Chạy cả bộ nhiều lần để đo độ dao động của LLM")
+    parser.add_argument("--sample-interval", type=float, default=0.5, help="Chu kỳ lấy mẫu RAM/CPU/VRAM (giây)")
     return asyncio.run(_run(parser.parse_args()))
 
 
