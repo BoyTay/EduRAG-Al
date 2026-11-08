@@ -369,6 +369,37 @@ class DocumentIngestionTests(unittest.TestCase):
         self.assertTrue(part.metadata.get("table_row_continued"))
         self.assertTrue(any("TT: 4; Doi tuong: Sinh vien khuyet tat" in t for t in self._table_texts(result)))
 
+    def test_two_column_text_layout_stays_as_prose(self):
+        lines = (
+            "Doan truong la co so Doan", "tuong duong cap huyen truc thuoc",
+            "tinh doan Lam Dong va co", "14 Doan khoa voi 159 Chi doan",
+            "co so truc thuoc voi quy mo", "11.670 doan vien",
+        )
+        result = self._table_pdf("prose_layout.pdf", [{
+            "xs": (40, 300, 480),
+            "ys": (40, 65, 90, 115, 140, 165, 190),
+            "rows": tuple((line, "") for line in lines),
+        }])
+        self.assertEqual(self._table_texts(result), [])
+        prose = " ".join(c.page_content for c in result.chunks if c.metadata["extraction_method"] == "native")
+        self.assertIn("Doan truong la co so Doan tuong duong cap huyen", prose)
+        self.assertIn("159 Chi doan", prose)
+
+    def test_real_two_column_table_is_kept(self):
+        result = self._table_pdf("two_columns.pdf", [{
+            "xs": (40, 300, 480),
+            "ys": (40, 65, 90, 115, 140),
+            "rows": (
+                ("Nganh dao tao", "Chuan dau ra"),
+                ("Ngon ngu Anh", "5/6"),
+                ("Cac nganh khac, he ky su", "4/6"),
+                ("Cac nganh khac, he cu nhan", "3/6"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 3, texts)
+        self.assertIn("Nganh dao tao: Ngon ngu Anh; Chuan dau ra: 5/6", texts[0])
+
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])
         fake = FakeOCR()

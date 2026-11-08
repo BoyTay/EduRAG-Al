@@ -409,6 +409,25 @@ def _starts_with_row_number(rows: list) -> bool:
     return bool(re.fullmatch(r"\d{1,3}\.?", first))
 
 
+_PROSE_SINGLE_CELL_RATIO = 0.7
+
+
+def _looks_like_prose_layout(rows: list, column_count: int) -> bool:
+    """Văn bản trình bày 2 cột (ảnh + chữ, khung giới thiệu) bị nhận nhầm là bảng.
+
+    Bảng thật có đa số dòng điền đủ hai ô; ở bố cục văn bản, phần lớn dòng chỉ có
+    chữ ở một ô vì đó là các dòng của cùng một đoạn văn.
+    """
+    if column_count != 2:
+        return False
+    filled = [sum(bool(normalize_text(cell)) for cell in row) for row in rows]
+    non_empty = [count for count in filled if count]
+    if not non_empty:
+        return False
+    single = sum(count == 1 for count in non_empty)
+    return single / len(non_empty) >= _PROSE_SINGLE_CELL_RATIO
+
+
 def _is_numbered_table(raw_headers: list[str]) -> bool:
     return bool(raw_headers) and normalize_text(raw_headers[0]).lower() in _NUMBER_HEADERS
 
@@ -456,6 +475,9 @@ def _native_table_documents(
         rows = table.extract()
         column_count = table.col_count
         if column_count < 2 or len(rows) < 1:
+            continue
+        if _looks_like_prose_layout(rows, column_count):
+            # Không tạo tài liệu bảng và không cắt vùng này khỏi phần văn xuôi.
             continue
         previous = state.get("last") if table_index == 0 else None
         continuation = len(rows) >= 1 and _is_table_continuation(page, table, rows, previous, page_index)
