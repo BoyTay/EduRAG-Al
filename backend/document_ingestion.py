@@ -436,12 +436,14 @@ def _merge_wrapped_rows(rows: list[tuple[int, list[str]]]) -> list[tuple[int, li
     """Gộp các dòng vật lý của một ô nhiều dòng vào dòng có số thứ tự phía trên.
 
     Trong bảng đánh số (cột đầu là TT/STT), mỗi dòng thật đều có số; PyMuPDF đôi khi
-    tách ô nhiều dòng thành các "dòng" có cột TT trống. Dòng đầu tiên không có dòng
-    phía trên để gộp nên được giữ nguyên.
+    tách ô nhiều dòng thành các "dòng" có cột TT trống. Dòng con hợp lệ dưới một ô TT
+    gộp dọc (vd. TOEFL, IELTS cùng thuộc "Tiếng Anh") điền từ nửa số cột trở lên nên
+    không bị gộp. Dòng đầu tiên không có dòng phía trên để gộp nên được giữ nguyên.
     """
     merged: list[tuple[int, list[str]]] = []
     for row_index, values in rows:
-        if merged and not values[0] and any(values):
+        filled = sum(bool(value) for value in values)
+        if merged and not values[0] and filled and filled * 2 < len(values):
             target = merged[-1][1]
             for column, value in enumerate(values):
                 if value:
@@ -627,7 +629,9 @@ def _native_table_documents(
             ])
             for row_index, row in enumerate(rows[header_end:], start=header_end)
         ]
-        numbered = _is_numbered_table(raw_headers)
+        numbered = _is_numbered_table(raw_headers) or (
+            not continuation and header_end == 0 and _starts_with_row_number(rows)
+        )
         continued_row_index = None
         last_number = previous.get("last_number", "") if continuation else ""
         if numbered:

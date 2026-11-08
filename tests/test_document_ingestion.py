@@ -308,6 +308,35 @@ class DocumentIngestionTests(unittest.TestCase):
         self.assertIn("Ho so: 1. Don de nghi (theo mau phu luc 1) 2. Ban sao giay khai sinh", texts[0])
         self.assertIn("Doi tuong: Sinh vien khuyet tat", texts[0])
 
+    def test_full_sub_rows_under_vertically_merged_number_are_not_merged(self):
+        result = self._table_pdf("sub_rows.pdf", [{
+            "xs": (20, 50, 190, 330, 500),
+            "ys": (40, 65, 90, 115),
+            "rows": (
+                ("TT", "Ngon ngu", "Chung chi", "Diem"),
+                ("1", "Tieng Anh", "TOEFL iBT", "46-93"),
+                ("", "", "IELTS", "5.5-6.5"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("Chung chi: IELTS; Diem: 5.5-6.5", texts[1])
+        self.assertNotIn("TOEFL", texts[1])
+
+    def test_wrapped_rows_in_headerless_numbered_table_are_merged(self):
+        result = self._table_pdf("headerless_wrapped.pdf", [{
+            "xs": (20, 50, 190, 360, 500),
+            "ys": (60, 85, 110, 135),
+            "rows": (
+                ("2", "Sinh vien khuyet tat", "1. Don xin nhan tro cap xa", "100.000"),
+                ("", "", "hoi (theo mau phu luc 4)", ""),
+                ("3", "Sinh vien ho ngheo", "Giay chung nhan ho ngheo", "100.000"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("1. Don xin nhan tro cap xa hoi (theo mau phu luc 4)", texts[0])
+
     def test_full_rows_with_blank_first_cell_in_unnumbered_table_are_not_merged(self):
         result = self._table_pdf("vertical_merge.pdf", [{
             "xs": (40, 160, 300, 460),
