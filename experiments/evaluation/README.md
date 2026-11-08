@@ -11,6 +11,7 @@ Bộ câu hỏi kiểm thử phục vụ mục 6 của đề tài: đo **độ �
 | `run_eval.py` | Chạy bộ câu hỏi qua đúng pipeline RAG và ghi kết quả JSON |
 | `dump_chunks.py` | Xuất các chunk thực tế đang lưu trong Chroma của một tài liệu |
 | `audit_tables.py` | Đối chiếu bảng thô trong PDF với đoạn text sẽ được lập chỉ mục |
+| `resources.py` | Đo RAM, CPU, VRAM và thông tin model Ollama trong lúc chạy (có test: `tests/test_evaluation_resources.py`) |
 
 ## Cách chạy
 
@@ -77,6 +78,29 @@ Chạy ngày 2026-11-08 trên chỉ mục đang hoạt động (`edurag_rebuild_
 - **Kế hoạch 1340 (PDF scan, Tesseract):** 20 chunk.
   - Trang 1–4 (văn bản) đọc tốt. Có lỗi dấu nhỏ như `Tư do`, `KÉ HOẠCH`, `ĐÓI TƯỢNG`, `Tô chức`, nhưng ngày tháng và số tiền giữ đúng (24/8/2026–28/8/2026; 5.000.000 và 7.000.000 đồng; hạn 11h00 ngày 20/8/2026).
   - **Trang 5 là bảng phân bổ, OCR ra chữ rác hoàn toàn** (`š|š|š|…`). Mọi câu hỏi về bảng này hiện không thể trả lời đúng. Đây là giới hạn của OCR trên bảng scan, nằm ngoài phạm vi sửa bộ đọc bảng PDF gốc.
+
+## Tài nguyên sử dụng
+
+Đo ngày 2026-11-08 bằng `run_eval.py --repeats 3` (84 lượt hỏi, lấy mẫu mỗi 0,5 giây, 760 mẫu), file `results_resources_x3.json`.
+
+**Máy đo:** laptop Intel thế hệ 13 (24 luồng), RAM 24 GB, GPU NVIDIA RTX 5060 Laptop 8 GB. Model embedding và reranker chạy trên **CPU** (torch bản CPU, giống image Docker). GPU chỉ dành cho LLM trong Ollama.
+
+| Thành phần | Mức dùng |
+|---|---|
+| LLM `qwen3.5:9b` (9,7B tham số, Q4_K_M, ngữ cảnh 6144) | 5,2 GB, nằm **100% trên GPU** |
+| VRAM toàn GPU lúc cao nhất | 7,4 / 8,0 GB (gồm cả phần màn hình và ứng dụng khác dùng) |
+| RAM tiến trình RAG sau khi nạp embedding + reranker | 1,1 GB |
+| RAM tiến trình RAG lúc cao nhất khi trả lời | 3,6 GB |
+| RAM container backend lúc nghỉ (`docker stats`) | 1,1 GB |
+| RAM container frontend (Nginx) | 19 MB |
+| CPU tiến trình RAG (trung bình / đỉnh, % toàn máy) | 35% / 72% |
+| Thời gian phản hồi p50 / p95 | 5,4 s / 7,0 s |
+| Đúng giá trị / đúng nguồn ở lượt đo này | 88,1% / 100% |
+
+**Cách hiểu:**
+- RAM tăng từ 1,1 GB lên 3,6 GB khi trả lời, do reranker `bge-reranker-v2-m3` chấm tới 12 đoạn mỗi câu hỏi trên CPU. Có thể tắt reranker (`RERANKER_MODEL=` để trống) để giảm RAM và CPU, đổi lại độ chính xác thấp hơn ở câu tra cứu trong bảng.
+- `LLM_NUM_CTX=6144` được chọn để model nằm gọn trong GPU 8 GB (100% trên GPU). Ngữ cảnh 8192 làm khoảng 12% model tràn sang CPU và chậm hơn (ghi chú trong `rag_chain.py`).
+- Cấu hình tối thiểu suy ra: GPU 8 GB VRAM và RAM 16 GB là đủ chạy toàn bộ hệ thống cục bộ. Máy không có GPU vẫn chạy được nhưng Ollama sẽ dùng CPU và phản hồi chậm hơn nhiều; con số này chưa được đo.
 
 ## Kết quả trước/sau
 
