@@ -143,6 +143,16 @@ class InspectionEndpointTests(unittest.TestCase):
         self.assertIsNone(cleared["reviewed_at"])
         self.assertIsNone(cleared["reviewed_by"])
 
+    def test_reingesting_a_document_clears_its_review_mark(self):
+        from db import add_document_metadata
+
+        self.admin.set_document_review(
+            "a.pdf", self.admin.DocumentReviewRequest(reviewed=True), db=self.db, current_user=self.user
+        )
+        document = add_document_metadata(self.db, "a.pdf", "/data/a.pdf", "pdf", chunk_count=5)
+        self.assertIsNone(document.reviewed_at)
+        self.assertIsNone(document.reviewed_by)
+
     def test_init_db_adds_review_columns_to_old_table(self):
         import tempfile
         from pathlib import Path

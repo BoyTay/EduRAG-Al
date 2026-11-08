@@ -410,6 +410,7 @@ def _starts_with_row_number(rows: list) -> bool:
 
 
 _PROSE_SINGLE_CELL_RATIO = 0.7
+_HEADER_CELL_MAX_CHARS = 40
 
 
 def _looks_like_prose_layout(rows: list, column_count: int) -> bool:
@@ -419,6 +420,11 @@ def _looks_like_prose_layout(rows: list, column_count: int) -> bool:
     chữ ở một ô vì đó là các dòng của cùng một đoạn văn.
     """
     if column_count != 2:
+        return False
+    # Dòng đầu ngắn, đủ hai ô là tiêu đề của bảng thật (vd. "Khoa | Ngành"); các dòng chỉ
+    # có một ô phía dưới là ô gộp dọc, được xử lý bằng logic mang giá trị xuống.
+    first = [normalize_text(cell) for cell in rows[0]] if rows else []
+    if len(first) == 2 and all(first) and all(len(cell) <= _HEADER_CELL_MAX_CHARS for cell in first):
         return False
     filled = [sum(bool(normalize_text(cell)) for cell in row) for row in rows]
     non_empty = [count for count in filled if count]
@@ -470,12 +476,25 @@ def _title_row_text(row: list, column_count: int) -> str:
     return first
 
 
+def _next_row_is_header(non_empty_rows: list[list[str]], values: list[str]) -> bool:
+    """Dòng ngay sau `values` (trong các dòng có chữ) bắt đầu bằng TT/STT."""
+    for index, row in enumerate(non_empty_rows):
+        if row is values:
+            following = non_empty_rows[index + 1] if index + 1 < len(non_empty_rows) else None
+            return bool(following) and following[0].lower() in _NUMBER_HEADERS
+    return False
+
+
 def _split_long_row(identity: str, parts: list[str], max_chars: int) -> list[str]:
     """Chia một dòng bảng dài thành nhiều đoạn <= max_chars, mỗi đoạn đều mở đầu bằng `identity`.
 
     Các phần "nhãn: giá trị" được xếp lần lượt; một phần dài hơn chỗ trống được cắt tại
     khoảng trắng và phần sau mang nhãn "<nhãn> (tiếp)".
     """
+    # Định danh quá dài (vd. caption từ một dòng ghi chú gộp ngang) không được chiếm hết chỗ.
+    identity_limit = max_chars // 2
+    if len(identity) > identity_limit:
+        identity = identity[: identity_limit - 1].rstrip() + "…"
     pieces: list[str] = []
     current = identity
     for part in parts:
@@ -488,8 +507,8 @@ def _split_long_row(identity: str, parts: list[str], max_chars: int) -> list[str
             current = identity
         label, _, value = part.partition(": ")
         base_label = label
-        while len(f"{identity}; {label}: {value}") > max_chars:
-            room = max(20, max_chars - len(identity) - len(label) - 4)
+        while value and len(f"{identity}; {label}: {value}") > max_chars:
+            room = max(1, max_chars - len(identity) - len(label) - 4)
             cut = value.rfind(" ", 0, room)
             if cut <= 0:
                 cut = room
@@ -630,24 +649,29 @@ def _native_table_documents(
             for row_index, row in enumerate(rows[header_end:], start=header_end)
         ]
         numbered = _is_numbered_table(raw_headers) or (
-            not continuation and header_end == 0 and _starts_with_row_number(rows)
+            bool(previous.get("numbered")) if continuation
+            else header_end == 0 and _starts_with_row_number(rows)
         )
         continued_row_index = None
         last_number = previous.get("last_number", "") if continuation else ""
-        if numbered:
+        # Bảng nhiều bậc có dòng con chỉ điền một vài cột bậc (vd. VSTEP chỉ có Bậc 3):
+        # đó là dòng thật, không phải dòng vỡ.
+        if numbered and not separate_levels:
             data_rows = _merge_wrapped_rows(data_rows)
             # Dòng đầu phần tiếp không có số: đó là phần còn lại của dòng cuối trang trước.
             if continuation and data_rows and not data_rows[0][1][0] and last_number:
                 data_rows[0][1][0] = last_number
                 continued_row_index = data_rows[0][0]
         expect_header = False
-        for row_index, values in data_rows:
+        non_empty_rows = [values for _, values in data_rows if any(values)]
+        for position, (row_index, values) in enumerate(data_rows):
             if not any(values):
                 continue
-            # Dòng tên nhóm giữa bảng (vd. "KHOA CHUYÊN MÔN CẦN LIÊN HỆ") theo sau là một
-            # dòng tiêu đề mới: đổi caption và nhãn cột cho các dòng phía dưới.
+            # Dòng tên nhóm giữa bảng (vd. "KHOA CHUYÊN MÔN CẦN LIÊN HỆ") chỉ được nhận khi
+            # dòng kế tiếp là một dòng tiêu đề mới (TT/STT); nếu không, đó là dữ liệu thường
+            # như ô gộp dọc "Không đạt" của bảng xếp loại.
             group_title = _title_row_text(values, column_count)
-            if group_title:
+            if group_title and _next_row_is_header(non_empty_rows, values):
                 caption, prefix, expect_header = group_title, f"[{group_title}] ", True
                 continue
             if expect_header:
@@ -718,6 +742,7 @@ def _native_table_documents(
                 "caption": caption,
                 "carried_first": carried[0],
                 "last_number": last_number,
+                "numbered": numbered,
                 "ends_low": table.bbox[3] >= page.rect.height - _CONTINUATION_BOTTOM_PT,
             }
     if last_on_this_page is not None:

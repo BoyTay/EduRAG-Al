@@ -600,6 +600,9 @@ def add_document_metadata(
         existing.document_year = document_year or existing.document_year
         existing.summary = summary or existing.summary
         existing.status = status or existing.status
+        # Nội dung vừa được nạp lại nên lần kiểm tra trước không còn đúng.
+        existing.reviewed_at = None
+        existing.reviewed_by = None
         if commit:
             db.commit()
         else:
