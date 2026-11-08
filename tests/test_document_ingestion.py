@@ -272,6 +272,56 @@ class DocumentIngestionTests(unittest.TestCase):
         self.assertTrue(rows)
         self.assertFalse(any("table_caption" in c.metadata for c in rows))
 
+    FILLER = "Van ban noi dung de trang co du chu native khong can nhan dang OCR."
+
+    def _table_pdf(self, name, pages):
+        """Mỗi phần tử của `pages` là dict(xs, ys, rows, height=420, top_text=None)."""
+        path = self.root / name
+        with fitz.open() as document:
+            for spec in pages:
+                page = document.new_page(width=spec.get("width", 520), height=spec.get("height", 420))
+                page.insert_text((40, spec.get("filler_y", 400)), self.FILLER, fontsize=8)
+                if spec.get("top_text"):
+                    page.insert_text((40, spec["ys"][0] - 8), spec["top_text"], fontsize=9)
+                self._grid(page, spec["xs"], spec["ys"])
+                self._write_cells(page, spec["xs"], spec["ys"], spec["rows"])
+            document.save(path)
+        return load_and_chunk_document(path, settings=self.settings, cache=self.cache)
+
+    @staticmethod
+    def _table_texts(result):
+        return [c.page_content for c in result.chunks if c.metadata["extraction_method"] == "native_table"]
+
+    def test_wrapped_cell_lines_are_merged_into_their_numbered_row(self):
+        result = self._table_pdf("wrapped.pdf", [{
+            "xs": (20, 50, 190, 360, 500),
+            "ys": (40, 65, 90, 115, 140),
+            "rows": (
+                ("TT", "Doi tuong", "Ho so", "Ghi chu"),
+                ("1", "Sinh vien khuyet tat", "1. Don de nghi", "Xet 1 lan"),
+                ("", "", "(theo mau phu luc 1)", ""),
+                ("", "", "2. Ban sao giay khai sinh", ""),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 1, texts)
+        self.assertIn("Ho so: 1. Don de nghi (theo mau phu luc 1) 2. Ban sao giay khai sinh", texts[0])
+        self.assertIn("Doi tuong: Sinh vien khuyet tat", texts[0])
+
+    def test_full_rows_with_blank_first_cell_in_unnumbered_table_are_not_merged(self):
+        result = self._table_pdf("vertical_merge.pdf", [{
+            "xs": (40, 160, 300, 460),
+            "ys": (40, 65, 90, 115),
+            "rows": (
+                ("Xep loai", "Muc", "Thang diem 4"),
+                ("Dat", "Gioi", "Tu 3,20 den 3,59"),
+                ("", "Kha", "Tu 2,50 den 3,19"),
+            ),
+        }])
+        texts = self._table_texts(result)
+        self.assertEqual(len(texts), 2, texts)
+        self.assertIn("Xep loai: Dat; Muc: Kha", texts[1])
+
     def test_scan_pdf_calls_fake_ocr_and_keeps_zero_based_page(self):
         path = self._pdf("scan.pdf", ["scan"])
         fake = FakeOCR()

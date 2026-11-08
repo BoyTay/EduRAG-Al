@@ -394,6 +394,32 @@ def _is_table_continuation(
     return [cell.lower() for cell in first_row] != repeated_header
 
 
+_NUMBER_HEADERS = {"tt", "stt"}
+
+
+def _is_numbered_table(raw_headers: list[str]) -> bool:
+    return bool(raw_headers) and normalize_text(raw_headers[0]).lower() in _NUMBER_HEADERS
+
+
+def _merge_wrapped_rows(rows: list[tuple[int, list[str]]]) -> list[tuple[int, list[str]]]:
+    """Gộp các dòng vật lý của một ô nhiều dòng vào dòng có số thứ tự phía trên.
+
+    Trong bảng đánh số (cột đầu là TT/STT), mỗi dòng thật đều có số; PyMuPDF đôi khi
+    tách ô nhiều dòng thành các "dòng" có cột TT trống. Dòng đầu tiên không có dòng
+    phía trên để gộp nên được giữ nguyên.
+    """
+    merged: list[tuple[int, list[str]]] = []
+    for row_index, values in rows:
+        if merged and not values[0] and any(values):
+            target = merged[-1][1]
+            for column, value in enumerate(values):
+                if value:
+                    target[column] = f"{target[column]} {value}".strip()
+            continue
+        merged.append((row_index, list(values)))
+    return merged
+
+
 def _native_table_documents(
     page: fitz.Page, file_path: Path, page_index: int, state: dict | None = None
 ) -> tuple[list[Document], list[fitz.Rect]]:
@@ -478,12 +504,17 @@ def _native_table_documents(
         carried[0] = carried_first
         table_documents: list[Document] = []
         prefix = f"[{caption}] " if caption else ""
-        for row_index, row in enumerate(rows[header_end:], start=header_end):
-            values = [
+        data_rows = [
+            (row_index, [
                 re.sub(r"(?<=\d)-\s+(?=\d)", "-", normalize_text(row[column]))
                 if column < len(row) else ""
                 for column in range(column_count)
-            ]
+            ])
+            for row_index, row in enumerate(rows[header_end:], start=header_end)
+        ]
+        if _is_numbered_table(raw_headers):
+            data_rows = _merge_wrapped_rows(data_rows)
+        for row_index, values in data_rows:
             if not any(values):
                 continue
             # Ô gộp dọc ở cột đầu (vd. "Đạt" bao trùm nhiều dòng) chỉ có giá trị ở dòng đầu tiên.
