@@ -111,6 +111,22 @@ class LoadCasesTests(unittest.TestCase):
             load_cases(self._write([incomplete]))
         self.assertIn("c2", str(missing.exception))
 
+    def test_table_cases_file_is_valid(self):
+        cases = load_cases(REPO_ROOT / "experiments" / "evaluation" / "table_cases.json")
+        self.assertEqual(len(cases), 28)
+        counts = {}
+        for case in cases:
+            counts[case["category"]] = counts.get(case["category"], 0) + 1
+        self.assertEqual(counts, {
+            "simple_table": 8, "wrapped_rows": 3, "page_continuation": 3,
+            "prose_layout": 3, "labels": 3, "ocr_scan": 4, "refusal": 4,
+        })
+        for case in cases:
+            if case["should_refuse"]:
+                self.assertEqual(case["expected_values"], [], case["id"])
+            else:
+                self.assertTrue(case["expected_values"] and case["pages"], case["id"])
+
     def test_load_cases_returns_valid_cases(self):
         cases = load_cases(self._write([make_case(), make_case(id="c2")]))
         self.assertEqual([case["id"] for case in cases], ["c1", "c2"])

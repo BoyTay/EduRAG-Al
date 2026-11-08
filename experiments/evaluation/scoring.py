@@ -1,8 +1,8 @@
 """Chấm điểm bộ câu hỏi kiểm thử EduRAG (thuần Python, không gọi model).
 
 Mỗi case có giá trị bắt buộc (`expected_values`), giá trị cấm (`forbidden`),
-tài liệu/trang nguồn mong đợi và cờ `should_refuse`. Trang dùng chỉ số 0-based
-giống metadata của chunk.
+tài liệu/trang nguồn mong đợi và cờ `should_refuse`. Trang bắt đầu từ 1, giống
+nguồn mà RAG trả về (`extract_sources` cộng 1 vào metadata `page`).
 """
 
 from __future__ import annotations
