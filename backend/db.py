@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, Float, create_engine, Index, func
+    Column, Integer, String, Text, DateTime, Float, create_engine, Index, UniqueConstraint, func
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 from sqlalchemy.pool import StaticPool
@@ -99,6 +99,26 @@ class DocumentMetadata(Base):
     # Admin đã đối chiếu các đoạn trích ra với PDF gốc (trang kiểm tra dữ liệu nạp).
     reviewed_at = Column(DateTime, nullable=True)
     reviewed_by = Column(String(100), nullable=True)
+
+
+class PageReview(Base):
+    """Quyết định của admin cho một trang scan: xác nhận chữ OCR đúng, hoặc thay bằng bản sửa tay.
+
+    Khóa theo mã băm nội dung file (không theo tên) để bản sửa không áp nhầm sang file khác cùng tên,
+    và vẫn dùng được khi tạo lại chỉ mục hoặc nạp lại đúng file đó.
+    """
+    __tablename__ = "page_reviews"
+    __table_args__ = (UniqueConstraint("file_sha256", "page_index", name="uq_page_reviews_file_page"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_sha256 = Column(String(64), nullable=False, index=True)
+    page_index = Column(Integer, nullable=False)
+    status = Column(String(20), nullable=False)  # "confirmed" | "corrected"
+    corrected_text = Column(Text, nullable=True)
+    original_text = Column(Text, nullable=True)
+    filename = Column(String(255), nullable=False)
+    reviewed_by = Column(String(100), nullable=False)
+    reviewed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class AdminUser(Base):
@@ -666,6 +686,70 @@ def update_document_metadata(db: Session, filename: str, **values) -> Optional[D
 def list_documents(db: Session) -> list[DocumentMetadata]:
     """Liệt kê tất cả tài liệu đã nạp."""
     return db.query(DocumentMetadata).order_by(DocumentMetadata.uploaded_at.desc()).all()
+
+
+# ─── Page reviews (bản sửa / xác nhận trang scan) ─────────────────────────────
+
+def get_page_review_rows(db: Session, file_sha256: str) -> dict[int, PageReview]:
+    rows = db.query(PageReview).filter(PageReview.file_sha256 == file_sha256).all()
+    return {row.page_index: row for row in rows}
+
+
+def get_page_overrides(db: Session, file_sha256: str) -> dict:
+    """page_index → PageOverride, để truyền vào load_and_chunk_document."""
+    from page_review import PageOverride  # nhập muộn: db được dùng rộng rãi, tránh kéo theo OCR
+
+    return {
+        page_index: PageOverride(row.status, row.corrected_text if row.status == "corrected" else None)
+        for page_index, row in get_page_review_rows(db, file_sha256).items()
+    }
+
+
+def upsert_page_review(
+    db: Session,
+    file_sha256: str,
+    page_index: int,
+    status: str,
+    filename: str,
+    reviewed_by: str,
+    original_text: Optional[str],
+    corrected_text: Optional[str] = None,
+) -> PageReview:
+    """Ghi (hoặc ghi đè) quyết định cho một trang. Chỉ flush; người gọi commit sau khi nạp lại thành công."""
+    row = (
+        db.query(PageReview)
+        .filter(PageReview.file_sha256 == file_sha256, PageReview.page_index == page_index)
+        .first()
+    )
+    if row is None:
+        row = PageReview(file_sha256=file_sha256, page_index=page_index)
+        db.add(row)
+    row.status = status
+    row.corrected_text = corrected_text if status == "corrected" else None
+    row.original_text = original_text
+    row.filename = filename
+    row.reviewed_by = reviewed_by
+    row.reviewed_at = datetime.utcnow()
+    db.flush()
+    return row
+
+
+def delete_page_review(db: Session, file_sha256: str, page_index: int, status: str) -> bool:
+    """Xóa quyết định của trang nếu đúng loại `status`. Chỉ flush."""
+    row = (
+        db.query(PageReview)
+        .filter(
+            PageReview.file_sha256 == file_sha256,
+            PageReview.page_index == page_index,
+            PageReview.status == status,
+        )
+        .first()
+    )
+    if row is None:
+        return False
+    db.delete(row)
+    db.flush()
+    return True
 
 
 def get_retrievable_document_filenames(db: Session) -> list[str]:
