@@ -1,0 +1,56 @@
+{
+  "source": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "page": 5,
+  "dpi": 300,
+  "rotation": 90,
+  "methods": {
+    "psm6 (cũ)": {
+      "unit_found": 0,
+      "leader_found": 0,
+      "unit_with_leader_same_line": 0,
+      "unit_with_date_same_line": 0,
+      "chars": 383,
+      "rows_total": 15,
+      "confidence": 0.7499573976712871,
+      "model": "tesseract-vie",
+      "seconds": 0.51,
+      "text": "BỘ GIÁO DỤC VÀ ĐÀO TẠO\nTRƯỜNG ĐẠI HỌC ĐÀ LẠT '\nDANH SÁCH PHÂẦN BÓ ĐỊA ĐIÊM, THỜI GIAN VÀ PHÂN CÔNG\nLÃNH ĐẠO PHÒNG CHỨC NĂNG, TRUNG TÂM, ĐOÀN TN - HSV THAM DỰ\n“TUẦN ĐỊNH HƯỚNG” DÀNH CHO TÂN SINH VIÊN K50 NĂM HỌC 2026-2027\nL6 |Ehoaiaahoe\n3 |KhoaKimt-Quảngikehdeamh | HHTV 080-10n0|_ \"Ungtân Tuyến hồng và Hồ mỹ, | an Long\nL 9 [Khoa Xã hộ học và Công ức xihội —| Đoàn Thanh niên, Hội SV"
+    },
+    "psm3": {
+      "unit_found": 10,
+      "leader_found": 6,
+      "unit_with_leader_same_line": 4,
+      "unit_with_date_same_line": 6,
+      "chars": 997,
+      "rows_total": 15,
+      "confidence": 0.8265141357543162,
+      "model": "tesseract-vie",
+      "seconds": 0.93,
+      "text": "BỘ GIÁO DỤC VÀ ĐÀO TẠO\nTRƯỜNG ĐẠI HỌC ĐÀ LẠT\nDANH SÁCH PHÂẦN BÓ ĐỊA ĐIÊM, THỜI GIAN VÀ PHÂN CÔNG\nLÃNH ĐẠO PHÒNG CHỨC NĂNG, TRUNG TÂM, ĐOÀN TN - HSV THAM DỰ\n“TUẢN ĐỊNH HƯỚNG” DÀNH CHO TÂN SINH VIÊN K50 NĂM HỌC 2026-2027\nLÃNH ĐẠO ` TRUNG TÁM, 3\n: : ĐẠO _ ` THỜI GIA\nĐƠN VỊ ThưỜi G PHÒNG CHỨCNĂNG | THƠIGIAN ĐOÀN TN - HSV 1 GIAN\nKhoa Nông lâm 27/8/2026 ThS. Đỗ Văn Khoa\n5_ |Khoa Công nghệ thông tỉn 28/8/2026 ThS. Trần Thống\n7 |Khoa Quốc tế học 25/8/2026 | -TS. Hoàng Việt Bách Khoa Trung tâm Thông tín - Thư viện\n- Trung tâm Truyền thông và Hỗ trợ\nKhoa Kinh tế - Quản trị kinh doanh HHTV |26/8/2026 TS. Phan Tuấn Anh 08h00-10n30 | “T8 !JâH ˆ/0y6n Hong và 129 HỢ | 1ah30-16n30\n: người học\nt»\nG3\nKhoa Ngoại ngữ 28/8/2026 TS. Đồ Văn Toản\nKhoa Vật lý và Kỹ thuật hạt nhân 24/8/2026 ThS. Trân Thông\nị HT_A32\nKhoa Du lịch\n4 |Khoa Sư phạm\nKhoa Ngữ văn và Lịch sử\nKhoa Xã hội học và Công tác xã hội 27/8/2026 ThS. Phạm Hồng Hải Đoàn Thanh niên, Hội SV\nKhoa Tài chính - Kế toán\nth\n— | Bì | Bj¡ | mm | ¬ |\n—|C"
+    },
+    "Paddle tìm ô + Tesseract đọc ô": {
+      "unit_found": 14,
+      "leader_found": 15,
+      "unit_with_leader_same_line": 14,
+      "unit_with_date_same_line": 13,
+      "chars": 1435,
+      "rows_total": 15,
+      "confidence": 0.839743025231745,
+      "model": "PP-OCRv6_small_det+tesseract-vie",
+      "seconds": 6.16,
+      "text": "BỘ GIÁO DỤC VÀ ĐÀO TẠO\nTRƯỜNG ĐẠI HỌC ĐÀ LẠT\nDANH SÁCH PHÂN BÓ ĐỊA ĐIỂM, THỜI GIAN VÀ PHÂN CÔNG\nLÃNH ĐẠO PHÒNG CHỨC NĂNG, TRUNG TÂM, ĐOÀN TN - HSV THAM DỰ\n“TUẦN ĐỊNH HƯỚNG” DÀNH CHO TÂN SINH VIÊN K50 NĂM HỌC 2026-2027\n'TT | ĐƠN VỊ | TRƯỜNG | NGÀY | PHÒNG CHỨC NĂNG | LÃNH ĐAO | Cấp Khoa | THỜI GIAN | ĐOÀN TN - HSV | TRUNG TAM, | Cấp trường | THỜI GIAN:\n1 | |Khoa Toán - Tin học | |24/8/2026 | ThS. Hoàng Minh Tiến\n2 | |Khoa Sinh học | 25/8/2026 | PGS.TS. Lê Thị Anh Tú\n3 | |Khoa Hỏa học và Môi trường | A8B | |26/8/2026 | PGS.TS. Lê Thị Thanh Trân\nÁ | |Khoa Nông lâm | |z7/8/2026 | ThS. Đỗ Văn Khoa\n5 | |Khoa Công nghệ thông tin | |28/8/2026 | ThS. Trần Thống\n® | |Khoa Luật học | |24/8/2026 | TS. Võ Thị Thanh Linh\n7 | lKhoa Quốc tế học | |25/8/2026 | TS. Hoàng Việt Bách Khoa | Trung tâm Thông tin - Thư viện\n8 | |Khoa Kinh tế - Quản trị kinh doanh | HHTV | |26/8/2026 | TS. Phan Tuấn Anh | 08h00-10h30 | Trung tâm Truyền thông và Hỗ trợ | người học | 13h30-16h30\n9 | ÍKhoa Xã hội học và Công tác xã hội | 27/8/2026 | ThS. Phạm Hồng Hải | Đoàn Thanh niên, Hội SV\n10 | |Khoa Ngoại ngữ | |28/8/2026 | TS. Đỗ Văn Toản\nlãi | [Khoa Vật lý và Kỹ thuật hạt nhân | |24/8/2026 | ThS. Trần Thống\n12 | |Khoa Tài chính - Kế toán | 25/8/2026 | TS. Vũ Tuấn Anh\n13 | [Khoa Du lịch | HT_A32 | |26/8/2026 | Bà Đỗ Thị Thanh Loan\n14 | |Khoa Sư phạm | |27/8/2026 | TS. Trần Nhật Thiện\n15 | |Khoa Ngữ văn và Lịch sử | [28/8/2026 | ThS. Văn Quang Viên\nv⁄"
+    },
+    "recognize_page (hệ thống chọn)": {
+      "unit_found": 14,
+      "leader_found": 15,
+      "unit_with_leader_same_line": 14,
+      "unit_with_date_same_line": 13,
+      "chars": 1435,
+      "rows_total": 15,
+      "confidence": 0.839743025231745,
+      "model": "PP-OCRv6_small_det+tesseract-vie",
+      "seconds": 8.49,
+      "text": "BỘ GIÁO DỤC VÀ ĐÀO TẠO\nTRƯỜNG ĐẠI HỌC ĐÀ LẠT\nDANH SÁCH PHÂN BÓ ĐỊA ĐIỂM, THỜI GIAN VÀ PHÂN CÔNG\nLÃNH ĐẠO PHÒNG CHỨC NĂNG, TRUNG TÂM, ĐOÀN TN - HSV THAM DỰ\n“TUẦN ĐỊNH HƯỚNG” DÀNH CHO TÂN SINH VIÊN K50 NĂM HỌC 2026-2027\n'TT | ĐƠN VỊ | TRƯỜNG | NGÀY | PHÒNG CHỨC NĂNG | LÃNH ĐAO | Cấp Khoa | THỜI GIAN | ĐOÀN TN - HSV | TRUNG TAM, | Cấp trường | THỜI GIAN:\n1 | |Khoa Toán - Tin học | |24/8/2026 | ThS. Hoàng Minh Tiến\n2 | |Khoa Sinh học | 25/8/2026 | PGS.TS. Lê Thị Anh Tú\n3 | |Khoa Hỏa học và Môi trường | A8B | |26/8/2026 | PGS.TS. Lê Thị Thanh Trân\nÁ | |Khoa Nông lâm | |z7/8/2026 | ThS. Đỗ Văn Khoa\n5 | |Khoa Công nghệ thông tin | |28/8/2026 | ThS. Trần Thống\n® | |Khoa Luật học | |24/8/2026 | TS. Võ Thị Thanh Linh\n7 | lKhoa Quốc tế học | |25/8/2026 | TS. Hoàng Việt Bách Khoa | Trung tâm Thông tin - Thư viện\n8 | |Khoa Kinh tế - Quản trị kinh doanh | HHTV | |26/8/2026 | TS. Phan Tuấn Anh | 08h00-10h30 | Trung tâm Truyền thông và Hỗ trợ | người học | 13h30-16h30\n9 | ÍKhoa Xã hội học và Công tác xã hội | 27/8/2026 | ThS. Phạm Hồng Hải | Đoàn Thanh niên, Hội SV\n10 | |Khoa Ngoại ngữ | |28/8/2026 | TS. Đỗ Văn Toản\nlãi | [Khoa Vật lý và Kỹ thuật hạt nhân | |24/8/2026 | ThS. Trần Thống\n12 | |Khoa Tài chính - Kế toán | 25/8/2026 | TS. Vũ Tuấn Anh\n13 | [Khoa Du lịch | HT_A32 | |26/8/2026 | Bà Đỗ Thị Thanh Loan\n14 | |Khoa Sư phạm | |27/8/2026 | TS. Trần Nhật Thiện\n15 | |Khoa Ngữ văn và Lịch sử | [28/8/2026 | ThS. Văn Quang Viên\nv⁄"
+    }
+  }
+}
