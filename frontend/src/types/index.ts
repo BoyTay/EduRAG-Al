@@ -1,7 +1,7 @@
 export type Role = "student" | "admin";
 
 export interface User { id?: number; email: string; display_name?: string; role: Role }
-export interface Source { filename: string; page?: number | null; display_name?: string | null; category?: string | null; issuing_unit?: string | null; document_year?: number | null; is_primary?: boolean }
+export interface Source { filename: string; page?: number | null; display_name?: string | null; category?: string | null; issuing_unit?: string | null; document_year?: number | null; is_primary?: boolean; needs_review?: boolean; is_scan?: boolean }
 export interface Message { id?: number; role: "user" | "assistant"; content: string; sources?: Source[]; score?: number; feedback?: "up" | "down"; timestamp?: string; streaming?: boolean }
 export interface Document { id: number; filename: string; file_type: string; chunk_count: number; file_size_kb: number; uploaded_at: string; description?: string | null; display_name?: string | null; category?: string | null; issuing_unit?: string | null; document_year?: number | null; summary?: string | null; status?: string | null; reviewed_at?: string | null; reviewed_by?: string | null; needs_review_pages?: number }
 export type ChunkFlag = "generic_label" | "too_short" | "long_label" | "garbled_text";

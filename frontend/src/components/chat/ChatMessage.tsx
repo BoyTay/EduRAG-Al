@@ -1,6 +1,7 @@
-import { CaretDown, CheckCircle, FileText, Robot, ThumbsDown, ThumbsUp, UserCircle } from "@phosphor-icons/react";
+import { CaretDown, CheckCircle, FileText, Robot, ThumbsDown, ThumbsUp, UserCircle, WarningCircle } from "@phosphor-icons/react";
 import { useState } from "react";
 import type { Message } from "../../types";
+import { SCAN_REVIEW_WARNING, SourcePreviewModal, type SourcePreviewTarget } from "./SourcePreviewModal";
 
 interface ChatMessageProps {
   message: Message;
@@ -12,6 +13,7 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
   const [showRelatedSources, setShowRelatedSources] = useState(false);
+  const [preview, setPreview] = useState<SourcePreviewTarget | null>(null);
 
   const chooseFeedback = async (feedback: "up" | "down") => {
     if (!message.id || !onFeedback || isSaving) return;
@@ -32,15 +34,19 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
       if (current) {
         if (source.page && !current.pages.includes(source.page)) current.pages.push(source.page);
         if (source.is_primary) { current.primaryPage = source.page || current.primaryPage; current.isPrimary = true; }
+        if (source.needs_review && source.page && !current.reviewPages.includes(source.page)) current.reviewPages.push(source.page);
       } else {
-        groups.set(source.filename, { ...source, pages: source.page ? [source.page] : [], primaryPage: source.is_primary ? source.page : undefined, isPrimary: Boolean(source.is_primary) });
+        groups.set(source.filename, { ...source, pages: source.page ? [source.page] : [], primaryPage: source.is_primary ? source.page : undefined, isPrimary: Boolean(source.is_primary), reviewPages: source.needs_review && source.page ? [source.page] : [] });
       }
       return groups;
-    }, new Map<string, { filename: string; display_name?: string | null; issuing_unit?: string | null; document_year?: number | null; pages: number[]; primaryPage?: number | null; isPrimary: boolean }>()).values(),
+    }, new Map<string, { filename: string; display_name?: string | null; issuing_unit?: string | null; document_year?: number | null; pages: number[]; primaryPage?: number | null; isPrimary: boolean; reviewPages: number[] }>()).values(),
   ).map((source) => ({ ...source, pages: source.pages.sort((a, b) => a - b) }));
   const primarySource = groupedSources.find((source) => source.isPrimary) || groupedSources[0];
   const primaryPage = primarySource?.primaryPage || primarySource?.pages[0];
   const relatedSources = groupedSources.flatMap((source) => source.pages.filter((page) => !(source.filename === primarySource?.filename && page === primaryPage)).map((page) => ({ ...source, page })));
+  const primaryNeedsReview = Boolean(primaryPage && primarySource?.reviewPages.includes(primaryPage));
+  const openSource = (source: { filename: string; display_name?: string | null; reviewPages: number[] }, page?: number | null) =>
+    setPreview({ filename: source.filename, title: source.display_name || source.filename, page: page ?? null, needsReview: Boolean(page && source.reviewPages.includes(page)) });
 
   return (
     <article className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -58,16 +64,20 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
           <div className="mt-2.5 flex flex-col items-start gap-2 max-w-full">
             {/* Primary Source Badge & Expand Button */}
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                title={`${primarySource.issuing_unit || "Chưa có đơn vị ban hành"}${primarySource.document_year ? ` · ${primarySource.document_year}` : ""}`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50/90 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-xs"
+              <button
+                type="button"
+                onClick={() => openSource(primarySource, primaryPage)}
+                title={primaryNeedsReview ? SCAN_REVIEW_WARNING : `${primarySource.issuing_unit || "Chưa có đơn vị ban hành"}${primarySource.document_year ? ` · ${primarySource.document_year}` : ""} · Bấm để mở tài liệu gốc`}
+                aria-label={`Mở ${primarySource.display_name || primarySource.filename}${primaryPage ? `, trang ${primaryPage}` : ""}${primaryNeedsReview ? `. ${SCAN_REVIEW_WARNING}` : ""}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50/90 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-xs transition hover:border-emerald-400 hover:bg-emerald-100 active:scale-95"
               >
                 <FileText size={14} weight="duotone" className="text-emerald-600" />
                 <span className="truncate max-w-[240px] sm:max-w-[320px]">
                   {primarySource.display_name || primarySource.filename}
                 </span>
                 {primaryPage ? <span className="text-emerald-700 font-bold">· Tr. {primaryPage}</span> : ""}
-              </span>
+                {primaryNeedsReview && <WarningCircle size={14} weight="fill" className="text-amber-500" aria-hidden="true" />}
+              </button>
 
               {relatedSources.length > 0 && (
                 <button
@@ -92,9 +102,15 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
                   Các trang tài liệu đối chiếu khác:
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {relatedSources.map((source, idx) => (
-                    <span
+                  {relatedSources.map((source, idx) => {
+                    const needsReview = source.reviewPages.includes(source.page);
+                    return (
+                    <button
+                      type="button"
                       key={`${source.filename}-${source.page}-${idx}`}
+                      onClick={() => openSource(source, source.page)}
+                      title={needsReview ? SCAN_REVIEW_WARNING : "Bấm để mở tài liệu gốc"}
+                      aria-label={`Mở ${source.display_name || source.filename}, trang ${source.page}${needsReview ? `. ${SCAN_REVIEW_WARNING}` : ""}`}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/90 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-100 transition"
                     >
                       <FileText size={13} className="text-slate-400" />
@@ -104,13 +120,16 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
                           Tr. {source.page}
                         </span>
                       )}
-                    </span>
-                  ))}
+                      {needsReview && <WarningCircle size={13} weight="fill" className="text-amber-500" aria-hidden="true" />}
+                    </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
         ) : null}
+        {preview && <SourcePreviewModal target={preview} onClose={() => setPreview(null)} />}
 
         {!isUser && message.id && onFeedback ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
