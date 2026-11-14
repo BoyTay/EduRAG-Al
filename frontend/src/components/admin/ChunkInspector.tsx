@@ -13,6 +13,7 @@ const FLAG_LABELS: Record<ChunkFlag, string> = {
   generic_label: "Thiếu nhãn cột",
   too_short: "Quá ngắn",
   long_label: "Nhãn bất thường",
+  garbled_text: "Chữ lỗi, khó đọc",
 };
 
 const METHOD_LABELS: Record<string, string> = {

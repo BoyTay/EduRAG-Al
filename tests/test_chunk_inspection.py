@@ -179,3 +179,40 @@ class InspectionEndpointTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Đoạn rác thật từ trang scan nằm ngang (trước khi có nhận hướng trang).
+OCR_GARBAGE = (
+    "cÄ kế —_ = \" Š = vị = 8 r= = n BĐ c Ế ' kO c>|# SmZ4 2 H| 2 Ê>? s# He. b0 ‹©. ‹\" |«s _- "
+    "tạp mởi Đ E5 S9 8.e 2z HH =mq D2 S \"9 5< \ả |xẩ 1. - « m© hEL6ëës Ä%k ‹d]$‹"
+)
+OCR_PROSE = (
+    "5.7. Đoàn Thanh niên — Hội sinh viên — Thiết kế Infographic, video clip giới thiệu về các "
+    "tổ chức hoạt động của Đoàn, Hội, Câu lạc bộ và hướng dẫn thủ tục đăng ký tham gia."
+)
+
+
+class GarbledTextFlagTests(unittest.TestCase):
+    def test_ocr_garbage_is_flagged(self):
+        self.assertIn("garbled_text", flag_chunk(OCR_GARBAGE, {"extraction_method": "tesseract"}))
+
+    def test_symbol_runs_are_flagged(self):
+        content = "§|§|§|§|§|§|§|§ bl-T- = š|š|š|š|š HÀ šls|s|z|š|ls|s|z|š|šlšlš|g|s 235 |gế `... ° Jl— _—i'Ä="
+        self.assertIn("garbled_text", flag_chunk(content, {"extraction_method": "tesseract"}))
+
+    def test_clean_ocr_prose_is_not_flagged(self):
+        self.assertEqual(flag_chunk(OCR_PROSE, {"extraction_method": "tesseract"}), [])
+
+    def test_clean_native_prose_with_dates_and_codes_is_not_flagged(self):
+        content = (
+            "Số: 1340/KH-ĐHĐL, Lâm Đồng, ngày 12 tháng 8 năm 2026. Khoa Toán - Tin học, "
+            "hội trường A8B, ngày 24/8/2026, ThS. Hoàng Minh Tiến; TS. Phan Tuấn Anh (HT_A32)."
+        )
+        self.assertEqual(flag_chunk(content, {"extraction_method": "native"}), [])
+
+    def test_mojibake_vietnamese_is_flagged(self):
+        content = "Quy cháº¿ Ä‘Ã o táº¡o theo há»‡ thá»‘ng tÃ­n chá»‰ dÃ nh cho sinh viÃªn"
+        self.assertIn("garbled_text", flag_chunk(content, {"extraction_method": "native"}))
+
+    def test_short_text_is_not_judged(self):
+        self.assertEqual(flag_chunk("a) b) c)", {"extraction_method": "native"}), [])
