@@ -24,6 +24,7 @@ const METHOD_LABELS: Record<string, string> = {
   native_low_text: "Văn bản ngắn",
   tesseract: "OCR",
   ppocrv6: "OCR",
+  manual: "Sửa tay",
 };
 
 interface PageGroup {
