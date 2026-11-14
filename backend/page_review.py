@@ -16,10 +16,11 @@ REVIEW_CONFIDENCE = LAYOUT_RETRY_CONFIDENCE
 
 _FIRST_CELL_NOISE = "'\"[]().: "
 _HEADER_CELLS = {"tt", "stt"}
-# Ứng viên ngày: ba phần ngăn bởi "/", phần cuối là năm 4 chữ số; phần đầu có thể lẫn chữ ("2l", "z7").
-_DATE_CANDIDATE = re.compile(r"\S{0,4}/\S{1,3}/\d{4}\S*")
-_VALID_DATE = re.compile(r"\d{1,2}/\d{1,2}/\d{4}")
-# "|" dính vào ngày là viền ô bảng chứ không phải ngày hỏng; dấu câu cuối là của câu văn.
+# Một cụm trông như ngày: [tiền tố][ngày]/[tháng]/[năm 4 số][hậu tố]; ngày/tháng có thể bị OCR lẫn chữ.
+_DATE_SHAPE = re.compile(r"(.*?)([^/]{1,2})/([^/]{1,3})/(\d{4})(.*)")
+# Khoảng ngày "24/8/2026-28/8/2026", "24-28/8/2026": tách từng vế rồi xét riêng.
+_RANGE_SEPARATOR = re.compile(r"[-–]")
+# "|" dính vào ngày là viền ô bảng chứ không phải ngày hỏng; dấu câu đầu/cuối là của câu văn.
 _DATE_EDGE = "|.,;:)("
 
 
@@ -49,11 +50,23 @@ def row_number_gaps(text: str) -> bool:
 
 
 def has_malformed_date(text: str) -> bool:
-    """Có cụm trông như ngày (d/m/yyyy) nhưng lẫn ký tự lạ, vd. "z7/8/2026", "[28/8/2026"."""
-    return any(
-        not _VALID_DATE.fullmatch(candidate.strip(_DATE_EDGE))
-        for candidate in _DATE_CANDIDATE.findall(text)
-    )
+    """Có cụm trông như ngày (d/m/yyyy) nhưng lẫn ký tự lạ, vd. "z7/8/2026", "[28/8/2026", "2l/8/2026".
+
+    Không coi là lỗi: khoảng ngày, chữ dính liền trước ngày ("ngày12/8/2026"), số văn bản có
+    phần giữa không phải số ("05/TB/2026").
+    """
+    for token in text.split():
+        for piece in _RANGE_SEPARATOR.split(token.strip(_DATE_EDGE)):
+            shape = _DATE_SHAPE.fullmatch(piece.strip(_DATE_EDGE))
+            if shape is None:
+                continue
+            prefix, day, month, _year, suffix = shape.groups()
+            if not any(character.isdigit() for character in month):
+                continue  # số/ký hiệu văn bản, không phải ngày
+            glued_word = len(prefix) >= 2 and prefix.isalpha()
+            if (prefix and not glued_word) or suffix or not day.isdigit() or not month.isdigit():
+                return True
+    return False
 
 
 def review_reasons(text: str, confidence: float | None) -> list[str]:

@@ -73,6 +73,19 @@ class MalformedDateTests(unittest.TestCase):
     def test_valid_dates_are_not_malformed(self):
         self.assertFalse(has_malformed_date("ngày 24/8/2026 và 05/09/2026."))
 
+    def test_date_ranges_and_document_numbers_are_not_malformed(self):
+        # Kế hoạch đầy khoảng ngày; trang đọc đúng không được bị cảnh báo vì chúng.
+        for text in (
+            "Từ 24/8/2026-28/8/2026",
+            "24/8/2026–28/8/2026",
+            "ngày 24-28/8/2026",
+            "ngày12/8/2026",
+            "Số 05/TB/2026",
+            "(24/8/2026)",
+        ):
+            with self.subTest(text=text):
+                self.assertFalse(has_malformed_date(text))
+
     def test_dates_with_stray_characters_are_malformed(self):
         for text in ("z7/8/2026", "[28/8/2026", "2l/8/2026"):
             with self.subTest(text=text):
