@@ -94,3 +94,13 @@ class ChatStreamTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SourceInfoTests(unittest.TestCase):
+    def test_review_flags_survive_chat_response_model(self):
+        info = main.SourceInfo(filename="ke-hoach.pdf", page=5, needs_review=True, is_scan=True)
+        self.assertEqual((info.needs_review, info.is_scan), (True, True))
+
+    def test_old_sources_default_to_not_flagged(self):
+        info = main.SourceInfo(filename="quy-che.pdf", page=1)
+        self.assertEqual((info.needs_review, info.is_scan), (False, False))

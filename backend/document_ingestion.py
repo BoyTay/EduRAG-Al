@@ -19,7 +19,12 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from loguru import logger
 
+from collections.abc import Mapping
+
 from ocr_service import OCRConfigurationError, OCRPageResult, OCRServiceProtocol, get_default_ocr_service
+from page_review import PageOverride, review_reasons
+
+OCR_EXTRACTION_METHODS = {"tesseract", "ppocrv6"}
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -99,6 +104,12 @@ class DocumentIngestionError(ValueError):
 
 def normalize_text(value: str | None) -> str:
     return " ".join((value or "").replace("\x00", "").split())
+
+
+def normalize_ocr_text(value: str | None) -> str:
+    """Như normalize_text nhưng giữ xuống dòng: mỗi dòng OCR là một hàng bảng hoặc một dòng chữ."""
+    lines = (normalize_text(line) for line in (value or "").replace("\x00", "").splitlines())
+    return "\n".join(line for line in lines if line)
 
 
 _SECTION_HEADINGS = {
@@ -321,6 +332,7 @@ def _page_document(
     text: str,
     extraction_method: str,
     ocr_result: OCRPageResult | None = None,
+    review: tuple[str, list[str]] | None = None,
 ) -> Document:
     metadata: dict[str, str | int | float | bool] = {
         "source": str(file_path),
@@ -332,7 +344,24 @@ def _page_document(
         metadata["ocr_model"] = ocr_result.model_name
         if ocr_result.confidence is not None:
             metadata["ocr_confidence"] = float(ocr_result.confidence)
-    return Document(page_content=normalize_text(text), metadata=metadata)
+    if review is not None:
+        status, reasons = review
+        metadata["review_status"] = status
+        if reasons:
+            metadata["review_reasons"] = ",".join(reasons)
+    keeps_lines = extraction_method in OCR_EXTRACTION_METHODS or extraction_method == "manual"
+    content = normalize_ocr_text(text) if keeps_lines else normalize_text(text)
+    return Document(page_content=content, metadata=metadata)
+
+
+def _ocr_page_review(
+    ocr_result: OCRPageResult, override: PageOverride | None
+) -> tuple[str, list[str]] | None:
+    """Trạng thái kiểm tra của một trang vừa OCR: admin đã xác nhận, nghi lỗi, hoặc không gì."""
+    if override is not None and override.status == "confirmed":
+        return "confirmed", []
+    reasons = review_reasons(normalize_ocr_text(ocr_result.text), ocr_result.confidence)
+    return ("needs_review", reasons) if reasons else None
 
 
 _CAPTION_SEARCH_PT = 70
@@ -771,7 +800,9 @@ def _load_pdf_pages(
     settings: IngestionSettings,
     ocr_service: OCRServiceProtocol | None,
     cache: OCRResultCache,
+    page_reviews: Mapping[int, PageOverride] | None = None,
 ) -> tuple[list[Document], list[str], list[Path], str]:
+    page_reviews = page_reviews or {}
     file_hash = sha256_file(file_path)
     pages: list[Document] = []
     warnings: list[str] = []
@@ -801,6 +832,15 @@ def _load_pdf_pages(
                 image = _render_page(page, settings.dpi)
                 if not native_is_sane and is_confidently_blank(image, settings):
                     warnings.append(f"Bỏ qua trang trắng {page_index + 1} của {file_path.name}")
+                    continue
+
+                override = page_reviews.get(page_index)
+                if override is not None and override.status == "corrected" and override.corrected_text:
+                    # Admin đã sửa tay trang này: dùng bản sửa, không cần OCR.
+                    pages.append(_page_document(
+                        file_path, page_index, override.corrected_text, "manual",
+                        review=("corrected", []),
+                    ))
                     continue
 
                 if not settings.ocr_enabled:
@@ -871,6 +911,7 @@ def _load_pdf_pages(
                             file_path, page_index, ocr_result.text,
                             "tesseract" if fingerprint.get("provider") == "tesseract" else "ppocrv6",
                             ocr_result,
+                            review=_ocr_page_review(ocr_result, override),
                         )
                     )
                 elif native_is_sane:
@@ -926,7 +967,9 @@ def load_and_chunk_document(
     ocr_service: OCRServiceProtocol | None = None,
     settings: IngestionSettings | None = None,
     cache: OCRResultCache | None = None,
+    page_reviews: Mapping[int, PageOverride] | None = None,
 ) -> DocumentIngestionResult:
+    """Đọc và tách đoạn một tài liệu. page_reviews: quyết định của admin theo page_index (chỉ PDF)."""
     settings = settings or IngestionSettings.from_env()
     cache = cache or OCRResultCache(settings.cache_path)
     extension = file_path.suffix.lower()
@@ -936,7 +979,7 @@ def load_and_chunk_document(
 
     if extension == ".pdf":
         pages, warnings, created_cache_files, file_hash = _load_pdf_pages(
-            file_path, settings, ocr_service, cache
+            file_path, settings, ocr_service, cache, page_reviews
         )
     elif extension == ".docx":
         pages = _load_docx_pages(file_path, settings)
@@ -978,6 +1021,32 @@ def load_and_chunk_document(
         created_cache_files=created_cache_files,
         file_sha256=file_hash,
     )
+
+
+def read_page_ocr_text(
+    file_path: Path,
+    page_index: int,
+    ocr_service: OCRServiceProtocol | None = None,
+    settings: IngestionSettings | None = None,
+    cache: OCRResultCache | None = None,
+) -> str:
+    """Chữ OCR nguyên trang (trước khi tách đoạn), để admin sửa. Ưu tiên cache; thiếu thì OCR lại trang."""
+    settings = settings or IngestionSettings.from_env()
+    cache = cache or OCRResultCache(settings.cache_path)
+    service = ocr_service or get_default_ocr_service()
+    with fitz.open(file_path) as pdf:
+        if not 0 <= page_index < pdf.page_count:
+            raise IndexError(f"Trang {page_index + 1} không có trong '{file_path.name}'")
+        file_hash = sha256_file(file_path)
+        fingerprint = service.cache_fingerprint
+        result = cache.read(file_hash, page_index, settings.dpi, fingerprint)
+        if result is None:
+            result = service.recognize_page(_render_page(pdf[page_index], settings.dpi))
+            try:
+                cache.write(file_hash, page_index, settings.dpi, fingerprint, result)
+            except Exception as exc:
+                logger.warning("Không thể ghi OCR cache khi đọc lại trang {}: {}", page_index + 1, type(exc).__name__)
+    return normalize_ocr_text(result.text)
 
 
 def cleanup_new_cache_entries(paths: list[Path], cache: OCRResultCache | None = None) -> None:

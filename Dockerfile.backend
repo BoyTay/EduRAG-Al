@@ -41,6 +41,12 @@ RUN pip uninstall -y pymupdf4llm pymupdf-layout \
     && pip install --no-cache-dir "pymupdf>=1.24.0,<2.0" \
     && pip check
 
+# Tải sẵn mô hình phát hiện ô chữ (khoảng 10 MB) để máy chạy offline vẫn đọc được bảng scan.
+# Chỉ dùng phần phát hiện của Paddle; chữ vẫn do Tesseract đọc (xem backend/cell_detection.py).
+ENV PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=1
+ENV PADDLE_PDX_CACHE_HOME=/opt/ppocr-cache
+RUN python -c "from paddleocr import TextDetection; TextDetection(model_name='PP-OCRv6_small_det', device='cpu', enable_mkldnn=False)"
+
 # Copy source code
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/

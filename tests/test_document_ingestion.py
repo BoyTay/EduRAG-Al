@@ -15,16 +15,20 @@ from document_ingestion import (
     IngestionSettings,
     OCRResultCache,
     load_and_chunk_document,
+    read_page_ocr_text,
 )
 from langchain_core.documents import Document
 from ocr_service import OCRConfigurationError, OCRLine, OCRPageResult
+from page_review import PageOverride
 
 
 class FakeOCR:
-    def __init__(self, fingerprint="small-a", fail=False):
+    def __init__(self, fingerprint="small-a", fail=False, text=None, confidence=0.93):
         self.calls = 0
         self.fail = fail
         self._fingerprint = fingerprint
+        self.text = text
+        self.confidence = confidence
 
     @property
     def cache_fingerprint(self):
@@ -34,7 +38,8 @@ class FakeOCR:
         self.calls += 1
         if self.fail:
             raise RuntimeError("fault injection")
-        line = OCRLine("Điều 12. Nội dung nhận dạng từ trang scan.", 0.93, [5, 5, 100, 30])
+        text = self.text or "Điều 12. Nội dung nhận dạng từ trang scan."
+        line = OCRLine(text, self.confidence, [5, 5, 100, 30])
         return OCRPageResult(line.text, line.confidence, [line], "fake-small")
 
 
@@ -699,3 +704,77 @@ class DocumentIngestionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PageReviewIngestionTests(unittest.TestCase):
+    """Trạng thái kiểm tra trang và bản sửa tay được áp lúc nạp PDF."""
+
+    setUp = DocumentIngestionTests.setUp
+    tearDown = DocumentIngestionTests.tearDown
+    _pdf = DocumentIngestionTests._pdf
+    _image_bytes = staticmethod(DocumentIngestionTests._image_bytes)
+
+    def _load(self, kinds, fake, page_reviews=None):
+        path = self._pdf("review.pdf", kinds)
+        return load_and_chunk_document(path, fake, self.settings, self.cache, page_reviews=page_reviews)
+
+    def test_ocr_page_keeps_line_breaks(self):
+        result = self._load(["scan"], FakeOCR(text="1 | Khoa A\n2 | Khoa B"))
+        self.assertIn("1 | Khoa A\n2 | Khoa B", result.chunks[0].page_content)
+
+    def test_low_confidence_ocr_page_needs_review(self):
+        metadata = self._load(["scan"], FakeOCR(confidence=0.5)).chunks[0].metadata
+        self.assertEqual(metadata["review_status"], "needs_review")
+        self.assertIn("low_confidence", metadata["review_reasons"].split(","))
+
+    def test_confident_clean_ocr_page_has_no_review_status(self):
+        metadata = self._load(["scan"], FakeOCR(confidence=0.93)).chunks[0].metadata
+        self.assertNotIn("review_status", metadata)
+        self.assertNotIn("review_reasons", metadata)
+
+    def test_native_page_never_gets_review_status(self):
+        metadata = self._load(["native"], FakeOCR(confidence=0.1)).chunks[0].metadata
+        self.assertNotIn("review_status", metadata)
+
+    def test_confirmed_page_uses_ocr_and_is_confirmed(self):
+        fake = FakeOCR(confidence=0.5)
+        metadata = self._load(["scan"], fake, {0: PageOverride("confirmed")}).chunks[0].metadata
+        self.assertEqual(fake.calls, 1)
+        self.assertEqual(metadata["review_status"], "confirmed")
+        self.assertNotIn("review_reasons", metadata)
+        self.assertEqual(metadata["extraction_method"], "ppocrv6")
+
+    def test_corrected_page_skips_ocr_and_uses_text(self):
+        fake = FakeOCR(confidence=0.5)
+        override = {0: PageOverride("corrected", "Bảng đã sửa\n1 | Khoa Hóa học")}
+        chunk = self._load(["scan"], fake, override).chunks[0]
+        self.assertEqual(fake.calls, 0)
+        self.assertEqual(chunk.metadata["extraction_method"], "manual")
+        self.assertEqual(chunk.metadata["review_status"], "corrected")
+        self.assertNotIn("ocr_confidence", chunk.metadata)
+        self.assertIn("1 | Khoa Hóa học", chunk.page_content)
+
+    def test_corrected_text_keeps_pipes_and_newlines(self):
+        override = {0: PageOverride("corrected", "A | B\nC | D")}
+        chunk = self._load(["scan"], FakeOCR(), override).chunks[0]
+        self.assertIn("A | B\nC | D", chunk.page_content)
+
+    def test_review_for_other_page_is_ignored(self):
+        override = {1: PageOverride("corrected", "Trang hai đã sửa")}
+        chunks = self._load(["scan", "scan"], FakeOCR(), override).chunks
+        methods = {chunk.metadata["page"]: chunk.metadata["extraction_method"] for chunk in chunks}
+        self.assertEqual(methods, {0: "ppocrv6", 1: "manual"})
+
+    def test_read_page_ocr_text_uses_cache_then_ocr(self):
+        path = self._pdf("read.pdf", ["scan"])
+        fake = FakeOCR(text="Dòng một\n  Dòng   hai ")
+        first = read_page_ocr_text(path, 0, fake, self.settings, self.cache)
+        second = read_page_ocr_text(path, 0, fake, self.settings, self.cache)
+        self.assertEqual(fake.calls, 1)
+        self.assertEqual(first, "Dòng một\nDòng hai")
+        self.assertEqual(second, first)
+
+    def test_read_page_ocr_text_rejects_missing_page(self):
+        path = self._pdf("one.pdf", ["scan"])
+        with self.assertRaises(IndexError):
+            read_page_ocr_text(path, 3, FakeOCR(), self.settings, self.cache)

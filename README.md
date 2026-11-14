@@ -7,6 +7,7 @@ Trợ lý hỏi đáp tài liệu học vụ dùng RAG (Retrieval-Augmented Gene
 - Hỏi đáp trên toàn bộ thư viện hoặc trong một tài liệu, có nguồn và trang tham chiếu.
 - Hội thoại nhiều lượt, lưu lịch sử theo phiên.
 - Quản trị: upload, sửa, xóa tài liệu, tạo lại chỉ mục, xem thống kê.
+- Kiểm tra dữ liệu nạp: trang scan có dấu hiệu đọc sai được đánh dấu "Cần đối chiếu"; quản trị viên xác nhận hoặc sửa tay từng trang, bản sửa được giữ khi tạo lại chỉ mục. Câu trả lời lấy từ trang chưa kiểm tra có cảnh báo, bấm nguồn để mở đúng trang PDF gốc.
 - Chạy hoàn toàn cục bộ, không cần mạng sau lần cài đầu.
 
 ## Kiến trúc
@@ -51,7 +52,9 @@ Dừng: `docker compose down`.
 | `chroma_db/` | Chỉ mục vector |
 | `chat_history.db` | Tài khoản, lịch sử chat |
 
-Ba mục này không được commit lên git. Hãy sao lưu trước khi triển khai lại.
+Ba mục này không được commit lên git. Hãy sao lưu trước khi triển khai lại. Bản sửa tay các trang scan nằm trong `chat_history.db` (bảng `page_reviews`).
+
+> **Khi cập nhật lên bản có kiểm tra trang scan**, cần tạo lại chỉ mục một lần (trang Quản trị → Tạo lại chỉ mục) để các đoạn hiện có được gắn trạng thái kiểm tra.
 
 ## Cấu hình thường dùng
 

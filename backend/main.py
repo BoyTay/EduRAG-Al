@@ -67,6 +67,9 @@ class SourceInfo(BaseModel):
     issuing_unit: Optional[str] = None
     document_year: Optional[int] = None
     is_primary: bool = False
+    # Trang scan chưa được admin kiểm tra → giao diện cảnh báo nên đối chiếu bản gốc.
+    needs_review: bool = False
+    is_scan: bool = False
 
 
 class ChatResponse(BaseModel):

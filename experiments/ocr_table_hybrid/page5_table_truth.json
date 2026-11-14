@@ -1,0 +1,22 @@
+{
+  "source": "1340-KH-DHDL_Ke-hoach-Tuan-Dinh-huong-Tan-SV-K50_12082026.pdf",
+  "page": 5,
+  "note": "Bảng phân bổ địa điểm, thời gian, lãnh đạo dự Tuần định hướng; trang scan nằm ngang. Gõ tay từ ảnh trang, lãnh đạo bỏ học hàm/học vị. Cột hội trường là ô gộp 5 dòng.",
+  "rows": [
+    {"tt": 1, "unit": "Khoa Toán - Tin học", "hall": "A8B", "date": "24/8/2026", "leader": "Hoàng Minh Tiến"},
+    {"tt": 2, "unit": "Khoa Sinh học", "hall": "A8B", "date": "25/8/2026", "leader": "Lê Thị Anh Tú"},
+    {"tt": 3, "unit": "Khoa Hóa học và Môi trường", "hall": "A8B", "date": "26/8/2026", "leader": "Lê Thị Thanh Trân"},
+    {"tt": 4, "unit": "Khoa Nông lâm", "hall": "A8B", "date": "27/8/2026", "leader": "Đỗ Văn Khoa"},
+    {"tt": 5, "unit": "Khoa Công nghệ thông tin", "hall": "A8B", "date": "28/8/2026", "leader": "Trần Thống"},
+    {"tt": 6, "unit": "Khoa Luật học", "hall": "HHTV", "date": "24/8/2026", "leader": "Võ Thị Thanh Linh"},
+    {"tt": 7, "unit": "Khoa Quốc tế học", "hall": "HHTV", "date": "25/8/2026", "leader": "Hoàng Việt Bách Khoa"},
+    {"tt": 8, "unit": "Khoa Kinh tế - Quản trị kinh doanh", "hall": "HHTV", "date": "26/8/2026", "leader": "Phan Tuấn Anh"},
+    {"tt": 9, "unit": "Khoa Xã hội học và Công tác xã hội", "hall": "HHTV", "date": "27/8/2026", "leader": "Phạm Hồng Hải"},
+    {"tt": 10, "unit": "Khoa Ngoại ngữ", "hall": "HHTV", "date": "28/8/2026", "leader": "Đỗ Văn Toản"},
+    {"tt": 11, "unit": "Khoa Vật lý và Kỹ thuật hạt nhân", "hall": "HT_A32", "date": "24/8/2026", "leader": "Trần Thống"},
+    {"tt": 12, "unit": "Khoa Tài chính - Kế toán", "hall": "HT_A32", "date": "25/8/2026", "leader": "Vũ Tuấn Anh"},
+    {"tt": 13, "unit": "Khoa Du lịch", "hall": "HT_A32", "date": "26/8/2026", "leader": "Đỗ Thị Thanh Loan"},
+    {"tt": 14, "unit": "Khoa Sư phạm", "hall": "HT_A32", "date": "27/8/2026", "leader": "Trần Nhật Thiện"},
+    {"tt": 15, "unit": "Khoa Ngữ văn và Lịch sử", "hall": "HT_A32", "date": "28/8/2026", "leader": "Văn Quang Viên"}
+  ]
+}
