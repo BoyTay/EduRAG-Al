@@ -266,6 +266,14 @@ export function DocumentTable({ documents, onEdit, onDelete, onInspect }: Docume
                           Đã kiểm tra
                         </span>
                       )}
+                      {(doc.needs_review_pages ?? 0) > 0 && (
+                        <span
+                          className="mt-1 flex items-center justify-center gap-1 text-[11px] font-medium text-amber-700"
+                          title="Trang scan có dấu hiệu đọc sai; mở Kiểm tra dữ liệu đã nạp để đối chiếu"
+                        >
+                          {doc.needs_review_pages} trang cần đối chiếu
+                        </span>
+                      )}
                     </td>
 
                     {/* Updated At */}

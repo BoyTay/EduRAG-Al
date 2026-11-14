@@ -1,8 +1,10 @@
 import { CheckCircle, FilePdf, Funnel, WarningCircle, X } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { getDocumentChunks, getDocumentPreview, setDocumentReview } from "../../services/api";
-import type { ChunkFlag, Document, DocumentChunk } from "../../types";
+import { getDocumentChunks, getDocumentPages, getDocumentPreview, setDocumentReview } from "../../services/api";
+import type { ChunkFlag, Document, DocumentChunk, PageSummary } from "../../types";
+import { PageEditor } from "./PageEditor";
+import { PageReviewBar } from "./PageReviewBar";
 
 interface ChunkInspectorProps {
   document: Document;
@@ -100,6 +102,8 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
   const isPdf = document.file_type.toLowerCase() === "pdf";
   const title = document.display_name || document.filename;
   const [onlyFlagged, setOnlyFlagged] = useState(false);
+  const [onlyNeedsReview, setOnlyNeedsReview] = useState(false);
+  const [editingPage, setEditingPage] = useState<number | null>(null);
   const [activePage, setActivePage] = useState<number | null>(null);
   const [reviewedAt, setReviewedAt] = useState<string | null>(document.reviewed_at ?? null);
   const [savingReview, setSavingReview] = useState(false);
@@ -108,6 +112,11 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
   const chunksQuery = useQuery({
     queryKey: ["document-chunks", document.filename],
     queryFn: () => getDocumentChunks(document.filename),
+  });
+  const pagesQuery = useQuery({
+    queryKey: ["document-pages", document.filename],
+    queryFn: () => getDocumentPages(document.filename),
+    enabled: isPdf,
   });
   const previewQuery = useQuery({
     queryKey: ["document-preview", document.filename],
@@ -131,10 +140,19 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
   }, [onClose]);
 
   const chunks = chunksQuery.data?.chunks ?? [];
-  const groups = useMemo(
-    () => groupByPage(onlyFlagged ? chunks.filter((chunk) => chunk.flags.length > 0) : chunks),
-    [chunks, onlyFlagged],
+  // Trạng thái kiểm tra theo page_index (0-based) để ghép với nhóm đoạn.
+  const pageSummaries = useMemo(
+    () => new Map<number, PageSummary>((pagesQuery.data?.pages ?? []).map((summary) => [summary.page - 1, summary])),
+    [pagesQuery.data],
   );
+  const groups = useMemo(() => {
+    let visible = onlyFlagged ? chunks.filter((chunk) => chunk.flags.length > 0) : chunks;
+    if (onlyNeedsReview) {
+      visible = visible.filter((chunk) => chunk.page !== null && pageSummaries.get(chunk.page)?.review_status === "needs_review");
+    }
+    return groupByPage(visible);
+  }, [chunks, onlyFlagged, onlyNeedsReview, pageSummaries]);
+  const needsReviewCount = pagesQuery.data?.needs_review ?? 0;
 
   const toggleReview = async () => {
     setSavingReview(true);
@@ -162,7 +180,7 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
             <h2 className="mt-1 truncate text-base font-bold text-slate-900" title={title}>{title}</h2>
             <p className="mt-0.5 text-xs text-slate-500">
               {chunksQuery.data
-                ? `${chunksQuery.data.total} đoạn đã lập chỉ mục · ${chunksQuery.data.flagged} đoạn nghi lỗi`
+                ? `${chunksQuery.data.total} đoạn đã lập chỉ mục · ${chunksQuery.data.flagged} đoạn nghi lỗi${isPdf ? ` · ${needsReviewCount} trang cần đối chiếu` : ""}`
                 : "Đang tải các đoạn đã lập chỉ mục…"}
             </p>
           </div>
@@ -224,6 +242,17 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
                 <Funnel size={13} />
                 Chỉ hiện đoạn nghi lỗi
               </label>
+              {isPdf && (
+                <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={onlyNeedsReview}
+                    onChange={(event) => setOnlyNeedsReview(event.target.checked)}
+                    className="size-3.5 accent-amber-600"
+                  />
+                  Chỉ trang cần đối chiếu
+                </label>
+              )}
               <span className="text-[11px] text-slate-400">Bấm tiêu đề trang để mở trang đó trong PDF</span>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 px-4 py-3">
@@ -231,7 +260,11 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
               {chunksQuery.isError && <p className="text-xs text-rose-600">Không tải được danh sách đoạn. Chỉ mục có thể chưa sẵn sàng.</p>}
               {chunksQuery.data && groups.length === 0 && (
                 <p className="text-xs text-slate-500">
-                  {onlyFlagged ? "Không có đoạn nào bị gắn cờ nghi lỗi." : "Tài liệu này chưa có đoạn nào trong chỉ mục. Hãy tạo lại chỉ mục."}
+                  {onlyNeedsReview
+                    ? "Không có trang nào cần đối chiếu."
+                    : onlyFlagged
+                      ? "Không có đoạn nào bị gắn cờ nghi lỗi."
+                      : "Tài liệu này chưa có đoạn nào trong chỉ mục. Hãy tạo lại chỉ mục."}
                 </p>
               )}
               {groups.map((group) => (
@@ -247,9 +280,23 @@ export function ChunkInspector({ document, onClose }: ChunkInspectorProps) {
                     {group.page === null ? "Không rõ trang" : `Trang ${group.page + 1}`}
                     <span className="ml-1.5 font-normal text-slate-400">({group.chunks.length} đoạn)</span>
                   </button>
-                  <ul className="space-y-2">
-                    {group.chunks.map((chunk) => <ChunkCard key={chunk.id} chunk={chunk} />)}
-                  </ul>
+                  {group.page !== null && pageSummaries.get(group.page)?.editable && (
+                    <PageReviewBar
+                      filename={document.filename}
+                      summary={pageSummaries.get(group.page)!}
+                      onEdit={() => {
+                        setEditingPage(group.page);
+                        setActivePage(group.page);
+                      }}
+                    />
+                  )}
+                  {editingPage !== null && editingPage === group.page ? (
+                    <PageEditor filename={document.filename} page={group.page + 1} onClose={() => setEditingPage(null)} />
+                  ) : (
+                    <ul className="space-y-2">
+                      {group.chunks.map((chunk) => <ChunkCard key={chunk.id} chunk={chunk} />)}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>

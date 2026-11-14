@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Activity, Document, DocumentChunk, DocumentMetadataInput, Message, RagRefusal, SessionInfo, Source, User } from "../types";
+import type { Activity, Document, DocumentChunk, DocumentMetadataInput, Message, PageReviewStatus, PageSummary, RagRefusal, SessionInfo, Source, User } from "../types";
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000", headers: { "Content-Type": "application/json" } });
 api.interceptors.request.use((config) => {
@@ -113,6 +113,15 @@ export async function getStats() { const { data } = await api.get("/admin/stats"
 export async function getActivities(): Promise<Activity[]> { const { data } = await api.get("/admin/activities?limit=20"); return data.activities; }
 export async function uploadDocument(file: File, metadata: DocumentMetadataInput = {}) { const form = new FormData(); form.append("file", file); Object.entries(metadata).forEach(([key, value]) => { if (value !== undefined && value !== "") form.append(key, String(value)); }); const { data } = await api.post("/admin/upload", form, { headers: { "Content-Type": "multipart/form-data" } }); return data; }
 export async function getDocumentChunks(filename: string): Promise<{ chunks: DocumentChunk[]; total: number; flagged: number }> { const { data } = await api.get(`/admin/documents/${encodeURIComponent(filename)}/chunks`); return data; }
+const pagePath = (filename: string, page: number) => `/admin/documents/${encodeURIComponent(filename)}/pages/${page}`;
+type PageReviewResult = { page: number; status: PageReviewStatus | null; chunk_count: number };
+/** Trạng thái kiểm tra từng trang; `page` đánh số từ 1 như nhãn "Tr. 5". */
+export async function getDocumentPages(filename: string): Promise<{ pages: PageSummary[]; needs_review: number }> { const { data } = await api.get(`/admin/documents/${encodeURIComponent(filename)}/pages`); return data; }
+export async function getPageText(filename: string, page: number): Promise<{ text: string; source: "correction" | "ocr" }> { const { data } = await api.get(`${pagePath(filename, page)}/text`); return data; }
+export async function savePageCorrection(filename: string, page: number, text: string): Promise<PageReviewResult> { const { data } = await api.put(`${pagePath(filename, page)}/correction`, { text }); return data; }
+export async function removePageCorrection(filename: string, page: number): Promise<PageReviewResult> { const { data } = await api.delete(`${pagePath(filename, page)}/correction`); return data; }
+export async function confirmPage(filename: string, page: number): Promise<PageReviewResult> { const { data } = await api.put(`${pagePath(filename, page)}/confirmation`); return data; }
+export async function unconfirmPage(filename: string, page: number): Promise<PageReviewResult> { const { data } = await api.delete(`${pagePath(filename, page)}/confirmation`); return data; }
 export async function setDocumentReview(filename: string, reviewed: boolean): Promise<{ reviewed_at: string | null; reviewed_by: string | null }> { const { data } = await api.post(`/admin/documents/${encodeURIComponent(filename)}/review`, { reviewed }); return data; }
 export async function updateDocumentMetadata(filename: string, metadata: DocumentMetadataInput) { const { data } = await api.patch(`/admin/documents/${encodeURIComponent(filename)}`, metadata); return data; }
 export async function deleteDocument(filename: string) { await api.delete(`/admin/delete/${encodeURIComponent(filename)}`); }
