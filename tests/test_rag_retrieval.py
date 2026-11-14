@@ -398,6 +398,32 @@ class RagRetrievalTests(unittest.TestCase):
         self.assertEqual(len(sources), 1)
         self.assertTrue(sources[0]["is_primary"])
 
+    def test_sources_mark_page_needing_review(self):
+        docs = [
+            Document(page_content="Khoa Công nghệ thông tin", metadata={
+                "source": "ke-hoach.pdf", "page": 4, "extraction_method": "tesseract"}),
+            Document(page_content="28/8/2026 ThS. Trần Thống", metadata={
+                "source": "ke-hoach.pdf", "page": 4, "extraction_method": "tesseract",
+                "review_status": "needs_review"}),
+        ]
+        source = extract_sources(docs, "28/8/2026", [0.5, 0.6])[0]
+        self.assertEqual(source["page"], 5)
+        self.assertIs(source["needs_review"], True)
+        self.assertIs(source["is_scan"], True)
+
+    def test_native_source_is_not_scan_and_not_flagged(self):
+        docs = [Document(page_content="Điều 1", metadata={"source": "quy-che.pdf", "page": 0, "extraction_method": "native"})]
+        source = extract_sources(docs, "Điều 1")[0]
+        self.assertIs(source["needs_review"], False)
+        self.assertIs(source["is_scan"], False)
+
+    def test_corrected_scan_source_is_scan_but_not_flagged(self):
+        docs = [Document(page_content="Khoa Hóa học", metadata={
+            "source": "ke-hoach.pdf", "page": 4, "extraction_method": "manual", "review_status": "corrected"})]
+        source = extract_sources(docs, "Khoa Hóa học")[0]
+        self.assertIs(source["needs_review"], False)
+        self.assertIs(source["is_scan"], True)
+
     def test_content_heading_beats_responsibility_chunk(self):
         content = Document(
             page_content="III. NÓI DUNG - Gii thiu tng quan v Khoa",

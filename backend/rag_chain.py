@@ -941,6 +941,10 @@ def _support_score(answer: str, document_text: str) -> float:
     return token_score + phrase_score * 2
 
 
+# Trang đọc từ ảnh scan (kể cả trang admin đã sửa tay thay chữ OCR).
+SCAN_EXTRACTION_METHODS = {"tesseract", "ppocrv6", "manual"}
+
+
 def extract_sources(
     docs: list[Document], answer: str, scores: Optional[list[float]] = None
 ) -> list[dict]:
@@ -964,11 +968,18 @@ def extract_sources(
                 "page": (page + 1) if page is not None else None,
                 "source_path": source,
                 "is_primary": False,
+                "needs_review": False,
+                "is_scan": False,
             }
         # Multiple chunks can represent one page. Mark the page badge primary
         # when any chunk in that group is the strongest supporting evidence.
         if index == primary_index:
             grouped_sources[key]["is_primary"] = True
+        # Trang scan chưa được admin kiểm tra: giao diện hiện cảnh báo nên đối chiếu bản gốc.
+        if meta.get("review_status") == "needs_review":
+            grouped_sources[key]["needs_review"] = True
+        if meta.get("extraction_method") in SCAN_EXTRACTION_METHODS:
+            grouped_sources[key]["is_scan"] = True
     return list(grouped_sources.values())
 
 
