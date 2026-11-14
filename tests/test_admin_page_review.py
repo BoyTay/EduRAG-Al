@@ -13,6 +13,8 @@ import admin
 from db import Base, DocumentMetadata, PageReview
 
 ACTOR = {"name": "Admin", "role": "admin", "email": "admin@example.com"}
+# Hàm thật, giữ trước khi setUp thay bằng bản giả.
+REAL_REINGEST = admin.reingest_document
 
 
 def _chunk(page, method="tesseract", **extra):
@@ -37,8 +39,10 @@ class AdminPageReviewTests(unittest.TestCase):
 
         self.reingest_calls = []
 
-        def fake_reingest(db, document, action, entity_name, current_user):
+        def fake_reingest(db, document, action, entity_name, current_user, page_reviews=None, persist=None):
             self.reingest_calls.append((action, entity_name))
+            if persist is not None:
+                persist()
             db.commit()
             return 3
 
@@ -188,3 +192,44 @@ class NeedsReviewCountTests(unittest.TestCase):
         collection = SimpleNamespace(get=broken)
         with patch.object(admin, "_rag_chain", SimpleNamespace(vector_store=SimpleNamespace(_collection=collection))):
             self.assertEqual(admin._needs_review_page_counts(), {})
+
+
+class SharedConnectionTests(AdminPageReviewTests):
+    """Mọi request dùng chung một kết nối SQLite (StaticPool): request khác rollback/commit giữa chừng
+    không được làm mất bản sửa hay để SQLite lệch với chỉ mục."""
+
+    def _run_with_real_reingest(self, interfere):
+        seen = {}
+
+        def slow_load(file_path, page_reviews=None):
+            seen["page_reviews"] = dict(page_reviews or {})
+            interfere()  # một request khác chạy xong trong lúc tài liệu đang được đọc lại
+            return SimpleNamespace(chunks=["c"], created_cache_files=[])
+
+        write = SimpleNamespace(count=4, new_ids=["new"], old_ids=["old"])
+        with (
+            patch.object(admin, "reingest_document", REAL_REINGEST),
+            patch.object(admin, "load_and_chunk_document", side_effect=slow_load),
+            patch.object(admin, "add_to_vector_store", return_value=write),
+            patch.object(admin, "finalize_vector_write"),
+            patch.object(admin, "rollback_vector_write") as rollback,
+        ):
+            response = self._correct()
+        return response, seen, rollback
+
+    def test_other_request_rollback_does_not_lose_correction(self):
+        response, seen, _ = self._run_with_real_reingest(self.db.rollback)
+        self.assertEqual(response["status"], "corrected")
+        self.assertEqual(seen["page_reviews"][0].status, "corrected")
+        rows = self._rows()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].corrected_text, "Bảng đã sửa\n1 | Khoa Hóa học")
+
+    def test_other_request_commit_cannot_persist_correction_before_index_write(self):
+        def commit_then_fail():
+            self.db.commit()
+            raise RuntimeError("OCR fault")
+
+        with self.assertRaises(HTTPException):
+            self._run_with_real_reingest(commit_then_fail)
+        self.assertEqual(self._rows(), [])

@@ -254,18 +254,29 @@ def reingest_document(
     action: str,
     entity_name: str,
     current_user: dict,
+    page_reviews: dict[int, PageOverride] | None = None,
+    persist=None,
 ) -> int:
     """Nạp lại một tài liệu đã có sau khi admin sửa/xác nhận trang; trả số đoạn mới.
 
     Khác process_saved_document: không bao giờ xóa file, không reset reviewed_at. Lỗi ở bất kỳ
-    bước nào thì rollback SQLite (kể cả thay đổi page_reviews chưa commit) và xóa đoạn mới, giữ
-    nguyên đoạn cũ. Người gọi phải đang giữ _rebuild_lock.
+    bước nào thì rollback SQLite và xóa đoạn mới, giữ nguyên đoạn cũ. Người gọi phải đang giữ
+    _rebuild_lock.
+
+    `page_reviews` (mặc định đọc từ DB) là quyết định *sẽ* có hiệu lực; `persist()` ghi chúng vào DB.
+    Mọi request dùng chung một kết nối SQLite (StaticPool), nên không được để thay đổi treo chưa
+    commit trong lúc đọc lại tài liệu (có thể hàng phút): request khác commit hộ hoặc rollback mất.
+    Vì vậy persist() chỉ chạy sau khi đã ghi chỉ mục, ngay trước commit.
     """
     file_path = Path(document.file_path)
     vector_write: VectorWriteResult | None = None
     try:
-        ingestion = load_and_chunk_document(file_path, page_reviews=page_reviews_for(db, file_path))
+        if page_reviews is None:
+            page_reviews = page_reviews_for(db, file_path)
+        ingestion = load_and_chunk_document(file_path, page_reviews=page_reviews)
         vector_write = add_to_vector_store(ingestion.chunks, document.filename)
+        if persist is not None:
+            persist()
         document.chunk_count = vector_write.count
         log_activity(
             db, action, "document", entity_name,
@@ -652,12 +663,13 @@ def _apply_page_review(
     db: Session,
     current_user: dict,
     action: str,
-    change,
+    stage,
 ) -> int:
-    """Kiểm tra, ghi thay đổi page_reviews (chưa commit), rồi nạp lại tài liệu trong một đơn vị.
+    """Kiểm tra, nạp lại tài liệu với quyết định mới, rồi mới ghi page_reviews và commit.
 
-    `change(file_path, file_hash, page_index)` ghi/xóa dòng page_reviews hoặc ném HTTPException.
-    Nạp lại lỗi thì mọi thay đổi bị rollback; đoạn và file cũ giữ nguyên.
+    `stage(file_path, file_hash, page_index, overrides)` sửa `overrides` (bản trong bộ nhớ) theo
+    thao tác, hoặc ném HTTPException; nó trả về hàm ghi DB sẽ chạy ngay trước commit.
+    Nạp lại lỗi thì không có gì được ghi; đoạn và file cũ giữ nguyên.
     """
     document = _get_document_or_404(db, filename)
     file_path = _scanned_pdf_path(document, page)
@@ -668,14 +680,14 @@ def _apply_page_review(
         page_index = page - 1
         if not _page_is_editable(document, file_hash, page_index, db):
             raise HTTPException(status_code=422, detail="Chỉ sửa hoặc xác nhận được trang đọc bằng OCR")
-        try:
-            change(file_path, file_hash, page_index)
-        except Exception:
-            db.rollback()
-            raise
+        overrides = get_page_overrides(db, file_hash)
+        persist = stage(file_path, file_hash, page_index, overrides)
         name = document.display_name or document.filename
         try:
-            return reingest_document(db, document, action, f"{name} · Tr. {page}", current_user)
+            return reingest_document(
+                db, document, action, f"{name} · Tr. {page}", current_user,
+                page_reviews=overrides, persist=persist,
+            )
         except Exception as exc:
             db.rollback()
             logger.error("Nạp lại '{}' sau thao tác {} thất bại: {}", document.filename, action, exc)
@@ -742,22 +754,27 @@ def save_page_correction(
     if sum(character.isalnum() for character in text) < IngestionSettings.from_env().sanity_min_chars:
         raise HTTPException(status_code=422, detail="Bản sửa quá ngắn")
 
-    def change(file_path: Path, file_hash: str, page_index: int) -> None:
-        upsert_page_review(
+    def stage(file_path: Path, file_hash: str, page_index: int, overrides: dict) -> callable:
+        original_text = _read_original_text(file_path, page_index)
+        overrides[page_index] = PageOverride("corrected", text)
+        return lambda: upsert_page_review(
             db, file_hash, page_index, "corrected", filename=file_path.name,
-            reviewed_by=current_user["email"], original_text=_read_original_text(file_path, page_index),
-            corrected_text=text,
+            reviewed_by=current_user["email"], original_text=original_text, corrected_text=text,
         )
 
-    count = _apply_page_review(filename, page, db, current_user, "page_corrected", change)
+    count = _apply_page_review(filename, page, db, current_user, "page_corrected", stage)
     return {"page": page, "status": "corrected", "chunk_count": count}
 
 
-def _remove_review(status: str, missing_detail: str):
-    def change(_file_path: Path, file_hash: str, page_index: int, db: Session) -> None:
-        if not delete_page_review(db, file_hash, page_index, status):
+def _stage_removal(db: Session, status: str, missing_detail: str):
+    """Bỏ quyết định `status` của trang: kiểm tra có tồn tại (404 nếu không) trước khi nạp lại."""
+    def stage(_file_path: Path, file_hash: str, page_index: int, overrides: dict) -> callable:
+        current = overrides.get(page_index)
+        if current is None or current.status != status:
             raise HTTPException(status_code=404, detail=missing_detail)
-    return change
+        del overrides[page_index]
+        return lambda: delete_page_review(db, file_hash, page_index, status)
+    return stage
 
 
 @router.delete("/documents/{filename}/pages/{page}/correction")
@@ -768,10 +785,9 @@ def remove_page_correction(
     current_user: dict = Depends(require_admin),
 ):
     """Bỏ bản sửa tay, quay về chữ OCR, rồi nạp lại tài liệu."""
-    remove = _remove_review("corrected", "Trang chưa có bản sửa")
     count = _apply_page_review(
         filename, page, db, current_user, "page_correction_removed",
-        lambda file_path, file_hash, page_index: remove(file_path, file_hash, page_index, db),
+        _stage_removal(db, "corrected", "Trang chưa có bản sửa"),
     )
     return {"page": page, "status": None, "chunk_count": count}
 
@@ -784,13 +800,15 @@ def confirm_page(
     current_user: dict = Depends(require_admin),
 ):
     """Admin xác nhận chữ OCR của trang là đúng, rồi nạp lại tài liệu để tắt cảnh báo."""
-    def change(file_path: Path, file_hash: str, page_index: int) -> None:
-        upsert_page_review(
+    def stage(file_path: Path, file_hash: str, page_index: int, overrides: dict) -> callable:
+        original_text = _read_original_text(file_path, page_index)
+        overrides[page_index] = PageOverride("confirmed")
+        return lambda: upsert_page_review(
             db, file_hash, page_index, "confirmed", filename=file_path.name,
-            reviewed_by=current_user["email"], original_text=_read_original_text(file_path, page_index),
+            reviewed_by=current_user["email"], original_text=original_text,
         )
 
-    count = _apply_page_review(filename, page, db, current_user, "page_confirmed", change)
+    count = _apply_page_review(filename, page, db, current_user, "page_confirmed", stage)
     return {"page": page, "status": "confirmed", "chunk_count": count}
 
 
@@ -802,10 +820,9 @@ def unconfirm_page(
     current_user: dict = Depends(require_admin),
 ):
     """Bỏ xác nhận của trang, rồi nạp lại tài liệu."""
-    remove = _remove_review("confirmed", "Trang chưa được xác nhận")
     count = _apply_page_review(
         filename, page, db, current_user, "page_confirmation_removed",
-        lambda file_path, file_hash, page_index: remove(file_path, file_hash, page_index, db),
+        _stage_removal(db, "confirmed", "Trang chưa được xác nhận"),
     )
     return {"page": page, "status": None, "chunk_count": count}
 
