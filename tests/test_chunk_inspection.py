@@ -1,6 +1,8 @@
 import unittest
 
-from chunk_inspection import flag_chunk, list_document_chunks
+from types import SimpleNamespace
+
+from chunk_inspection import flag_chunk, list_document_chunks, summarize_pages
 
 
 class FakeCollection:
@@ -216,3 +218,45 @@ class GarbledTextFlagTests(unittest.TestCase):
 
     def test_short_text_is_not_judged(self):
         self.assertEqual(flag_chunk("a) b) c)", {"extraction_method": "native"}), [])
+
+
+
+class SummarizePagesTests(unittest.TestCase):
+    def test_chunk_rows_carry_ocr_and_review_fields(self):
+        collection = FakeCollection(["x"], [{
+            "filename": "a.pdf", "page": 4, "extraction_method": "tesseract", "ocr_model": "det+tesseract-vie",
+            "ocr_confidence": 0.84, "review_status": "needs_review", "review_reasons": "low_confidence,row_number_gap",
+        }])
+        chunk = list_document_chunks(collection, "a.pdf")[0]
+        self.assertEqual(chunk["ocr_model"], "det+tesseract-vie")
+        self.assertEqual(chunk["ocr_confidence"], 0.84)
+        self.assertEqual(chunk["review_status"], "needs_review")
+        self.assertEqual(chunk["review_reasons"], ["low_confidence", "row_number_gap"])
+
+    def test_native_chunk_has_empty_review_reasons(self):
+        chunk = list_document_chunks(FakeCollection(["x"], [{"filename": "a.pdf", "page": 0}]), "a.pdf")[0]
+        self.assertIsNone(chunk["review_status"])
+        self.assertEqual(chunk["review_reasons"], [])
+
+    def test_summarize_pages_groups_by_page_and_marks_editable(self):
+        chunks = [
+            {"page": 4, "extraction_method": "tesseract", "ocr_model": "m", "ocr_confidence": 0.84,
+             "review_status": "needs_review", "review_reasons": ["low_confidence", "row_number_gap"]},
+            {"page": 4, "extraction_method": "tesseract", "ocr_model": "m", "ocr_confidence": 0.84,
+             "review_status": "needs_review", "review_reasons": ["low_confidence", "row_number_gap"]},
+            {"page": 0, "extraction_method": "native", "ocr_model": None, "ocr_confidence": None,
+             "review_status": None, "review_reasons": []},
+        ]
+        reviewed = SimpleNamespace(reviewed_by="admin@example.com", reviewed_at="2026-11-14")
+        pages = summarize_pages(chunks, {4: reviewed})
+        self.assertEqual([page["page"] for page in pages], [1, 5])
+        self.assertFalse(pages[0]["editable"])
+        self.assertTrue(pages[1]["editable"])
+        self.assertEqual(pages[1]["review_reasons"], ["low_confidence", "row_number_gap"])
+        self.assertEqual(pages[1]["reviewed_by"], "admin@example.com")
+        self.assertIsNone(pages[0]["reviewed_by"])
+
+    def test_manual_page_is_editable(self):
+        pages = summarize_pages([{"page": 2, "extraction_method": "manual", "review_status": "corrected"}], {})
+        self.assertTrue(pages[0]["editable"])
+        self.assertEqual(pages[0]["review_status"], "corrected")

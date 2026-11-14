@@ -93,6 +93,10 @@ def list_document_chunks(collection, filename: str) -> list[dict[str, Any]]:
             "table_row": metadata.get("table_row"),
             "table_caption": metadata.get("table_caption"),
             "table_continued": bool(metadata.get("table_continued", False)),
+            "ocr_model": metadata.get("ocr_model"),
+            "ocr_confidence": metadata.get("ocr_confidence"),
+            "review_status": metadata.get("review_status"),
+            "review_reasons": [reason for reason in (metadata.get("review_reasons") or "").split(",") if reason],
             "flags": flag_chunk(content, metadata),
             "_order": (metadata.get("chunk_index") or 0, metadata.get("page") or 0),
         })
@@ -100,3 +104,32 @@ def list_document_chunks(collection, filename: str) -> list[dict[str, Any]]:
     for chunk in chunks:
         del chunk["_order"]
     return chunks
+
+
+# Trang đọc bằng OCR (hoặc đã sửa tay) mới được admin xác nhận/sửa ở cấp trang.
+EDITABLE_METHODS = {"tesseract", "ppocrv6", "manual"}
+
+
+def summarize_pages(chunks: list[dict[str, Any]], reviews: dict[int, Any]) -> list[dict[str, Any]]:
+    """Gom các đoạn theo trang: cách đọc, độ tin cậy, trạng thái kiểm tra; trang đánh số từ 1.
+
+    `reviews` là page_index → dòng page_reviews (cần reviewed_by, reviewed_at).
+    """
+    pages: dict[int, dict[str, Any]] = {}
+    for chunk in chunks:
+        page_index = chunk.get("page")
+        if page_index is None or page_index in pages:
+            continue
+        review = reviews.get(page_index)
+        pages[page_index] = {
+            "page": page_index + 1,
+            "extraction_method": chunk.get("extraction_method"),
+            "ocr_model": chunk.get("ocr_model"),
+            "ocr_confidence": chunk.get("ocr_confidence"),
+            "review_status": chunk.get("review_status"),
+            "review_reasons": list(chunk.get("review_reasons") or []),
+            "reviewed_by": getattr(review, "reviewed_by", None),
+            "reviewed_at": getattr(review, "reviewed_at", None),
+            "editable": chunk.get("extraction_method") in EDITABLE_METHODS,
+        }
+    return [pages[index] for index in sorted(pages)]

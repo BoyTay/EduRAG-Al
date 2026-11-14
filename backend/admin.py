@@ -20,15 +20,19 @@ from sqlalchemy.orm import Session
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
-from chunk_inspection import list_document_chunks
-from db import DocumentMetadata, as_utc_iso, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity, get_page_overrides
+import pymupdf as fitz
+
+from chunk_inspection import EDITABLE_METHODS, list_document_chunks, summarize_pages
+from db import DocumentMetadata, as_utc_iso, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity, get_page_overrides, get_page_review_rows, upsert_page_review, delete_page_review
 from auth import get_current_user, require_admin
 from document_ingestion import (
     DocumentIngestionError,
     DocumentIngestionResult,
+    IngestionSettings,
     cleanup_document_cache,
     cleanup_new_cache_entries,
     load_and_chunk_document,
+    read_page_ocr_text,
     sha256_file,
 )
 from page_review import PageOverride
@@ -395,10 +399,29 @@ def safe_delete_file(file_path: Path) -> None:
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
+def _needs_review_page_counts() -> dict[str, int]:
+    """Số trang "cần đối chiếu" của mỗi tài liệu, đếm từ metadata đoạn trong chỉ mục."""
+    if _rag_chain is None or _rag_chain.vector_store is None:
+        return {}
+    try:
+        result = _rag_chain.vector_store._collection.get(
+            where={"review_status": "needs_review"}, include=["metadatas"]
+        )
+    except Exception as exc:
+        logger.warning("Không đếm được trang cần đối chiếu: {}", exc)
+        return {}
+    pages = {(meta.get("filename"), meta.get("page")) for meta in result.get("metadatas") or [] if meta}
+    counts: dict[str, int] = {}
+    for filename, _page in pages:
+        counts[filename] = counts.get(filename, 0) + 1
+    return counts
+
+
 @router.get("/documents")
 def get_documents(db: Session = Depends(get_db), _: dict = Depends(get_current_user)):
     """Liệt kê tất cả tài liệu đã nạp vào hệ thống."""
     docs = list_documents(db)
+    needs_review = _needs_review_page_counts()
     return {
         "documents": [
             {
@@ -417,6 +440,7 @@ def get_documents(db: Session = Depends(get_db), _: dict = Depends(get_current_u
                 "status": doc.status or "active",
                 "reviewed_at": as_utc_iso(doc.reviewed_at) or None,
                 "reviewed_by": doc.reviewed_by,
+                "needs_review_pages": needs_review.get(doc.filename, 0),
             }
             for doc in docs
         ],
@@ -574,6 +598,216 @@ def set_document_review(
         "reviewed_at": as_utc_iso(document.reviewed_at) or None,
         "reviewed_by": document.reviewed_by,
     }
+
+
+# ─── Kiểm tra / sửa từng trang scan ──────────────────────────────────────────
+
+MAX_CORRECTION_CHARS = 20000
+
+
+class PageCorrectionRequest(BaseModel):
+    text: str = Field(..., max_length=MAX_CORRECTION_CHARS)
+
+
+def _scanned_pdf_path(document: DocumentMetadata, page: int) -> Path:
+    """File PDF của tài liệu, sau khi kiểm tra định dạng, sự tồn tại và số trang (đánh số từ 1)."""
+    file_path = Path(document.file_path)
+    if file_path.suffix.lower() != ".pdf":
+        raise HTTPException(status_code=422, detail="Chỉ sửa được trang PDF scan")
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Không tìm thấy file của tài liệu")
+    with fitz.open(file_path) as pdf:
+        page_count = pdf.page_count
+    if not 1 <= page <= page_count:
+        raise HTTPException(status_code=404, detail=f"Tài liệu không có trang {page}")
+    return file_path
+
+
+def _index_chunks(filename: str) -> list[dict]:
+    if _rag_chain is None or _rag_chain.vector_store is None:
+        raise HTTPException(status_code=503, detail="Chỉ mục chưa sẵn sàng")
+    return list_document_chunks(_rag_chain.vector_store._collection, filename)
+
+
+def _page_is_editable(document: DocumentMetadata, file_hash: str, page_index: int, db: Session) -> bool:
+    if page_index in get_page_review_rows(db, file_hash):
+        return True
+    return any(
+        chunk["page"] == page_index and chunk["extraction_method"] in EDITABLE_METHODS
+        for chunk in _index_chunks(document.filename)
+    )
+
+
+def _read_original_text(file_path: Path, page_index: int) -> str | None:
+    try:
+        return read_page_ocr_text(file_path, page_index)
+    except Exception as exc:  # chỉ để lưu vết; không chặn thao tác của admin
+        logger.warning("Không đọc được chữ OCR gốc trang {} của {}: {}", page_index + 1, file_path.name, exc)
+        return None
+
+
+def _apply_page_review(
+    filename: str,
+    page: int,
+    db: Session,
+    current_user: dict,
+    action: str,
+    change,
+) -> int:
+    """Kiểm tra, ghi thay đổi page_reviews (chưa commit), rồi nạp lại tài liệu trong một đơn vị.
+
+    `change(file_path, file_hash, page_index)` ghi/xóa dòng page_reviews hoặc ném HTTPException.
+    Nạp lại lỗi thì mọi thay đổi bị rollback; đoạn và file cũ giữ nguyên.
+    """
+    document = _get_document_or_404(db, filename)
+    file_path = _scanned_pdf_path(document, page)
+    if not _rebuild_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="Đang tạo lại chỉ mục, thử lại sau")
+    try:
+        file_hash = sha256_file(file_path)
+        page_index = page - 1
+        if not _page_is_editable(document, file_hash, page_index, db):
+            raise HTTPException(status_code=422, detail="Chỉ sửa hoặc xác nhận được trang đọc bằng OCR")
+        try:
+            change(file_path, file_hash, page_index)
+        except Exception:
+            db.rollback()
+            raise
+        name = document.display_name or document.filename
+        try:
+            return reingest_document(db, document, action, f"{name} · Tr. {page}", current_user)
+        except Exception as exc:
+            db.rollback()
+            logger.error("Nạp lại '{}' sau thao tác {} thất bại: {}", document.filename, action, exc)
+            raise HTTPException(status_code=500, detail="Không thể nạp lại tài liệu; dữ liệu cũ vẫn được giữ")
+    finally:
+        _rebuild_lock.release()
+
+
+@router.get("/documents/{filename}/pages")
+def get_document_pages(
+    filename: str,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """Trạng thái kiểm tra của từng trang (theo các đoạn đang có trong chỉ mục)."""
+    document = _get_document_or_404(db, filename)
+    file_path = Path(document.file_path)
+    reviews = (
+        get_page_review_rows(db, sha256_file(file_path))
+        if file_path.suffix.lower() == ".pdf" and file_path.is_file()
+        else {}
+    )
+    pages = summarize_pages(_index_chunks(document.filename), reviews)
+    for page in pages:
+        page["reviewed_at"] = as_utc_iso(page["reviewed_at"]) or None
+    return {
+        "filename": document.filename,
+        "pages": pages,
+        "needs_review": sum(page["review_status"] == "needs_review" for page in pages),
+    }
+
+
+@router.get("/documents/{filename}/pages/{page}/text")
+def get_page_text(
+    filename: str,
+    page: int,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    """Chữ hiện tại của trang để đưa vào ô sửa: bản sửa nếu có, nếu không thì chữ OCR nguyên trang."""
+    document = _get_document_or_404(db, filename)
+    file_path = _scanned_pdf_path(document, page)
+    review = get_page_review_rows(db, sha256_file(file_path)).get(page - 1)
+    if review is not None and review.status == "corrected" and review.corrected_text:
+        return {"page": page, "text": review.corrected_text, "source": "correction"}
+    try:
+        text = read_page_ocr_text(file_path, page - 1)
+    except Exception as exc:
+        logger.error("Không đọc được chữ OCR trang {} của {}: {}", page, document.filename, exc)
+        raise HTTPException(status_code=500, detail="Không đọc được chữ OCR của trang")
+    return {"page": page, "text": text, "source": "ocr"}
+
+
+@router.put("/documents/{filename}/pages/{page}/correction")
+def save_page_correction(
+    filename: str,
+    page: int,
+    request: PageCorrectionRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Thay chữ OCR của trang bằng bản sửa tay, rồi nạp lại tài liệu."""
+    text = request.text.strip()
+    if sum(character.isalnum() for character in text) < IngestionSettings.from_env().sanity_min_chars:
+        raise HTTPException(status_code=422, detail="Bản sửa quá ngắn")
+
+    def change(file_path: Path, file_hash: str, page_index: int) -> None:
+        upsert_page_review(
+            db, file_hash, page_index, "corrected", filename=file_path.name,
+            reviewed_by=current_user["email"], original_text=_read_original_text(file_path, page_index),
+            corrected_text=text,
+        )
+
+    count = _apply_page_review(filename, page, db, current_user, "page_corrected", change)
+    return {"page": page, "status": "corrected", "chunk_count": count}
+
+
+def _remove_review(status: str, missing_detail: str):
+    def change(_file_path: Path, file_hash: str, page_index: int, db: Session) -> None:
+        if not delete_page_review(db, file_hash, page_index, status):
+            raise HTTPException(status_code=404, detail=missing_detail)
+    return change
+
+
+@router.delete("/documents/{filename}/pages/{page}/correction")
+def remove_page_correction(
+    filename: str,
+    page: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Bỏ bản sửa tay, quay về chữ OCR, rồi nạp lại tài liệu."""
+    remove = _remove_review("corrected", "Trang chưa có bản sửa")
+    count = _apply_page_review(
+        filename, page, db, current_user, "page_correction_removed",
+        lambda file_path, file_hash, page_index: remove(file_path, file_hash, page_index, db),
+    )
+    return {"page": page, "status": None, "chunk_count": count}
+
+
+@router.put("/documents/{filename}/pages/{page}/confirmation")
+def confirm_page(
+    filename: str,
+    page: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Admin xác nhận chữ OCR của trang là đúng, rồi nạp lại tài liệu để tắt cảnh báo."""
+    def change(file_path: Path, file_hash: str, page_index: int) -> None:
+        upsert_page_review(
+            db, file_hash, page_index, "confirmed", filename=file_path.name,
+            reviewed_by=current_user["email"], original_text=_read_original_text(file_path, page_index),
+        )
+
+    count = _apply_page_review(filename, page, db, current_user, "page_confirmed", change)
+    return {"page": page, "status": "confirmed", "chunk_count": count}
+
+
+@router.delete("/documents/{filename}/pages/{page}/confirmation")
+def unconfirm_page(
+    filename: str,
+    page: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Bỏ xác nhận của trang, rồi nạp lại tài liệu."""
+    remove = _remove_review("confirmed", "Trang chưa được xác nhận")
+    count = _apply_page_review(
+        filename, page, db, current_user, "page_confirmation_removed",
+        lambda file_path, file_hash, page_index: remove(file_path, file_hash, page_index, db),
+    )
+    return {"page": page, "status": None, "chunk_count": count}
 
 
 @router.post("/upload-multiple")
