@@ -21,7 +21,7 @@ from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
 from chunk_inspection import list_document_chunks
-from db import DocumentMetadata, as_utc_iso, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity
+from db import DocumentMetadata, as_utc_iso, get_db, add_document_metadata, remove_document_metadata, list_documents, update_document_metadata, log_activity, get_page_overrides
 from auth import get_current_user, require_admin
 from document_ingestion import (
     DocumentIngestionError,
@@ -29,7 +29,9 @@ from document_ingestion import (
     cleanup_document_cache,
     cleanup_new_cache_entries,
     load_and_chunk_document,
+    sha256_file,
 )
+from page_review import PageOverride
 
 # ─── Cấu hình ─────────────────────────────────────────────────────────────────
 DATA_PATH = Path(os.getenv("DATA_PATH", str(Path(__file__).parent.parent / "data")))
@@ -235,6 +237,53 @@ def finalize_vector_write(write: VectorWriteResult) -> None:
         write.vector_store._collection.delete(ids=write.old_ids)
 
 
+def page_reviews_for(db: Session, file_path: Path) -> dict[int, PageOverride]:
+    """Bản sửa / xác nhận trang của đúng nội dung file này (khóa theo SHA-256). DOCX không có."""
+    if file_path.suffix.lower() != ".pdf":
+        return {}
+    return get_page_overrides(db, sha256_file(file_path))
+
+
+def reingest_document(
+    db: Session,
+    document: DocumentMetadata,
+    action: str,
+    entity_name: str,
+    current_user: dict,
+) -> int:
+    """Nạp lại một tài liệu đã có sau khi admin sửa/xác nhận trang; trả số đoạn mới.
+
+    Khác process_saved_document: không bao giờ xóa file, không reset reviewed_at. Lỗi ở bất kỳ
+    bước nào thì rollback SQLite (kể cả thay đổi page_reviews chưa commit) và xóa đoạn mới, giữ
+    nguyên đoạn cũ. Người gọi phải đang giữ _rebuild_lock.
+    """
+    file_path = Path(document.file_path)
+    vector_write: VectorWriteResult | None = None
+    try:
+        ingestion = load_and_chunk_document(file_path, page_reviews=page_reviews_for(db, file_path))
+        vector_write = add_to_vector_store(ingestion.chunks, document.filename)
+        document.chunk_count = vector_write.count
+        log_activity(
+            db, action, "document", entity_name,
+            current_user["name"], current_user["role"],
+            commit=False,
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        if vector_write is not None:
+            try:
+                rollback_vector_write(vector_write)
+            except Exception as rollback_error:
+                logger.error("Không thể rollback đoạn mới của '{}': {}", document.filename, rollback_error)
+        raise
+    try:
+        finalize_vector_write(vector_write)
+    except Exception as exc:
+        logger.warning("Không thể dọn đoạn cũ của '{}': {}", document.filename, exc)
+    return vector_write.count
+
+
 def process_saved_document(
     file_path: Path,
     file_size_kb: float,
@@ -247,7 +296,7 @@ def process_saved_document(
     ingestion: DocumentIngestionResult | None = None
     vector_write: VectorWriteResult | None = None
     try:
-        ingestion = load_and_chunk_document(file_path)
+        ingestion = load_and_chunk_document(file_path, page_reviews=page_reviews_for(db, file_path))
         vector_write = add_to_vector_store(ingestion.chunks, file_path.name)
         document = add_document_metadata(
             db=db,
@@ -715,7 +764,9 @@ def rebuild_index(
 
         for file_path in all_files:
             try:
-                ingestion = load_and_chunk_document(file_path)
+                ingestion = load_and_chunk_document(
+                    file_path, page_reviews=page_reviews_for(db, file_path)
+                )
                 new_cache_files.extend(ingestion.created_cache_files)
                 vector_write = add_to_vector_store(
                     ingestion.chunks, file_path.name, staging_store
